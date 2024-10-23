@@ -1,0 +1,3 @@
+Features showcased:
+
+- trial mode

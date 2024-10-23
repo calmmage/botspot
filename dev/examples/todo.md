@@ -1,0 +1,22 @@
+- [ ] Some database
+  - [ ] MongoDB
+  - [ ] RocksDB
+  - External services?
+    - [ ] Motion
+    - [ ] Notion
+    - [ ] Todoist
+  - Extras considered
+    - [ ] In memory
+    - [ ] Redis - for logging and stuff? 
+    - [x] Jsons on disk (similar to RocksDB)
+- [ ] User data - e.g. timezone, etc
+- [ ] Event scheduler
+- [ ] Message history middleware
+- [ ] Multi-message processing middleware
+- [x] error handling
+- [ ] Auto-archive middleware
+
+----
+- [ ] One-off tools / jobs (pyrogram api)
+  - 1) Download all / recent messages from a chat
+  - 2) Set up continuous feed / message monitoring and storage
