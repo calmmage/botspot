@@ -1,5 +1,17 @@
-from pydantic_settings import BaseSettings
 import asyncio
+from datetime import datetime
+from typing import Optional, Dict, Union, List
+
+from aiogram import types
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
+
+from botspot.utils.common import get_logger
+
+logger = get_logger()
 
 
 class AskUserSettings(BaseSettings):
@@ -12,28 +24,24 @@ class AskUserSettings(BaseSettings):
         extra = "ignore"
 
 
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional, Dict, Any
-from aiogram import types
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message
-
-from botspot.utils.common import get_logger
-
-logger = get_logger()
-
-
 class UserInputState(StatesGroup):
     waiting = State()  # Generic waiting state
 
 
-@dataclass
-class PendingRequest:
+class PendingRequest(BaseModel):
     question: str
-    created_at: datetime
-    handler_id: str  # Unique ID for each request
+    handler_id: str
+    created_at: datetime = datetime.now()  # Default value
+    event: Optional[asyncio.Event] = None  # Will be set in constructor
+    response: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True  # Needed for asyncio.Event
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.event is None:
+            self.event = asyncio.Event()
 
 
 class UserInputManager:
@@ -44,9 +52,7 @@ class UserInputManager:
         if chat_id not in self._pending_requests:
             self._pending_requests[chat_id] = {}
 
-        self._pending_requests[chat_id][handler_id] = PendingRequest(
-            question=question, created_at=datetime.now(), handler_id=handler_id
-        )
+        self._pending_requests[chat_id][handler_id] = PendingRequest(question=question, handler_id=handler_id)
 
     def get_active_request(self, chat_id: int) -> Optional[PendingRequest]:
         if chat_id not in self._pending_requests:
@@ -72,7 +78,7 @@ async def ask_user(
     message: Message, question: str, state: FSMContext, timeout: Optional[float] = 60.0
 ) -> Optional[str]:
     """
-    Ask user a question and wait for their response.
+    Ask user a question and wait for their response using event signaling.
     Args:
         message: Message object
         question: Question to ask
@@ -88,29 +94,77 @@ async def ask_user(
     await state.set_state(UserInputState.waiting)
     await state.update_data(handler_id=handler_id)
 
-    # Add request to manager
-    input_manager.add_request(chat_id, handler_id, question)
+    # Create request with event
+    request = PendingRequest(question=question, handler_id=handler_id)
+    input_manager.add_request(chat_id, handler_id, request)
 
     # Send question
     await message.answer(question)
 
-    # Wait for response via state
     try:
-        start_time = datetime.now()
-        while True:
-            # Check if we've exceeded timeout
-            if timeout is not None and (datetime.now() - start_time).total_seconds() > timeout:
-                await message.answer("No response received within the time limit.")
-                return None
-
-            # Check state every second
-            await asyncio.sleep(1)
-            data = await state.get_data()
-            if "response" in data:
-                return data["response"]
+        # Wait for event to be set
+        await asyncio.wait_for(request.event.wait(), timeout=timeout)
+        return request.response
+    except asyncio.TimeoutError:
+        await message.answer("No response received within the time limit.")
+        return None
     finally:
         # Cleanup
         input_manager.remove_request(chat_id, handler_id)
+        await state.clear()
+
+
+async def ask_user_choice(
+    message: Message,
+    question: str,
+    choices: Union[List[str], Dict[str, str]],
+    state: FSMContext,
+    timeout: Optional[float] = 60.0,
+) -> Optional[str]:
+    """
+    Ask user to choose from options using inline buttons.
+    Args:
+        message: Message object
+        question: Question to ask
+        choices: List of choices or Dict of {callback_data: display_text}
+        state: FSM context
+        timeout: Timeout in seconds
+    Returns:
+        Selected choice or None if timeout reached
+    """
+    # Create keyboard
+    if isinstance(choices, list):
+        choices = {choice: choice for choice in choices}
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=text, callback_data=f"choice_{data}")] for data, text in choices.items()
+        ]
+    )
+
+    handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
+
+    # Store state data
+    await state.set_state(UserInputState.waiting)
+    await state.update_data(handler_id=handler_id)
+
+    # Create request with event
+    request = PendingRequest(
+        question=question, created_at=datetime.now(), handler_id=handler_id, event=asyncio.Event(), response=None
+    )
+    input_manager.add_request(message.chat.id, handler_id, request)
+
+    # Send question with keyboard
+    await message.answer(question, reply_markup=keyboard)
+
+    try:
+        await asyncio.wait_for(request.event.wait(), timeout=timeout)
+        return request.response
+    except asyncio.TimeoutError:
+        await message.answer("No choice made within the time limit.")
+        return None
+    finally:
+        input_manager.remove_request(message.chat.id, handler_id)
         await state.clear()
 
 
@@ -125,15 +179,37 @@ async def handle_user_input(message: Message, state: FSMContext) -> None:
 
     active_request = input_manager.get_active_request(chat_id)
     if not active_request or active_request.handler_id != handler_id:
-        # This response is for a different/expired request
         await message.answer("Sorry, this response came too late or was for a different question. Please try again.")
         await state.clear()
         return
 
-    # Store response in state
-    await state.update_data(response=message.text)
+    # Store response and signal completion
+    active_request.response = message.text
+    active_request.event.set()
+
+
+async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    if not callback_query.data.startswith("choice_"):
+        return
+
+    chat_id = callback_query.message.chat.id
+    state_data = await state.get_data()
+    handler_id = state_data.get("handler_id")
+
+    active_request = input_manager.get_active_request(chat_id)
+    if not active_request or active_request.handler_id != handler_id:
+        await callback_query.answer("This choice is no longer valid.")
+        return
+
+    choice = callback_query.data[7:]  # Remove "choice_" prefix
+    active_request.response = choice
+    active_request.event.set()
+
+    await callback_query.answer()
+    await callback_query.message.edit_reply_markup(reply_markup=None)
 
 
 def setup_dispatcher(dp):
-    """Register message handler for user inputs"""
+    """Register message and callback handlers"""
     dp.message.register(handle_user_input, UserInputState.waiting)
+    dp.callback_query.register(handle_choice_callback, UserInputState.waiting)
