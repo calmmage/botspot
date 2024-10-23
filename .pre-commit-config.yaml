@@ -1,0 +1,13 @@
+repos:
+#  - repo: local
+#    hooks:
+#      - id: jupyter-nb-clear-output
+#        name: jupyter-nb-clear-output
+#        language: system
+#        entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.5.0
+    hooks:
+      - id: nbstripout
+        files: \.ipynb$
+        stages: [commit]
