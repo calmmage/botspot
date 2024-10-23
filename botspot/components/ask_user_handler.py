@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+import asyncio
 
 
 class AskUserSettings(BaseSettings):
@@ -67,10 +68,18 @@ class UserInputManager:
 input_manager = UserInputManager()
 
 
-async def ask_user(message: Message, question: str, state: FSMContext) -> str:
+async def ask_user(
+    message: Message, question: str, state: FSMContext, timeout: Optional[float] = 60.0
+) -> Optional[str]:
     """
     Ask user a question and wait for their response.
-    Returns the user's response text.
+    Args:
+        message: Message object
+        question: Question to ask
+        state: FSM context
+        timeout: Timeout in seconds (default: 60s). None means wait forever.
+    Returns:
+        User's response text or None if timeout reached
     """
     chat_id = message.chat.id
     handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
@@ -87,8 +96,18 @@ async def ask_user(message: Message, question: str, state: FSMContext) -> str:
 
     # Wait for response via state
     try:
-        response = await state.get_data()
-        return response.get("response", "")
+        start_time = datetime.now()
+        while True:
+            # Check if we've exceeded timeout
+            if timeout is not None and (datetime.now() - start_time).total_seconds() > timeout:
+                await message.answer("No response received within the time limit.")
+                return None
+
+            # Check state every second
+            await asyncio.sleep(1)
+            data = await state.get_data()
+            if "response" in data:
+                return data["response"]
     finally:
         # Cleanup
         input_manager.remove_request(chat_id, handler_id)

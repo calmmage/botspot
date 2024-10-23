@@ -4,6 +4,7 @@ import sys
 from os import getenv
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -24,12 +25,15 @@ bm = BotManager()
 @dp.message(Command("demo"))
 async def demo_command(message: Message, state) -> None:
     """Simple demo of asking user for their name"""
-    response = await ask_user(message, "What's your name?", state)
-    await message.answer(f"Hello, {response}! Nice to meet you!")
+    response = await ask_user(message, "What's your name?", state, timeout=30.0)
+    if response:
+        await message.answer(f"Hello, {response}! Nice to meet you!")
+    else:
+        await message.answer("Demo cancelled due to timeout.")
 
 
 async def main() -> None:
-    bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     bm.setup_dispatcher(dp)
     await dp.start_polling(bot)
 
