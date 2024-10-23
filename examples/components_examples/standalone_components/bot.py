@@ -10,9 +10,9 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from dev.draft.lib_files.components import error_handler, print_bot_url, bot_commands_menu
-from dev.draft.lib_files.dependency_manager import DependencyManager
-from dev.draft.lib_files.nbl_settings import NBLSettings
+from botspot.components import error_handler, print_bot_url, bot_commands_menu
+from botspot.core.dependency_manager import DependencyManager
+from botspot.core.nbl_settings import NBLSettings
 
 load_dotenv()
 # Bot token can be obtained via https://t.me/BotFather

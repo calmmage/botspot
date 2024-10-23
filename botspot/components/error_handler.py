@@ -4,8 +4,8 @@ from datetime import datetime
 from aiogram import types, Dispatcher, Bot
 from pydantic_settings import BaseSettings
 
-from dev.draft.easter_eggs.main import get_easter_egg
-from dev.draft.lib_files.utils.common import get_logger
+from botspot.utils.common import get_logger
+from botspot.utils.easter_eggs.main import get_easter_egg
 
 logger = get_logger()
 
@@ -27,7 +27,7 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
     log error to the logger
     also send a message to the user
     """
-    from dev.draft.lib_files.dependency_manager import get_dependency_manager
+    from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
     settings = deps.nbl_settings.error_handling
@@ -64,7 +64,7 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
 
 
 def setup_dispatcher(dp: Dispatcher):  # settings: ErrorHandlerSettings = None
-    from dev.draft.lib_files.dependency_manager import get_dependency_manager
+    from botspot.core.dependency_manager import get_dependency_manager
 
     # check required dependencies
     deps = get_dependency_manager()

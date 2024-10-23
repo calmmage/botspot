@@ -2,18 +2,18 @@
 BotManager class is responsible for setting up the bot, dispatcher etc.
 """
 
-from dev.draft.lib_files.components import (
+from botspot.components import (
     error_handler,
+    trial_mode,
+    event_scheduler,
     print_bot_url,
     bot_commands_menu,
     mongo_database,
-    event_scheduler,
-    trial_mode,
 )
 
-from dev.draft.lib_files.dependency_manager import DependencyManager
-from dev.draft.lib_files.nbl_settings import NBLSettings
-from dev.draft.lib_files.utils.common import Singleton
+from botspot.core.dependency_manager import DependencyManager
+from botspot.core.nbl_settings import NBLSettings
+from botspot.utils.common import Singleton
 
 
 class BotManager(metaclass=Singleton):

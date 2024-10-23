@@ -6,11 +6,12 @@ from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
 # from dev.draft.easter_eggs.main import get_easter_egg
-from dev.draft.lib_files.utils.common import get_logger
+from botspot.utils.common import get_logger
 
 logger = get_logger()
 
 
+# todo: take Mark's thing - it can handle images as well, I think..
 class MultiForwardHandlingSettings(BaseSettings):
     enabled: bool = True
 
@@ -79,13 +80,13 @@ async def chat_handler(self, message: Message, app: MyApp):
 
 # format date as hh:mm
 async def compose_messages(
-        self,
-        messages,
-        include_usernames=True,
-        include_timestamps=True,
-        date_format="[%H:%M]",
-        separator="\n\n~~~\n\n",
-        # separator="\n\n",
+    self,
+    messages,
+    include_usernames=True,
+    include_timestamps=True,
+    date_format="[%H:%M]",
+    separator="\n\n~~~\n\n",
+    # separator="\n\n",
 ):
     text = ""
     for message in messages:
@@ -161,7 +162,7 @@ async def multi_forward_handler():
     log error to the logger
     also send a message to the user
     """
-    from dev.draft.lib_files.dependency_manager import get_dependency_manager
+    from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
 

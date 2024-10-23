@@ -10,9 +10,9 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from dev.draft.lib_files.bot_manager import BotManager
-from dev.draft.lib_files.components.bot_commands_menu import add_command
-from dev.draft.lib_files.components.trial_mode import add_user_limit, add_global_limit
+from botspot.components.bot_commands_menu import add_command
+from botspot.components.trial_mode import add_user_limit, add_global_limit
+from botspot.core.bot_manager import BotManager
 
 load_dotenv()
 # Bot token can be obtained via https://t.me/BotFather

@@ -8,7 +8,7 @@ from aiogram import Dispatcher
 from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
-from dev.draft.lib_files.utils.common import get_logger
+from botspot.utils.common import get_logger
 
 logger = get_logger()
 
@@ -42,7 +42,7 @@ def add_user_limit(limit=3, period=24 * 60 * 60):
     """
     Decorator to add a per-user trial mode limit to the command
     """
-    from dev.draft.lib_files.dependency_manager import get_dependency_manager
+    from botspot.core.dependency_manager import get_dependency_manager
 
     def wrapper(func):
         @wraps(func)
@@ -158,8 +158,7 @@ class UsageLimitMiddleware:
 
 
 def setup_dispatcher(dp: Dispatcher, limit_per_user=None, global_limit=None, period_per_user=None, global_period=None):
-
-    from dev.draft.lib_files.dependency_manager import get_dependency_manager
+    from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
     settings = deps.nbl_settings.trial_mode

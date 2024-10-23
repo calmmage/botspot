@@ -1,7 +1,9 @@
 # from aiogram.types import Message
 from typing import Optional
+
 from aiogram.types import Message
-from dev.draft.lib_files.dependency_manager import DependencyManager, get_dependency_manager
+
+from botspot.core.dependency_manager import DependencyManager, get_dependency_manager
 
 
 async def send_safe(chat_id, text, deps: DependencyManager = None, reply_to_message_id: Optional[int] = None, **kwargs):

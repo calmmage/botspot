@@ -2,7 +2,7 @@ from aiogram import Dispatcher, Bot
 from aiogram.types import BotCommand
 from pydantic_settings import BaseSettings
 
-from dev.draft.lib_files.utils.common import get_logger
+from botspot.utils.common import get_logger
 
 logger = get_logger()
 

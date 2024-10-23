@@ -8,9 +8,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
-
-from dev.draft.lib_files.bot_manager import BotManager
 from dotenv import load_dotenv
+
+from botspot.core.bot_manager import BotManager
 
 load_dotenv()
 # Bot token can be obtained via https://t.me/BotFather

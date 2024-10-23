@@ -1,8 +1,8 @@
-from aiogram import Dispatcher, Bot
-from pydantic_settings import BaseSettings
-from datetime import datetime
-from dev.draft.lib_files.utils.common import get_logger
 from typing import TYPE_CHECKING
+
+from pydantic_settings import BaseSettings
+
+from botspot.utils.common import get_logger
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler

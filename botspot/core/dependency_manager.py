@@ -1,8 +1,9 @@
-from aiogram import Bot
 from typing import TYPE_CHECKING
 
-from dev.draft.lib_files.nbl_settings import NBLSettings
-from dev.draft.lib_files.utils.common import Singleton
+from aiogram import Bot
+
+from botspot.core.nbl_settings import NBLSettings
+from botspot.utils.common import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncScheduler

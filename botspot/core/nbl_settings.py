@@ -1,11 +1,11 @@
 from pydantic_settings import BaseSettings
 
-from dev.draft.lib_files.components.bot_commands_menu import BotCommandsMenuSettings
-from dev.draft.lib_files.components.error_handler import ErrorHandlerSettings
-from dev.draft.lib_files.components.event_scheduler import EventSchedulerSettings
-from dev.draft.lib_files.components.mongo_database import MongoDatabaseSettings
-from dev.draft.lib_files.components.print_bot_url import PrintBotUrlSettings
-from dev.draft.lib_files.components.trial_mode import TrialModeSettings
+from botspot.components.bot_commands_menu import BotCommandsMenuSettings
+from botspot.components.error_handler import ErrorHandlerSettings
+from botspot.components.event_scheduler import EventSchedulerSettings
+from botspot.components.mongo_database import MongoDatabaseSettings
+from botspot.components.print_bot_url import PrintBotUrlSettings
+from botspot.components.trial_mode import TrialModeSettings
 
 
 class NBLSettings(BaseSettings):
