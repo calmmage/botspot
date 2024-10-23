@@ -9,6 +9,7 @@ from botspot.components import (
     print_bot_url,
     bot_commands_menu,
     mongo_database,
+    ask_user_handler,
 )
 
 from botspot.core.dependency_manager import DependencyManager
@@ -29,9 +30,7 @@ class BotManager(metaclass=Singleton):
 
     def setup_dispatcher(self, dp):
         """
-        Idea: register a help command from the handler - manually
-        :param dp:
-        :return:
+        Setup dispatcher with components
         """
         if self.settings.error_handling.enabled:
             error_handler.setup_dispatcher(dp)
@@ -47,5 +46,8 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.trial_mode.enabled:
             trial_mode.setup_dispatcher(dp)
+
+        if self.settings.ask_user.enabled:
+            ask_user_handler.setup_dispatcher(dp)
 
     # def setup_bot(self, bot):

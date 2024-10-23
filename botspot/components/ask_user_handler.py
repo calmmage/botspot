@@ -1,71 +1,120 @@
-# import asyncio
-#
-# from aiogram import types
-# from aiogram.fsm.context import FSMContext
-# from aiogram.fsm.state import StatesGroup, State
-# from aiogram.types import Message
-#
-# # from bot_lib import Handler, HandlerDisplayMode
-#
-#
-# class CustomState(StatesGroup):
-#     Waiting = State("waiting_for_user_input")
-#
-#
-#
-#
-# user_inputs = {}
-#
-# async def get_info_from_user(message: Message, question: str, state: FSMContext):
-#     chat_id = message.chat.id
-#     await state.set_state(CustomState.Waiting)
-#     # Create an Event for this specific chat
-#     if chat_id not in user_inputs:
-#         user_inputs[chat_id] = {"event": asyncio.Event(), "input": None}
-#
-#     # Send the question
-#     await reply_safe(message, question)
-#
-#     # Wait for the input
-#     await user_inputs[chat_id]["event"].wait()
-#
-#     # Get and clear the input
-#     user_input = user_inputs[chat_id]["input"]
-#     user_inputs[chat_id]["input"] = None
-#     user_inputs[chat_id]["event"].clear()
-#
-#     return user_input
-#
-# async def handle_user_input(message: Message, state: FSMContext):
-#     chat_id = message.chat.id
-#
-#     if chat_id in user_inputs:
-#         # Store the user's input
-#         user_inputs[chat_id]["input"] = await get_message_text(message)
-#         # Set the event to unblock the waiting task
-#         user_inputs[chat_id]["event"].set()
-#
-#     # Clear the state
-#     await state.clear()
-#
-# async def sample_request_data_command(message: types.Message, state: FSMContext):
-#     message_from_user = await get_message_text(message)
-#     message_from_user = strip_command(message_from_user)
-#     if not message_from_user:
-#         message_from_user = await get_info_from_user(
-#             message, "Please provide some data for the request", state
-#         )
-#     await reply_safe(message, "You provided: " + message_from_user)
-#
-# def register_extra_handlers(router):
-#     super().register_extra_handlers(router)
-#     router.message.register(handle_user_input, CustomState.Waiting)
-#     return router
-#
-# name = "main"
-# display_mode = HandlerDisplayMode.FULL
-# commands = {
-#     "sample_request_data_command": ["sample_request_data_command"],
-# }
-#
-# def setup_dispatcher
+from pydantic_settings import BaseSettings
+
+
+class AskUserSettings(BaseSettings):
+    enabled: bool = True
+
+    class Config:
+        env_prefix = "NBL_ASK_USER_"
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "ignore"
+
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional, Dict, Any
+from aiogram import types
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import Message
+
+from botspot.utils.common import get_logger
+
+logger = get_logger()
+
+
+class UserInputState(StatesGroup):
+    waiting = State()  # Generic waiting state
+
+
+@dataclass
+class PendingRequest:
+    question: str
+    created_at: datetime
+    handler_id: str  # Unique ID for each request
+
+
+class UserInputManager:
+    def __init__(self):
+        self._pending_requests: Dict[int, Dict[str, PendingRequest]] = {}
+
+    def add_request(self, chat_id: int, handler_id: str, question: str) -> None:
+        if chat_id not in self._pending_requests:
+            self._pending_requests[chat_id] = {}
+
+        self._pending_requests[chat_id][handler_id] = PendingRequest(
+            question=question, created_at=datetime.now(), handler_id=handler_id
+        )
+
+    def get_active_request(self, chat_id: int) -> Optional[PendingRequest]:
+        if chat_id not in self._pending_requests:
+            return None
+        # Get the oldest pending request
+        requests = self._pending_requests[chat_id]
+        if not requests:
+            return None
+        return min(requests.values(), key=lambda x: x.created_at)
+
+    def remove_request(self, chat_id: int, handler_id: str) -> None:
+        if chat_id in self._pending_requests:
+            self._pending_requests[chat_id].pop(handler_id, None)
+            if not self._pending_requests[chat_id]:
+                del self._pending_requests[chat_id]
+
+
+# Global instance
+input_manager = UserInputManager()
+
+
+async def ask_user(message: Message, question: str, state: FSMContext) -> str:
+    """
+    Ask user a question and wait for their response.
+    Returns the user's response text.
+    """
+    chat_id = message.chat.id
+    handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
+
+    # Store state data
+    await state.set_state(UserInputState.waiting)
+    await state.update_data(handler_id=handler_id)
+
+    # Add request to manager
+    input_manager.add_request(chat_id, handler_id, question)
+
+    # Send question
+    await message.answer(question)
+
+    # Wait for response via state
+    try:
+        response = await state.get_data()
+        return response.get("response", "")
+    finally:
+        # Cleanup
+        input_manager.remove_request(chat_id, handler_id)
+        await state.clear()
+
+
+async def handle_user_input(message: Message, state: FSMContext) -> None:
+    """Handler for user responses"""
+    if not await state.get_state() == UserInputState.waiting:
+        return
+
+    chat_id = message.chat.id
+    state_data = await state.get_data()
+    handler_id = state_data.get("handler_id")
+
+    active_request = input_manager.get_active_request(chat_id)
+    if not active_request or active_request.handler_id != handler_id:
+        # This response is for a different/expired request
+        await message.answer("Sorry, this response came too late or was for a different question. Please try again.")
+        await state.clear()
+        return
+
+    # Store response in state
+    await state.update_data(response=message.text)
+
+
+def setup_dispatcher(dp):
+    """Register message handler for user inputs"""
+    dp.message.register(handle_user_input, UserInputState.waiting)
