@@ -65,10 +65,7 @@ bm.setup_dispatcher(dp)
 
 
 async def main() -> None:
-    # Initialize Bot instance with default bot properties which will be passed to all API calls
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-    # And the run events dispatching
     await dp.start_polling(bot)
 
 
