@@ -18,14 +18,13 @@ load_dotenv()
 TOKEN = getenv("TELEGRAM_BOT_TOKEN")
 
 dp = Dispatcher()
-bm = BotManager()
 
 
 @add_command("demo", "Demo command showcasing ask_user functionality")
 @dp.message(Command("demo"))
 async def demo_command(message: Message, state) -> None:
     """Simple demo of asking user for their name"""
-    response = await ask_user(message, "What's your name?", state, timeout=30.0)
+    response = await ask_user(message.chat.id, "What's your name?", state, timeout=30.0)
     if response:
         await message.reply(f"Hello, {response}! Nice to meet you!")
     else:
@@ -37,7 +36,7 @@ async def demo_command(message: Message, state) -> None:
 async def choose_command(message: Message, state) -> None:
     """Demo of asking user to choose from options"""
     choices = ["Red", "Green", "Blue"]
-    response = await ask_user_choice(message, "What's your favorite color?", choices, state, timeout=30.0)
+    response = await ask_user_choice(message.chat.id, "What's your favorite color?", choices, state, timeout=30.0)
     if response:
         await message.reply(f"You chose: {response}!")
     else:
@@ -45,8 +44,16 @@ async def choose_command(message: Message, state) -> None:
 
 
 async def main() -> None:
+    # Create bot as usual in aiogram
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # Initialize BotManager with existing bot
+    bm = BotManager(bot=bot)
+
+    # Setup dispatcher with our components
     bm.setup_dispatcher(dp)
+
+    # Start polling as usual
     await dp.start_polling(bot)
 
 

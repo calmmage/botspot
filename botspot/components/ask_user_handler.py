@@ -2,10 +2,10 @@ import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Union, List
 
-from aiogram import types
+from aiogram import types, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
@@ -75,14 +75,18 @@ input_manager = UserInputManager()
 
 
 async def _ask_user_base(
-    message: Message,
+    chat_id: int,
     question: str,
     state: FSMContext,
     timeout: Optional[float] = 60.0,
     keyboard: Optional[InlineKeyboardMarkup] = None,
 ) -> Optional[str]:
     """Base function for asking user questions with optional keyboard"""
-    chat_id = message.chat.id
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    bot: Bot = deps.bot
+
     handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
 
     # Store state data
@@ -99,28 +103,26 @@ async def _ask_user_base(
         return None
 
     # Send question
-    await message.answer(question, reply_markup=keyboard)
+    await bot.send_message(chat_id, question, reply_markup=keyboard)
 
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
         return request.response
     except asyncio.TimeoutError:
-        await message.answer("No response received within the time limit.")
+        await bot.send_message(chat_id, "No response received within the time limit.")
         return None
     finally:
         input_manager.remove_request(chat_id, handler_id)
         await state.clear()
 
 
-async def ask_user(
-    message: Message, question: str, state: FSMContext, timeout: Optional[float] = 60.0
-) -> Optional[str]:
+async def ask_user(chat_id: int, question: str, state: FSMContext, timeout: Optional[float] = 60.0) -> Optional[str]:
     """Ask user a question and wait for text response"""
-    return await _ask_user_base(message, question, state, timeout)
+    return await _ask_user_base(chat_id, question, state, timeout)
 
 
 async def ask_user_choice(
-    message: Message,
+    chat_id: int,
     question: str,
     choices: Union[List[str], Dict[str, str]],
     state: FSMContext,
@@ -136,12 +138,13 @@ async def ask_user_choice(
         ]
     )
 
-    # Use _ask_user_base instead of direct add_request
-    return await _ask_user_base(message, question, state, timeout, keyboard)
+    return await _ask_user_base(chat_id, question, state, timeout, keyboard)
 
 
-async def handle_user_input(message: Message, state: FSMContext) -> None:
+async def handle_user_input(message: types.Message, state: FSMContext) -> None:
     """Handler for user responses"""
+    from botspot.core.dependency_manager import get_dependency_manager
+
     if not await state.get_state() == UserInputState.waiting:
         return
 
@@ -151,11 +154,14 @@ async def handle_user_input(message: Message, state: FSMContext) -> None:
 
     active_request = input_manager.get_active_request(chat_id)
     if not active_request or active_request.handler_id != handler_id:
-        await message.answer("Sorry, this response came too late or was for a different question. Please try again.")
+        deps = get_dependency_manager()
+        bot: Bot = deps.bot
+        await bot.send_message(
+            chat_id, "Sorry, this response came too late or was for a different question. Please try again."
+        )
         await state.clear()
         return
 
-    # Store response and signal completion
     active_request.response = message.text
     active_request.event.set()
 
@@ -173,7 +179,7 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
         await callback_query.answer("This choice is no longer valid.")
         return
 
-    choice = callback_query.data[7:]  # Remove "choice_" prefix
+    choice = callback_query.data[7:]
     active_request.response = choice
     active_request.event.set()
 
@@ -183,10 +189,7 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
 
 def setup_dispatcher(dp):
     """Register message and callback handlers"""
-    # Register message and callback handlers
     dp.message.register(handle_user_input, UserInputState.waiting)
-
-    # Register for button callbacks
     dp.callback_query.register(
         handle_choice_callback, lambda c: c.data and c.data.startswith("choice_"), UserInputState.waiting
     )
