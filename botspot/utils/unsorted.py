@@ -1,13 +1,8 @@
 from typing import Dict
-from typing import TYPE_CHECKING, Union
+from typing import Union
 
 from aiogram.types import Message
 from loguru import logger
-
-from botspot.core.dependency_manager import get_dependency_manager
-
-if TYPE_CHECKING:
-    pass
 
 
 def get_user(message: Message, forward_priority=False) -> str:
@@ -64,6 +59,8 @@ async def _extract_message_text(
     #     result["audio"] = "\n\n".join(chunks)
     # todo: accept files?
     if message.document and message.document.mime_type == "text/plain":
+        from botspot.core.dependency_manager import get_dependency_manager
+
         deps = get_dependency_manager()
         logger.info(f"Received text file: {message.document.file_name}")
         file = await deps.bot.download(message.document.file_id)

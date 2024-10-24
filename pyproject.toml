@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.1.3a" # bugfix
+version = "0.1.3b" # bugfix
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
