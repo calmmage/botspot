@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.1.2" # Rename common utils to internal
+version = "0.1.3" # add old utils to unsorted
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"

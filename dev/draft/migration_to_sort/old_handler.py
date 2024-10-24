@@ -162,16 +162,6 @@ def _build_simple_get_handler(self, name: str):
     return handler
 
 
-@staticmethod
-def strip_command(text: str):
-    if text.startswith("/"):
-        parts = text.split(" ", 1)
-        if len(parts) > 1:
-            return parts[1].strip()
-        return ""
-    return text
-
-
 def _get_short_description(self, name):
     desc = getattr(self, name).__doc__
     if desc is None or desc.strip() == "":
