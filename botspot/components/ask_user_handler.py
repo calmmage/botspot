@@ -74,19 +74,14 @@ class UserInputManager:
 input_manager = UserInputManager()
 
 
-async def ask_user(
-    message: Message, question: str, state: FSMContext, timeout: Optional[float] = 60.0
+async def _ask_user_base(
+    message: Message,
+    question: str,
+    state: FSMContext,
+    timeout: Optional[float] = 60.0,
+    keyboard: Optional[InlineKeyboardMarkup] = None,
 ) -> Optional[str]:
-    """
-    Ask user a question and wait for their response using event signaling.
-    Args:
-        message: Message object
-        question: Question to ask
-        state: FSM context
-        timeout: Timeout in seconds (default: 60s). None means wait forever.
-    Returns:
-        User's response text or None if timeout reached
-    """
+    """Base function for asking user questions with optional keyboard"""
     chat_id = message.chat.id
     handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
 
@@ -94,24 +89,34 @@ async def ask_user(
     await state.set_state(UserInputState.waiting)
     await state.update_data(handler_id=handler_id)
 
-    # Create request with event
-    request = PendingRequest(question=question, handler_id=handler_id)
-    input_manager.add_request(chat_id, handler_id, request)
+    # Add request to manager
+    input_manager.add_request(chat_id, handler_id, question)
+
+    # Get the request object
+    request = input_manager.get_active_request(chat_id)
+    if not request:
+        logger.error("Failed to create request")
+        return None
 
     # Send question
-    await message.answer(question)
+    await message.answer(question, reply_markup=keyboard)
 
     try:
-        # Wait for event to be set
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
         return request.response
     except asyncio.TimeoutError:
         await message.answer("No response received within the time limit.")
         return None
     finally:
-        # Cleanup
         input_manager.remove_request(chat_id, handler_id)
         await state.clear()
+
+
+async def ask_user(
+    message: Message, question: str, state: FSMContext, timeout: Optional[float] = 60.0
+) -> Optional[str]:
+    """Ask user a question and wait for text response"""
+    return await _ask_user_base(message, question, state, timeout)
 
 
 async def ask_user_choice(
@@ -121,18 +126,7 @@ async def ask_user_choice(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
 ) -> Optional[str]:
-    """
-    Ask user to choose from options using inline buttons.
-    Args:
-        message: Message object
-        question: Question to ask
-        choices: List of choices or Dict of {callback_data: display_text}
-        state: FSM context
-        timeout: Timeout in seconds
-    Returns:
-        Selected choice or None if timeout reached
-    """
-    # Create keyboard
+    """Ask user to choose from options using inline buttons"""
     if isinstance(choices, list):
         choices = {choice: choice for choice in choices}
 
@@ -142,30 +136,8 @@ async def ask_user_choice(
         ]
     )
 
-    handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
-
-    # Store state data
-    await state.set_state(UserInputState.waiting)
-    await state.update_data(handler_id=handler_id)
-
-    # Create request with event
-    request = PendingRequest(
-        question=question, created_at=datetime.now(), handler_id=handler_id, event=asyncio.Event(), response=None
-    )
-    input_manager.add_request(message.chat.id, handler_id, request)
-
-    # Send question with keyboard
-    await message.answer(question, reply_markup=keyboard)
-
-    try:
-        await asyncio.wait_for(request.event.wait(), timeout=timeout)
-        return request.response
-    except asyncio.TimeoutError:
-        await message.answer("No choice made within the time limit.")
-        return None
-    finally:
-        input_manager.remove_request(message.chat.id, handler_id)
-        await state.clear()
+    # Use _ask_user_base instead of direct add_request
+    return await _ask_user_base(message, question, state, timeout, keyboard)
 
 
 async def handle_user_input(message: Message, state: FSMContext) -> None:
@@ -211,5 +183,10 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
 
 def setup_dispatcher(dp):
     """Register message and callback handlers"""
+    # Register message and callback handlers
     dp.message.register(handle_user_input, UserInputState.waiting)
-    dp.callback_query.register(handle_choice_callback, UserInputState.waiting)
+
+    # Register for button callbacks
+    dp.callback_query.register(
+        handle_choice_callback, lambda c: c.data and c.data.startswith("choice_"), UserInputState.waiting
+    )

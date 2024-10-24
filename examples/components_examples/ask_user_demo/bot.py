@@ -10,7 +10,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from botspot.components.ask_user_handler import ask_user
+from botspot.components.ask_user_handler import ask_user, ask_user_choice
 from botspot.components.bot_commands_menu import add_command
 from botspot.core.bot_manager import BotManager
 
