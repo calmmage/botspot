@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from aiogram import Bot
 
@@ -8,6 +8,7 @@ from botspot.utils.internal import Singleton
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncScheduler
     from pymongo import Database
+    from botspot.components.mongo_database import DatabaseManager
 
 
 class DependencyManager(metaclass=Singleton):
@@ -16,6 +17,7 @@ class DependencyManager(metaclass=Singleton):
         self._bot = bot
         self._mongo_database = mongo_database
         self._scheduler = None
+        self._db_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -49,6 +51,14 @@ class DependencyManager(metaclass=Singleton):
     @scheduler.setter
     def scheduler(self, value):
         self._scheduler = value
+
+    @property
+    def db_manager(self) -> Optional["DatabaseManager"]:
+        return self._db_manager
+
+    @db_manager.setter
+    def db_manager(self, value):
+        self._db_manager = value
 
     @classmethod
     def is_initialized(cls) -> bool:
