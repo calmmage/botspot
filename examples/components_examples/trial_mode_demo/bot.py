@@ -59,16 +59,8 @@ async def echo_handler(message: Message) -> None:
 
 
 async def main() -> None:
-    # Initialize Bot instance with a default parse mode
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-    # Setup the dispatcher with trial mode
-    # setup_dispatcher(dp, limit_per_user=10, global_limit=50, period_per_user=60, global_period=60)
-
-    # Setup other bot components
     bm.setup_dispatcher(dp)
-
-    # Start polling
     await dp.start_polling(bot)
 
 
