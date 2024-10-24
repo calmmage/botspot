@@ -7,6 +7,7 @@ from botspot.components.event_scheduler import EventSchedulerSettings
 from botspot.components.mongo_database import MongoDatabaseSettings
 from botspot.components.print_bot_url import PrintBotUrlSettings
 from botspot.components.trial_mode import TrialModeSettings
+from botspot.components.user_data import UserDataSettings
 
 
 class NBLSettings(BaseSettings):
@@ -19,6 +20,7 @@ class NBLSettings(BaseSettings):
     bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()
     event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
     ask_user: AskUserSettings = AskUserSettings()
+    user_data: UserDataSettings = UserDataSettings()
 
     class Config:
         env_prefix = "NBL_"
