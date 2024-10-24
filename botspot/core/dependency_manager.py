@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from aiogram import Bot
 
 from botspot.core.nbl_settings import NBLSettings
-from botspot.utils.common import Singleton
+from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncScheduler

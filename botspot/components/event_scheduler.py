@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from pydantic_settings import BaseSettings
 
-from botspot.utils.common import get_logger
+from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler

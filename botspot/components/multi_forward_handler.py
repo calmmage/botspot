@@ -6,7 +6,7 @@ from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
 # from dev.draft.easter_eggs.main import get_easter_egg
-from botspot.utils.common import get_logger
+from botspot.utils.internal import get_logger
 
 logger = get_logger()
 

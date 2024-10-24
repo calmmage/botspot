@@ -9,7 +9,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
-from botspot.utils.common import get_logger
+from botspot.utils.internal import get_logger
 
 logger = get_logger()
 

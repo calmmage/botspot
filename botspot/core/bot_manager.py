@@ -17,7 +17,7 @@ from botspot.components import (
 )
 from botspot.core.dependency_manager import DependencyManager
 from botspot.core.nbl_settings import NBLSettings
-from botspot.utils.common import Singleton
+from botspot.utils.internal import Singleton
 
 
 class BotManager(metaclass=Singleton):
