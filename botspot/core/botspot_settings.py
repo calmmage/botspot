@@ -13,14 +13,14 @@ from botspot.components.trial_mode import TrialModeSettings
 class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
 
+    ask_user: AskUserSettings = AskUserSettings()
+    bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()
+    bot_info: BotInfoSettings = BotInfoSettings()
     error_handling: ErrorHandlerSettings = ErrorHandlerSettings()
+    event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
     mongo_database: MongoDatabaseSettings = MongoDatabaseSettings()
     print_bot_url: PrintBotUrlSettings = PrintBotUrlSettings()
     trial_mode: TrialModeSettings = TrialModeSettings()
-    bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()
-    event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
-    ask_user: AskUserSettings = AskUserSettings()
-    bot_info: BotInfoSettings = BotInfoSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
