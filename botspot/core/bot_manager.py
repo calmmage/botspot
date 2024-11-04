@@ -14,6 +14,7 @@ from botspot.components import (
     bot_commands_menu,
     mongo_database,
     ask_user_handler,
+    bot_info,
 )
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
@@ -55,5 +56,8 @@ class BotManager(metaclass=Singleton):
                 raise RuntimeError("Bot instance is required for ask_user functionality")
 
             ask_user_handler.setup_dispatcher(dp)
+
+        if self.settings.bot_info.enabled:
+            bot_info.setup_dispatcher(dp)
 
     # def setup_bot(self, bot):
