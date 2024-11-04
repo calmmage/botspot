@@ -80,6 +80,7 @@ async def _ask_user_base(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
     keyboard: Optional[InlineKeyboardMarkup] = None,
+    notify_on_timeout: bool = True,
 ) -> Optional[str]:
     """Base function for asking user questions with optional keyboard"""
     from botspot.core.dependency_manager import get_dependency_manager
@@ -109,7 +110,8 @@ async def _ask_user_base(
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
         return request.response
     except asyncio.TimeoutError:
-        await bot.send_message(chat_id, "No response received within the time limit.")
+        if notify_on_timeout:
+            await bot.send_message(chat_id, "No response received within the time limit.")
         return None
     finally:
         input_manager.remove_request(chat_id, handler_id)
