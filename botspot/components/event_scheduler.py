@@ -16,7 +16,7 @@ class EventSchedulerSettings(BaseSettings):
     # chat_id: int  # ID of the chat to send messages to
 
     class Config:
-        env_prefix = "NBL_SCHEDULER_"
+        env_prefix = "BOTSPOT_SCHEDULER_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"

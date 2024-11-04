@@ -16,7 +16,7 @@ class ErrorHandlerSettings(BaseSettings):
     developer_chat_id: int = 0
 
     class Config:
-        env_prefix = "NBL_ERROR_HANDLER_"
+        env_prefix = "BOTSPOT_ERROR_HANDLER_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
@@ -30,7 +30,7 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    settings = deps.nbl_settings.error_handling
+    settings = deps.botspot_settings.error_handling
 
     tb = traceback.format_exc()
     # cut redundant part of the traceback:
@@ -68,9 +68,9 @@ def setup_dispatcher(dp: Dispatcher):  # settings: ErrorHandlerSettings = None
 
     # check required dependencies
     deps = get_dependency_manager()
-    if not deps.nbl_settings:
-        raise ValueError("Dependency manager is missing nbl_settings - required for error handling")
+    if not deps.botspot_settings:
+        raise ValueError("Dependency manager is missing botspot_settings - required for error handling")
 
-    # if not deps.nbl_settings.error_handling.enabled:
+    # if not deps.botspot_settings.error_handling.enabled:
     #     logger.info("Error handling is disabled - skipping setup")
     dp.errors.register(error_handler)

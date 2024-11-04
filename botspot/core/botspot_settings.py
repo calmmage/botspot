@@ -9,7 +9,7 @@ from botspot.components.print_bot_url import PrintBotUrlSettings
 from botspot.components.trial_mode import TrialModeSettings
 
 
-class NBLSettings(BaseSettings):
+class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
 
     error_handling: ErrorHandlerSettings = ErrorHandlerSettings()
@@ -21,7 +21,7 @@ class NBLSettings(BaseSettings):
     ask_user: AskUserSettings = AskUserSettings()
 
     class Config:
-        env_prefix = "NBL_"
+        env_prefix = "BOTSPOT_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"

@@ -15,15 +15,15 @@ from botspot.components import (
     mongo_database,
     ask_user_handler,
 )
+from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
-from botspot.core.nbl_settings import NBLSettings
 from botspot.utils.internal import Singleton
 
 
 class BotManager(metaclass=Singleton):
     def __init__(self, bot: Optional[Bot] = None, **kwargs):
-        self.settings = NBLSettings(**kwargs)
-        self.deps = DependencyManager(nbl_settings=self.settings, bot=bot)
+        self.settings = BotspotSettings(**kwargs)
+        self.deps = DependencyManager(botspot_settings=self.settings, bot=bot)
 
         if self.settings.mongo_database.enabled:
             self.deps.mongo_database = mongo_database.initialise(self.settings.mongo_database)

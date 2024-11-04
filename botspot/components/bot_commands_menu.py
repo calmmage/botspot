@@ -11,7 +11,7 @@ class BotCommandsMenuSettings(BaseSettings):
     enabled: bool = True
 
     class Config:
-        env_prefix = "NBL_BOT_COMMANDS_MENU_"
+        env_prefix = "BOTSPOT_BOT_COMMANDS_MENU_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
