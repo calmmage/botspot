@@ -16,8 +16,11 @@ class BotInfoSettings(BaseSettings):
     hide_command: bool = True  # hide command from bot command menu
     show_detailed_settings: bool = True
 
+    # todo: admin_only (only show to admins)
+    #  admin usernames / ids
+
     class Config:
-        env_prefix = "NBL_BOT_INFO_"
+        env_prefix = "BOTSPOT_BOT_INFO_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
@@ -33,7 +36,7 @@ async def bot_info_handler(message: Message):
     import botspot
 
     deps = get_dependency_manager()
-    settings = deps.nbl_settings
+    settings = deps.botspot_settings
 
     if not settings.bot_info.enabled:
         return
@@ -47,13 +50,13 @@ async def bot_info_handler(message: Message):
         f"Botspot Version: {botspot.__version__}",
         # todo: add main app version from something like __main__.version if available
         f"Uptime: {uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds // 60) % 60}m",
-        "\n📊 Enabled Components:"
+        "\n📊 Enabled Components:",
     ]
 
     # Add enabled components
     for field in settings.__fields__:
         component_settings = getattr(settings, field)
-        if hasattr(component_settings, 'enabled'):
+        if hasattr(component_settings, "enabled"):
             status = "✅" if component_settings.enabled else "❌"
             response.append(f"{status} {field}")
 
@@ -68,7 +71,8 @@ async def bot_info_handler(message: Message):
 def setup_dispatcher(dp: Dispatcher):
     """Register message handlers"""
     from botspot.core.dependency_manager import get_dependency_manager
-    settings = get_dependency_manager().nbl_settings
+
+    settings = get_dependency_manager().botspot_settings
 
     if settings.bot_info.enabled:
         dp.message.register(bot_info_handler, Command("bot_info"))
