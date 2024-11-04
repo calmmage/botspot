@@ -81,6 +81,8 @@ async def _ask_user_base(
     timeout: Optional[float] = 60.0,
     keyboard: Optional[InlineKeyboardMarkup] = None,
     notify_on_timeout: bool = True,
+        default_choice: Optional[str] = None,
+        message_ref: Optional[types.Message] = None,
 ) -> Optional[str]:
     """Base function for asking user questions with optional keyboard"""
     from botspot.core.dependency_manager import get_dependency_manager
@@ -104,12 +106,17 @@ async def _ask_user_base(
         return None
 
     # Send question
-    await bot.send_message(chat_id, question, reply_markup=keyboard)
-
+    sent_message = await bot.send_message(chat_id, question, reply_markup=keyboard)
+    
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
         return request.response
     except asyncio.TimeoutError:
+        if default_choice is not None:
+            if notify_on_timeout:
+                new_text = f"{question}\n\n⏰ Auto-selected: {default_choice}"
+                await sent_message.edit_text(new_text)
+            return default_choice
         if notify_on_timeout:
             await bot.send_message(chat_id, "No response received within the time limit.")
         return None
@@ -129,19 +136,37 @@ async def ask_user_choice(
     choices: Union[List[str], Dict[str, str]],
     state: FSMContext,
     timeout: Optional[float] = 60.0,
+        default_choice: Optional[str] = None,
 ) -> Optional[str]:
     """Ask user to choose from options using inline buttons"""
-    # todo: sanity check button text length - seems there is a limit (crashes)
     if isinstance(choices, list):
         choices = {choice: choice for choice in choices}
 
+    # If default_choice not specified, use first option
+    if default_choice is None and choices:
+        default_choice = next(iter(choices.keys()))
+
+    # Add star to default choice text
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=text, callback_data=f"choice_{data}")] for data, text in choices.items()
+            [
+                InlineKeyboardButton(
+                    text=f"⭐ {text}" if data == default_choice else text,
+                    callback_data=f"choice_{data}"
+                )
+            ]
+            for data, text in choices.items()
         ]
     )
 
-    return await _ask_user_base(chat_id, question, state, timeout, keyboard)
+    return await _ask_user_base(
+        chat_id=chat_id,
+        question=question,
+        state=state,
+        timeout=timeout,
+        keyboard=keyboard,
+        default_choice=default_choice
+    )
 
 
 async def handle_user_input(message: types.Message, state: FSMContext) -> None:
