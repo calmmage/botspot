@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.1.4" # bugfix
+version = "0.1.5" # Save selected option in ask_user
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"

@@ -131,6 +131,7 @@ async def ask_user_choice(
     timeout: Optional[float] = 60.0,
 ) -> Optional[str]:
     """Ask user to choose from options using inline buttons"""
+    # todo: sanity check button text length - seems there is a limit (crashes)
     if isinstance(choices, list):
         choices = {choice: choice for choice in choices}
 
@@ -186,7 +187,8 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
     active_request.event.set()
 
     await callback_query.answer()
-    await callback_query.message.edit_reply_markup(reply_markup=None)
+    new_text = f"{callback_query.message.text}\n\nSelected: {choice}"
+    await callback_query.message.edit_text(new_text)
 
 
 def setup_dispatcher(dp):
