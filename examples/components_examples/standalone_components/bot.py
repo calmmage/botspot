@@ -11,8 +11,8 @@ from aiogram.types import Message
 from dotenv import load_dotenv
 
 from botspot.components import error_handler, print_bot_url, bot_commands_menu
+from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
-from botspot.core.nbl_settings import NBLSettings
 
 load_dotenv()
 # Bot token can be obtained via https://t.me/BotFather
@@ -46,9 +46,9 @@ async def echo_handler(message: Message) -> None:
 
 
 # ---------------------------------------
-# region NBL CONTENT START HERE
+# region BOTSPOT CONTENT START HERE
 # ---------------------------------------
-deps = DependencyManager(nbl_settings=NBLSettings())
+deps = DependencyManager(botspot_settings=BotspotSettings())
 error_handler.setup_dispatcher(dp)
 print_bot_url.setup_dispatcher(dp)
 bot_commands_menu.setup_dispatcher(dp)
@@ -58,7 +58,7 @@ bot_commands_menu.setup_dispatcher(dp)
 # /start - to start the bot
 # /error - to raise an exception
 # ---------------------------------------
-# region NBL CONTENT END HERE
+# region BOTSPOT CONTENT END HERE
 # ---------------------------------------
 
 

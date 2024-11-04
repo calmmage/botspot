@@ -18,7 +18,7 @@ class AskUserSettings(BaseSettings):
     enabled: bool = True
 
     class Config:
-        env_prefix = "NBL_ASK_USER_"
+        env_prefix = "BOTSPOT_ASK_USER_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"

@@ -1,6 +1,6 @@
 Features showcased:
 
-- setup dispatcher using NBL Bot Manager
+- setup dispatcher using BOTSPOT Bot Manager
 - print_url
 - error handling
 - easter eggs
