@@ -56,4 +56,5 @@ class BotManager(metaclass=Singleton):
 
             ask_user_handler.setup_dispatcher(dp)
 
-    # def setup_bot(self, bot):
+        if self.settings.event_scheduler.enabled:
+            event_scheduler.setup_dispatcher(dp)

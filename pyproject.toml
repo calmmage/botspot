@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.2.2" # Add default commands to command menu (start)
+version = "0.2.3" # Fix scheduler - launch it on startup
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
