@@ -6,7 +6,7 @@ from botspot.core.botspot_settings import BotspotSettings
 from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
-    from apscheduler.schedulers.asyncio import AsyncScheduler
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from pymongo import Database
 
 
@@ -43,7 +43,7 @@ class DependencyManager(metaclass=Singleton):
         self._mongo_database = value
 
     @property
-    def scheduler(self) -> "AsyncScheduler":
+    def scheduler(self) -> "AsyncIOScheduler":
         return self._scheduler
 
     @scheduler.setter

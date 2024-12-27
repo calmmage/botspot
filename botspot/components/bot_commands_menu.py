@@ -9,6 +9,9 @@ logger = get_logger()
 
 class BotCommandsMenuSettings(BaseSettings):
     enabled: bool = True
+    default_commands: dict[str, str] = {
+        "start": "Start the bot"
+    }
 
     class Config:
         env_prefix = "BOTSPOT_BOT_COMMANDS_MENU_"
@@ -22,8 +25,23 @@ NO_COMMAND_DESCRIPTION = "No description"
 
 
 async def set_aiogram_bot_commands(bot: Bot):
+    settings = BotCommandsMenuSettings()
+    all_commands = {}
+
+    # First add default commands
+    all_commands.update(settings.default_commands)
+
+    # Then add user commands, logging any overrides
+    for cmd, desc in commands.items():
+        if cmd in all_commands:
+            logger.warning(
+                f"User-defined command /{cmd} overrides default command. "
+                f"Default: '{all_commands[cmd]}' -> User: '{desc}'"
+            )
+        all_commands[cmd] = desc
+    
     bot_commands = []
-    for c, d in commands.items():
+    for c, d in all_commands.items():
         logger.info(f"Setting bot command: /{c} - {d}")
         bot_commands.append(BotCommand(command=c, description=d))
     await bot.set_my_commands(bot_commands)

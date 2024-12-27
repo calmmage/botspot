@@ -60,4 +60,5 @@ class BotManager(metaclass=Singleton):
         if self.settings.bot_info.enabled:
             bot_info.setup_dispatcher(dp)
 
-    # def setup_bot(self, bot):
+        if self.settings.event_scheduler.enabled:
+            event_scheduler.setup_dispatcher(dp)
