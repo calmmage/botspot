@@ -34,8 +34,7 @@ repos:
       - id: vulture
         args: [
           "--min-confidence", "80",
-          "--exclude", "**/migrations/*,**/__pycache__/*",
-          ""  # project_name
+          "botspot"  # project_name - path to scan
         ]
         files: ^.*\.py$
         exclude: ^(.git|.venv|venv|build|dist)/.*$

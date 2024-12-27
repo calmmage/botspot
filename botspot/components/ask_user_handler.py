@@ -1,11 +1,11 @@
 import asyncio
 from datetime import datetime
-from typing import Optional, Dict, Union, List
+from typing import Dict, List, Optional, Union
 
-from aiogram import types, Bot
+from aiogram import Bot, types
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
@@ -31,9 +31,10 @@ class UserInputState(StatesGroup):
 class PendingRequest(BaseModel):
     question: str
     handler_id: str
-    created_at: datetime = datetime.now()  # Default value
-    event: Optional[asyncio.Event] = None  # Will be set in constructor
+    created_at: datetime = datetime.now()
+    event: Optional[asyncio.Event] = None
     response: Optional[str] = None
+    raw_response: Optional[Message] = None
 
     class Config:
         arbitrary_types_allowed = True  # Needed for asyncio.Event
@@ -52,7 +53,9 @@ class UserInputManager:
         if chat_id not in self._pending_requests:
             self._pending_requests[chat_id] = {}
 
-        self._pending_requests[chat_id][handler_id] = PendingRequest(question=question, handler_id=handler_id)
+        self._pending_requests[chat_id][handler_id] = PendingRequest(
+            question=question, handler_id=handler_id
+        )
 
     def get_active_request(self, chat_id: int) -> Optional[PendingRequest]:
         if chat_id not in self._pending_requests:
@@ -82,8 +85,9 @@ async def _ask_user_base(
     keyboard: Optional[InlineKeyboardMarkup] = None,
     notify_on_timeout: bool = True,
         default_choice: Optional[str] = None,
-        message_ref: Optional[types.Message] = None,
-) -> Optional[str]:
+        return_raw: bool = False,
+        # message_ref: Optional[types.Message] = None,
+) -> Optional[Union[str, Message]]:
     """Base function for asking user questions with optional keyboard"""
     from botspot.core.dependency_manager import get_dependency_manager
 
@@ -92,42 +96,50 @@ async def _ask_user_base(
 
     handler_id = f"ask_{id(question)}_{datetime.now().timestamp()}"
 
-    # Store state data
+    if default_choice is not None and return_raw:
+        raise ValueError(
+            "Cannot return default choice when return_raw is True - conflict of return types"
+        )
+
     await state.set_state(UserInputState.waiting)
     await state.update_data(handler_id=handler_id)
 
-    # Add request to manager
     input_manager.add_request(chat_id, handler_id, question)
 
-    # Get the request object
     request = input_manager.get_active_request(chat_id)
     if not request:
         logger.error("Failed to create request")
         return None
 
-    # Send question
     sent_message = await bot.send_message(chat_id, question, reply_markup=keyboard)
-    
+
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
-        return request.response
+        return request.raw_response if return_raw else request.response
     except asyncio.TimeoutError:
-        if default_choice is not None:
-            if notify_on_timeout:
-                new_text = f"{question}\n\n⏰ Auto-selected: {default_choice}"
-                await sent_message.edit_text(new_text)
-            return default_choice
         if notify_on_timeout:
-            await bot.send_message(chat_id, "No response received within the time limit.")
-        return None
+            if default_choice is not None:
+                question += f"\n\n⏰ Auto-selected: {default_choice}"
+            else:
+                question += f"\n\n⏰ No response received within the time limit."
+            await sent_message.edit_text(question)
+        return default_choice  # None if no default choice
     finally:
         input_manager.remove_request(chat_id, handler_id)
         await state.clear()
 
 
-async def ask_user(chat_id: int, question: str, state: FSMContext, timeout: Optional[float] = 60.0) -> Optional[str]:
+async def ask_user(
+        chat_id: int,
+        question: str,
+        state: FSMContext,
+        timeout: Optional[float] = 60.0,
+        return_raw: bool = False,
+) -> Optional[Union[str, Message]]:
     """Ask user a question and wait for text response"""
-    return await _ask_user_base(chat_id, question, state, timeout)
+    return await _ask_user_base(
+        chat_id, question, state, timeout, return_raw=return_raw
+    )
 
 
 async def ask_user_choice(
@@ -152,7 +164,7 @@ async def ask_user_choice(
             [
                 InlineKeyboardButton(
                     text=f"⭐ {text}" if data == default_choice else text,
-                    callback_data=f"choice_{data}"
+                    callback_data=f"choice_{data}",
                 )
             ]
             for data, text in choices.items()
@@ -165,7 +177,7 @@ async def ask_user_choice(
         state=state,
         timeout=timeout,
         keyboard=keyboard,
-        default_choice=default_choice
+        default_choice=default_choice,
     )
 
 
@@ -185,16 +197,20 @@ async def handle_user_input(message: types.Message, state: FSMContext) -> None:
         deps = get_dependency_manager()
         bot: Bot = deps.bot
         await bot.send_message(
-            chat_id, "Sorry, this response came too late or was for a different question. Please try again."
+            chat_id,
+            "Sorry, this response came too late or was for a different question. Please try again.",
         )
         await state.clear()
         return
 
+    active_request.raw_response = message
     active_request.response = message.text
     active_request.event.set()
 
 
-async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSMContext):
+async def handle_choice_callback(
+        callback_query: types.CallbackQuery, state: FSMContext
+):
     if not callback_query.data.startswith("choice_"):
         return
 
@@ -220,5 +236,7 @@ def setup_dispatcher(dp):
     """Register message and callback handlers"""
     dp.message.register(handle_user_input, UserInputState.waiting)
     dp.callback_query.register(
-        handle_choice_callback, lambda c: c.data and c.data.startswith("choice_"), UserInputState.waiting
+        handle_choice_callback,
+        lambda c: c.data and c.data.startswith("choice_"),
+        UserInputState.waiting,
     )
