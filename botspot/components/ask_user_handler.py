@@ -86,7 +86,7 @@ async def _ask_user_base(
     notify_on_timeout: bool = True,
         default_choice: Optional[str] = None,
         return_raw: bool = False,
-        # message_ref: Optional[types.Message] = None,
+        cleanup: bool = False,
 ) -> Optional[Union[str, Message]]:
     """Base function for asking user questions with optional keyboard"""
     from botspot.core.dependency_manager import get_dependency_manager
@@ -115,6 +115,11 @@ async def _ask_user_base(
 
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
+        if cleanup:
+            # Delete both the question and the answer
+            await sent_message.delete()
+            if request.raw_response:
+                await request.raw_response.delete()
         return request.raw_response if return_raw else request.response
     except asyncio.TimeoutError:
         if notify_on_timeout:
@@ -135,10 +140,21 @@ async def ask_user(
         state: FSMContext,
         timeout: Optional[float] = 60.0,
         return_raw: bool = False,
+        cleanup: bool = False,
 ) -> Optional[Union[str, Message]]:
-    """Ask user a question and wait for text response"""
+    """
+    Ask user a question and wait for text response
+
+    Parameters:
+        chat_id: ID of the chat to ask in
+        question: Question text to send
+        state: FSMContext for state management
+        timeout: How long to wait for response (seconds)
+        return_raw: Whether to return raw Message object instead of text
+        cleanup: Whether to delete both question and answer messages after getting response
+    """
     return await _ask_user_base(
-        chat_id, question, state, timeout, return_raw=return_raw
+        chat_id, question, state, timeout, return_raw=return_raw, cleanup=cleanup
     )
 
 
@@ -149,6 +165,7 @@ async def ask_user_choice(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
         default_choice: Optional[str] = None,
+        cleanup: bool = False,
 ) -> Optional[str]:
     """Ask user to choose from options using inline buttons"""
     if isinstance(choices, list):
@@ -178,6 +195,7 @@ async def ask_user_choice(
         timeout=timeout,
         keyboard=keyboard,
         default_choice=default_choice,
+        cleanup=cleanup,
     )
 
 
