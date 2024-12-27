@@ -8,7 +8,7 @@ from aiogram import Dispatcher
 from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
-from botspot.utils.common import get_logger
+from botspot.utils.internal import get_logger
 
 logger = get_logger()
 
@@ -22,7 +22,7 @@ class TrialModeSettings(BaseSettings):
     global_period: int = 24 * 60 * 60
 
     class Config:
-        env_prefix = "NBL_TRIAL_MODE_"
+        env_prefix = "BOTSPOT_TRIAL_MODE_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
@@ -48,7 +48,7 @@ def add_user_limit(limit=3, period=24 * 60 * 60):
         @wraps(func)
         async def wrapped(message: Message, **kwargs):
             deps = get_dependency_manager()
-            settings = deps.nbl_settings.trial_mode
+            settings = deps.botspot_settings.trial_mode
             user = message.from_user.username or str(message.from_user.id)
 
             if user not in settings.allowed_users:
@@ -161,7 +161,7 @@ def setup_dispatcher(dp: Dispatcher, limit_per_user=None, global_limit=None, per
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    settings = deps.nbl_settings.trial_mode
+    settings = deps.botspot_settings.trial_mode
     limit_per_user = limit_per_user or settings.limit_per_user
     global_limit = global_limit or settings.global_limit
     period_per_user = period_per_user or settings.period_per_user

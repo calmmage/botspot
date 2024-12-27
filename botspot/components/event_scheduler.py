@@ -1,11 +1,13 @@
 from typing import TYPE_CHECKING
 
+from aiogram import Dispatcher
 from pydantic_settings import BaseSettings
 
-from botspot.utils.common import get_logger
+from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 
 logger = get_logger()
 
@@ -16,7 +18,7 @@ class EventSchedulerSettings(BaseSettings):
     # chat_id: int  # ID of the chat to send messages to
 
     class Config:
-        env_prefix = "NBL_SCHEDULER_"
+        env_prefix = "BOTSPOT_SCHEDULER_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
@@ -50,9 +52,21 @@ class EventSchedulerSettings(BaseSettings):
 #     logger.info("Scheduler started.")
 
 
-def setup_dispatcher(dp):
-    # return dp
-    pass
+async def run_scheduler():
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    scheduler = get_dependency_manager().scheduler
+    if not scheduler:
+        logger.info("Event scheduler is disabled.")
+        return
+
+    scheduler.start()
+    logger.info("Event scheduler started.")
+
+
+def setup_dispatcher(dp: Dispatcher):
+    """Launch the scheduler."""
+    dp.startup.register(run_scheduler)
 
 
 def initialise(settings: EventSchedulerSettings) -> "AsyncIOScheduler":

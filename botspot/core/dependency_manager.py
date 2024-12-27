@@ -2,29 +2,29 @@ from typing import TYPE_CHECKING
 
 from aiogram import Bot
 
-from botspot.core.nbl_settings import NBLSettings
-from botspot.utils.common import Singleton
+from botspot.core.botspot_settings import BotspotSettings
+from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
-    from apscheduler.schedulers.asyncio import AsyncScheduler
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from pymongo import Database
 
 
 class DependencyManager(metaclass=Singleton):
-    def __init__(self, nbl_settings: NBLSettings = None, bot: Bot = None, mongo_database=None, **kwargs):
-        self._nbl_settings = nbl_settings or NBLSettings()
+    def __init__(self, botspot_settings: BotspotSettings = None, bot: Bot = None, mongo_database=None, **kwargs):
+        self._botspot_settings = botspot_settings or BotspotSettings()
         self._bot = bot
         self._mongo_database = mongo_database
         self._scheduler = None
         self.__dict__.update(kwargs)
 
     @property
-    def nbl_settings(self) -> NBLSettings:
-        return self._nbl_settings
+    def botspot_settings(self) -> BotspotSettings:
+        return self._botspot_settings
 
-    # @nbl_settings.setter
-    # def nbl_settings(self, value):
-    #     self._nbl_settings = value
+    # @botspot_settings.setter
+    # def botspot_settings(self, value):
+    #     self._botspot_settings = value
 
     @property
     def bot(self) -> Bot:
@@ -43,7 +43,7 @@ class DependencyManager(metaclass=Singleton):
         self._mongo_database = value
 
     @property
-    def scheduler(self) -> "AsyncScheduler":
+    def scheduler(self) -> "AsyncIOScheduler":
         return self._scheduler
 
     @scheduler.setter

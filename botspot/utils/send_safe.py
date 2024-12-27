@@ -1,12 +1,16 @@
 # from aiogram.types import Message
 from typing import Optional
+from typing import TYPE_CHECKING
 
 from aiogram.types import Message
 
-from botspot.core.dependency_manager import DependencyManager, get_dependency_manager
+if TYPE_CHECKING:
+    from botspot.core.dependency_manager import DependencyManager
 
 
-async def send_safe(chat_id, text, deps: DependencyManager = None, reply_to_message_id: Optional[int] = None, **kwargs):
+async def send_safe(
+        chat_id, text, deps: "DependencyManager" = None, reply_to_message_id: Optional[int] = None, **kwargs
+):
     """
     Send message with safe mode
     :param chat_id:
@@ -16,6 +20,8 @@ async def send_safe(chat_id, text, deps: DependencyManager = None, reply_to_mess
     """
     # todo: include old send_safe logic
     if deps is None:
+        from botspot.core.dependency_manager import get_dependency_manager
+
         deps = get_dependency_manager()
     bot = deps.bot
     await bot.send_message(chat_id, text, reply_to_message_id=reply_to_message_id, **kwargs)

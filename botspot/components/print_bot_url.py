@@ -1,7 +1,7 @@
 from aiogram import Dispatcher, Bot
 from pydantic_settings import BaseSettings
 
-from botspot.utils.common import get_logger
+from botspot.utils.internal import get_logger
 
 logger = get_logger()
 
@@ -10,7 +10,7 @@ class PrintBotUrlSettings(BaseSettings):
     enabled: bool = True
 
     class Config:
-        env_prefix = "NBL_PRINT_BOT_URL_"
+        env_prefix = "BOTSPOT_PRINT_BOT_URL_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"

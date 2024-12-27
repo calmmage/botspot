@@ -15,6 +15,13 @@ This is a collection of examples showcasing features of each component
 - [trial_mode.py](../../botspot/components/trial_mode.py)
     - [trial_mode_demo](trial_mode_demo)
 
+- [ask_user_handler.py](../../botspot/components/ask_user_handler.py)
+  - [ask_user_demo](ask_user_demo)
+
 # Todo
 
 - [multi_forward_handler.py](../../botspot/components/multi_forward_handler.py)
+- Enhanced ask_user_handler examples:
+  - Timezone/location collection
+  - Fallback input collection
+  - Input validation with retries

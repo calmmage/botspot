@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+from botspot.components.ask_user_handler import AskUserSettings
 from botspot.components.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.error_handler import ErrorHandlerSettings
 from botspot.components.event_scheduler import EventSchedulerSettings
@@ -8,7 +9,7 @@ from botspot.components.print_bot_url import PrintBotUrlSettings
 from botspot.components.trial_mode import TrialModeSettings
 
 
-class NBLSettings(BaseSettings):
+class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
 
     error_handling: ErrorHandlerSettings = ErrorHandlerSettings()
@@ -17,9 +18,10 @@ class NBLSettings(BaseSettings):
     trial_mode: TrialModeSettings = TrialModeSettings()
     bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()
     event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
+    ask_user: AskUserSettings = AskUserSettings()
 
     class Config:
-        env_prefix = "NBL_"
+        env_prefix = "BOTSPOT_"
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
