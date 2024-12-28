@@ -10,41 +10,62 @@ Each getter:
 - explains how to enable the dependency if it is not initialized
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from aiogram import Bot
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from telethon import TelegramClient
+if TYPE_CHECKING:
+    from aiogram import Bot
+    from aiogram.fsm.context import FSMContext
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from telethon import TelegramClient
+
+    from botspot.components.telethon_manager import TelethonManager
 
 
-def get_bot() -> Bot:
+def get_bot() -> "Bot":
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    bot: Bot = deps.bot
+    bot: "Bot" = deps.bot
     assert (
-            bot is not None
+        bot is not None
     ), "Bot is not initialized. To enable pass bot instance to BotManager() constructor"
     return bot
 
 
-def get_scheduler() -> AsyncIOScheduler:
+def get_scheduler() -> "AsyncIOScheduler":
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    scheduler: AsyncIOScheduler = deps.scheduler
+    scheduler: "AsyncIOScheduler" = deps.scheduler
     assert (
-            scheduler is not None
+        scheduler is not None
     ), "Scheduler is not initialized. To enable set ENABLE_SCHEDULER or pass enable_scheduler=True into botspot config"
     return scheduler
 
 
-def get_telethon_client(user_id: int) -> Optional[TelegramClient]:
+def get_telethon_manager() -> "TelethonManager":
+    """Get the TelethonManager instance from dependency manager"""
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    telethon_manager = deps.telethon_manager
-    assert (
-            telethon_manager is not None
-    ), "TelethonManager is not initialized. To enable set ENABLE_TELETHON_MANAGER or pass enable_telethon_manager=True into botspot config"
-    return telethon_manager.get_client(user_id)
+    if not deps.telethon_manager:
+        raise RuntimeError(
+            "TelethonManager is not initialized. Make sure it's enabled in settings."
+        )
+    return deps.telethon_manager
+
+
+async def get_telethon_client(
+    user_id: int, state: Optional["FSMContext"] = None
+) -> "TelegramClient":
+    """
+    Get a TelegramClient instance for a specific user.
+    If state is provided and auto_auth is enabled, will trigger authentication if client is missing.
+    """
+    telethon_manager = get_telethon_manager()
+    client = await telethon_manager.get_client(user_id, state)
+    if not client:
+        raise RuntimeError(
+            f"No active Telethon client found for user {user_id}. Use /setup_telethon to create one."
+        )
+    return client

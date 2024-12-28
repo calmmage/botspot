@@ -7,6 +7,7 @@ from botspot.components.error_handler import ErrorHandlerSettings
 from botspot.components.event_scheduler import EventSchedulerSettings
 from botspot.components.mongo_database import MongoDatabaseSettings
 from botspot.components.print_bot_url import PrintBotUrlSettings
+from botspot.components.telethon_manager import TelethonManagerSettings
 from botspot.components.trial_mode import TrialModeSettings
 
 
@@ -20,6 +21,7 @@ class BotspotSettings(BaseSettings):
     event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
     mongo_database: MongoDatabaseSettings = MongoDatabaseSettings()
     print_bot_url: PrintBotUrlSettings = PrintBotUrlSettings()
+    telethon_manager: TelethonManagerSettings = TelethonManagerSettings()
     trial_mode: TrialModeSettings = TrialModeSettings()
 
     class Config:

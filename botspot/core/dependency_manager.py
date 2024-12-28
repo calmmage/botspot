@@ -9,13 +9,22 @@ if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from pymongo import Database
 
+    from botspot.components.telethon_manager import TelethonManager
+
 
 class DependencyManager(metaclass=Singleton):
-    def __init__(self, botspot_settings: BotspotSettings = None, bot: Bot = None, mongo_database=None, **kwargs):
+    def __init__(
+        self,
+        botspot_settings: BotspotSettings = None,
+        bot: Bot = None,
+        mongo_database=None,
+        **kwargs
+    ):
         self._botspot_settings = botspot_settings or BotspotSettings()
         self._bot = bot
         self._mongo_database = mongo_database
         self._scheduler = None
+        self._telethon_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -49,6 +58,14 @@ class DependencyManager(metaclass=Singleton):
     @scheduler.setter
     def scheduler(self, value):
         self._scheduler = value
+
+    @property
+    def telethon_manager(self) -> "TelethonManager":
+        return self._telethon_manager
+
+    @telethon_manager.setter
+    def telethon_manager(self, value):
+        self._telethon_manager = value
 
     @classmethod
     def is_initialized(cls) -> bool:

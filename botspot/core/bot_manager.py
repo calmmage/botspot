@@ -7,14 +7,15 @@ from typing import Optional
 from aiogram import Bot, Dispatcher
 
 from botspot.components import (
-    error_handler,
-    trial_mode,
-    event_scheduler,
-    print_bot_url,
-    bot_commands_menu,
-    mongo_database,
     ask_user_handler,
+    bot_commands_menu,
     bot_info,
+    error_handler,
+    event_scheduler,
+    mongo_database,
+    print_bot_url,
+    telethon_manager,
+    trial_mode,
 )
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
@@ -27,10 +28,19 @@ class BotManager(metaclass=Singleton):
         self.deps = DependencyManager(botspot_settings=self.settings, bot=bot)
 
         if self.settings.mongo_database.enabled:
-            self.deps.mongo_database = mongo_database.initialise(self.settings.mongo_database)
+            self.deps.mongo_database = mongo_database.initialise(
+                self.settings.mongo_database
+            )
 
         if self.settings.event_scheduler.enabled:
-            self.deps.scheduler = event_scheduler.initialise(self.settings.event_scheduler)
+            self.deps.scheduler = event_scheduler.initialise(
+                self.settings.event_scheduler
+            )
+
+        if self.settings.telethon_manager.enabled:
+            self.deps.telethon_manager = telethon_manager.initialise(
+                self.settings.telethon_manager
+            )
 
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
@@ -53,7 +63,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.ask_user.enabled:
             if not self.deps.bot:
-                raise RuntimeError("Bot instance is required for ask_user functionality")
+                raise RuntimeError(
+                    "Bot instance is required for ask_user functionality"
+                )
 
             ask_user_handler.setup_dispatcher(dp)
 
@@ -62,3 +74,6 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.event_scheduler.enabled:
             event_scheduler.setup_dispatcher(dp)
+
+        if self.settings.telethon_manager.enabled:
+            telethon_manager.setup_dispatcher(dp)
