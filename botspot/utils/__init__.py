@@ -1,2 +1,3 @@
-from .send_safe import send_safe, reply_safe, answer_safe
-from .unsorted import get_user, get_name, get_message_text, strip_command
+from .deps_getters import get_bot, get_scheduler, get_telethon_client
+from .send_safe import answer_safe, reply_safe, send_safe
+from .unsorted import get_message_text, get_name, get_user, strip_command
