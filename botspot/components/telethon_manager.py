@@ -3,15 +3,17 @@ Telethon Manager component for managing Telegram user clients.
 """
 
 from pathlib import Path
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from aiogram import Dispatcher
 from pydantic_settings import BaseSettings
-from telethon import TelegramClient
 
 from botspot.components.ask_user_handler import ask_user
 from botspot.utils.internal import get_logger
 from botspot.utils.send_safe import send_safe
+
+if TYPE_CHECKING:
+    from telethon import TelegramClient
 
 logger = get_logger()
 
@@ -116,7 +118,7 @@ class TelethonManager:
 
     async def setup_client(
         self, user_id: int, state, force: bool = False
-    ) -> Optional[TelegramClient]:
+    ) -> "TelegramClient":
         """
         Setup Telethon client for a specific user
 
@@ -128,6 +130,8 @@ class TelethonManager:
         Returns:
             TelegramClient if setup was successful, None otherwise
         """
+        from telethon import TelegramClient
+
         # Check if user already has an authenticated session
         if not force:
             existing_client = await self.get_client(user_id)

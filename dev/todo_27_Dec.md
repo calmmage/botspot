@@ -1,1 +1,0 @@
-- [x] rework of notify_on_timeout and default_choice in ask_user component

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.2.8" # Rework ask_user handler to add support for 'return raw' feature
+version = "0.2.10" # Rework ask_user handler to add support for 'return raw' feature
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -18,7 +18,7 @@ pydantic = "^2.9.2"
 
 [tool.poetry.group.extras.dependencies]
 apscheduler = "^3.10.4"
-pymongo = "^4.10.1"
+pymongo = ">=4.9"
 # dependencies for extra features
 
 # Main
@@ -74,6 +74,7 @@ pymongo = "^4.10.1"
 #paramiko = "*"              # SSH2 protocol library
 #scp = "*"                   # Secure copy
 #pymorphy2 = "*"             # Morphological analyzer
+motor = "^3.6.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=6"
