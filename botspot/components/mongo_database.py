@@ -2,11 +2,12 @@ from typing import TYPE_CHECKING
 
 from pydantic_settings import BaseSettings
 
+from botspot.utils.internal import get_logger
+
 if TYPE_CHECKING:
-    from pymongo import Database
+    from motor.motor_asyncio import AsyncIOMotorDatabase
 
-
-# option 1: pymongo
+logger = get_logger()
 
 
 class MongoDatabaseSettings(BaseSettings):
@@ -22,14 +23,22 @@ class MongoDatabaseSettings(BaseSettings):
 
 
 def setup_dispatcher(dp):
-    # return dp
-    pass
+    return dp
 
 
-def initialise(settings: MongoDatabaseSettings) -> "Database":
-    from pymongo import MongoClient
+def initialise(settings: MongoDatabaseSettings) -> "AsyncIOMotorDatabase":
+    """Initialize MongoDB connection."""
+    if not settings.enabled:
+        logger.info("MongoDB is disabled.")
+        return None
 
-    client = MongoClient(settings.conn_str)
-    db = client[settings.database]
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
 
-    return db
+        client = AsyncIOMotorClient(settings.conn_str)
+        db = client[settings.database]
+        logger.info("MongoDB client initialized.")
+        return db
+    except Exception as e:
+        logger.error(f"Failed to initialize MongoDB: {e}")
+        raise

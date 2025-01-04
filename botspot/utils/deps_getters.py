@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from aiogram import Bot
     from aiogram.fsm.context import FSMContext
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from motor.motor_asyncio import AsyncIOMotorDatabase
     from telethon import TelegramClient
 
     from botspot.components.telethon_manager import TelethonManager
@@ -69,3 +70,13 @@ async def get_telethon_client(
             f"No active Telethon client found for user {user_id}. Use /setup_telethon to create one."
         )
     return client
+
+
+def get_database() -> "AsyncIOMotorDatabase":
+    """Get MongoDB database instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    db = get_dependency_manager().mongo_database
+    if not db:
+        raise RuntimeError("MongoDB is not initialized")
+    return db

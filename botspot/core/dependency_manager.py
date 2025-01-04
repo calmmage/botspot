@@ -7,7 +7,7 @@ from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from pymongo import Database
+    from motor.motor_asyncio import AsyncIOMotorDatabase
 
     from botspot.components.telethon_manager import TelethonManager
 
@@ -44,7 +44,7 @@ class DependencyManager(metaclass=Singleton):
         self._bot = value
 
     @property
-    def mongo_database(self) -> "Database":
+    def mongo_database(self) -> "AsyncIOMotorDatabase":
         return self._mongo_database
 
     @mongo_database.setter
