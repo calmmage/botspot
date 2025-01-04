@@ -43,11 +43,12 @@ class TelethonManager:
         self.sessions_dir = sessions_dir
         self.auto_auth = auto_auth
         self.sessions_dir.mkdir(exist_ok=True)
-        self.clients: Dict[int, TelegramClient] = {}
+        self.clients: Dict[int, "TelegramClient"] = {}
         logger.info(f"TelethonManager initialized with sessions dir: {sessions_dir}")
 
-    async def init_session(self, user_id: int) -> Optional[TelegramClient]:
+    async def init_session(self, user_id: int) -> "TelegramClient":
         """Initialize and verify a session for user_id"""
+        from telethon import TelegramClient
 
         session_key = self.sessions_dir / f"user_{user_id}"
         session_file = session_key.with_suffix(".session")
@@ -91,7 +92,7 @@ class TelethonManager:
             except Exception as e:
                 logger.warning(f"Failed to init session from {session_file}: {e}")
 
-    async def get_client(self, user_id: int, state=None) -> Optional[TelegramClient]:
+    async def get_client(self, user_id: int, state=None) -> "TelegramClient":
         """
         Get or initialize client for user_id.
         If auto_auth is True and state is provided, will trigger authentication if client is missing.

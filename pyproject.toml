@@ -75,6 +75,7 @@ pymongo = ">=4.9"
 #scp = "*"                   # Secure copy
 #pymorphy2 = "*"             # Morphological analyzer
 motor = "^3.6.0"
+telethon = "^1.38.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=6"
