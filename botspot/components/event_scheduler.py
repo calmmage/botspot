@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+from zoneinfo import ZoneInfo
 
 from aiogram import Dispatcher
 from pydantic_settings import BaseSettings
@@ -14,8 +15,7 @@ logger = get_logger()
 
 class EventSchedulerSettings(BaseSettings):
     enabled: bool = False
-
-    # chat_id: int  # ID of the chat to send messages to
+    timezone: str = "UTC"  # Add timezone setting
 
     class Config:
         env_prefix = "BOTSPOT_SCHEDULER_"
@@ -24,32 +24,27 @@ class EventSchedulerSettings(BaseSettings):
         extra = "ignore"
 
 
-# scheduler_settings = SchedulerSettings()
-# scheduler = AsyncIOScheduler()
+def initialise(settings: EventSchedulerSettings) -> Optional["AsyncIOScheduler"]:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# todo: this actually has nothing to do with dispatcher. move to bot.py
-# async def scheduled_job(bot: Bot):
-#     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#     logger.info(f"Scheduled job executed at {now}")
-#     await bot.send_message(
-#         chat_id=scheduler_settings.chat_id,
-#         text=f"Scheduled message at {now}"
-#     )
+    if not settings.enabled:
+        logger.info("Event scheduler is disabled.")
+        return None
 
-# todo: this actually has nothing to do with dispatcher. move to bot.py
-# def setup_dispatcher(dp: Dispatcher):
-#     if not scheduler_settings.enabled:
-#         logger.info("Scheduler is disabled.")
-#         return
-
-#     scheduler.add_job(
-#         scheduled_job,
-#         'interval',
-#         minutes=1,
-#         args=[dp.bot]
-#     )
-#     scheduler.start()
-#     logger.info("Scheduler started.")
+    try:
+        # Create scheduler with configured timezone
+        if settings.timezone:
+            timezone = ZoneInfo(settings.timezone)
+        else:
+            timezone = None
+        scheduler = AsyncIOScheduler(timezone=timezone)
+        logger.info(f"Event scheduler initialized with timezone: {settings.timezone}")
+        return scheduler
+    except Exception as e:
+        logger.warning(
+            f"Failed to set timezone {settings.timezone}, falling back to local timezone: {e}"
+        )
+        return AsyncIOScheduler()
 
 
 async def run_scheduler():
@@ -61,20 +56,9 @@ async def run_scheduler():
         return
 
     scheduler.start()
-    logger.info("Event scheduler started.")
+    logger.info(f"Event scheduler started with timezone: {scheduler.timezone}")
 
 
 def setup_dispatcher(dp: Dispatcher):
     """Launch the scheduler."""
     dp.startup.register(run_scheduler)
-
-
-def initialise(settings: EventSchedulerSettings) -> "AsyncIOScheduler":
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-    if not settings.enabled:
-        logger.info("Event scheduler is disabled.")
-        return None
-
-    scheduler = AsyncIOScheduler()
-    return scheduler
