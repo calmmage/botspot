@@ -1,7 +1,7 @@
 import traceback
 from datetime import datetime
 
-from aiogram import types, Dispatcher, Bot
+from aiogram import Bot, Dispatcher, types
 from pydantic_settings import BaseSettings
 
 from botspot.utils.easter_eggs.main import get_easter_egg
@@ -56,11 +56,16 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
 
     # send the report to the developer
     if settings.developer_chat_id:
-        logger.debug(f"Sending error report to the developer: {settings.developer_chat_id}")
+        logger.debug(
+            f"Sending error report to the developer: {settings.developer_chat_id}"
+        )
         error_description = f"Error processing message:"
         for k, v in error_data.items():
             error_description += f"\n{k}: {v}"
-        await bot.send_message(chat_id=settings.developer_chat_id, text=error_description)
+        # force parse_mode to None to avoid HTML tags issues in the message
+        await bot.send_message(
+            chat_id=settings.developer_chat_id, text=error_description, parse_mode=None
+        )
 
 
 def setup_dispatcher(dp: Dispatcher):  # settings: ErrorHandlerSettings = None
@@ -69,7 +74,9 @@ def setup_dispatcher(dp: Dispatcher):  # settings: ErrorHandlerSettings = None
     # check required dependencies
     deps = get_dependency_manager()
     if not deps.botspot_settings:
-        raise ValueError("Dependency manager is missing botspot_settings - required for error handling")
+        raise ValueError(
+            "Dependency manager is missing botspot_settings - required for error handling"
+        )
 
     # if not deps.botspot_settings.error_handling.enabled:
     #     logger.info("Error handling is disabled - skipping setup")
