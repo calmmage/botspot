@@ -77,6 +77,6 @@ def get_database() -> "AsyncIOMotorDatabase":
     from botspot.core.dependency_manager import get_dependency_manager
 
     db = get_dependency_manager().mongo_database
-    if not db:
+    if db is None:
         raise RuntimeError("MongoDB is not initialized")
     return db
