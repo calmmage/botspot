@@ -23,9 +23,16 @@ from botspot.utils.internal import Singleton
 
 
 class BotManager(metaclass=Singleton):
-    def __init__(self, bot: Optional[Bot] = None, **kwargs):
+    def __init__(
+        self,
+        bot: Optional[Bot] = None,
+        dispatcher: Optional[Dispatcher] = None,
+        **kwargs
+    ):
         self.settings = BotspotSettings(**kwargs)
-        self.deps = DependencyManager(botspot_settings=self.settings, bot=bot)
+        self.deps = DependencyManager(
+            botspot_settings=self.settings, bot=bot, dispatcher=dispatcher
+        )
 
         if self.settings.mongo_database.enabled:
             self.deps.mongo_database = mongo_database.initialise(

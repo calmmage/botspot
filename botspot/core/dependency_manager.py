@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from aiogram import Bot
+from aiogram import Bot, Dispatcher
 
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.utils.internal import Singleton
@@ -17,11 +17,13 @@ class DependencyManager(metaclass=Singleton):
         self,
         botspot_settings: BotspotSettings = None,
         bot: Bot = None,
+        dispatcher: Dispatcher = None,
         mongo_database=None,
         **kwargs
     ):
         self._botspot_settings = botspot_settings or BotspotSettings()
         self._bot = bot
+        self._dispatcher = dispatcher
         self._mongo_database = mongo_database
         self._scheduler = None
         self._telethon_manager = None
@@ -42,6 +44,14 @@ class DependencyManager(metaclass=Singleton):
     @bot.setter
     def bot(self, value):
         self._bot = value
+
+    @property
+    def dispatcher(self) -> Dispatcher:
+        return self._dispatcher
+
+    @dispatcher.setter
+    def dispatcher(self, value):
+        self._dispatcher = value
 
     @property
     def mongo_database(self) -> "AsyncIOMotorDatabase":

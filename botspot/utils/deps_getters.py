@@ -13,7 +13,7 @@ Each getter:
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from aiogram import Bot
+    from aiogram import Bot, Dispatcher
     from aiogram.fsm.context import FSMContext
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -31,6 +31,17 @@ def get_bot() -> "Bot":
         bot is not None
     ), "Bot is not initialized. To enable pass bot instance to BotManager() constructor"
     return bot
+
+
+def get_dispatcher() -> "Dispatcher":
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    dispatcher: "Dispatcher" = deps.dispatcher
+    assert (
+        dispatcher is not None
+    ), "Dispatcher is not initialized. To enable pass dispatcher instance to BotManager() constructor"
+    return dispatcher
 
 
 def get_scheduler() -> "AsyncIOScheduler":
