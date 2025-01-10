@@ -38,6 +38,8 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
         """    return await wrapped()
            ^^^^^^^^^^^^^^^"""
     )[-1]
+    assert event.update.message is not None
+    assert event.update.message.from_user is not None
     error_data = {
         "user": event.update.message.from_user.username,
         "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
