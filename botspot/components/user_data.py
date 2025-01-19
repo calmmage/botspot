@@ -9,11 +9,14 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
 
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.deps_getters import get_database, get_user_manager
+from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorDatabase
 
     from botspot.core.botspot_settings import BotspotSettings
+
+logger = get_logger()
 
 
 class UserType(str, Enum):
@@ -134,6 +137,53 @@ class UserManager:
         except Exception:
             return False
 
+    async def sync_user_types(self) -> None:
+        """
+        Sync user types with current settings.
+        Updates only existing users:
+        - Admins: promote/demote based on settings
+        - Friends: promote only (no automatic demotion)
+        """
+        try:
+            # Update admins
+            if self.settings.admins:
+                # Promote current admins
+                result = await self.db[self.collection].update_many(
+                    {"user_id": {"$in": list(self.settings.admins)}},
+                    {"$set": {"user_type": UserType.ADMIN}},
+                )
+                if result.modified_count:
+                    logger.info(f"Promoted {result.modified_count} users to admin")
+
+                # Demote former admins
+                result = await self.db[self.collection].update_many(
+                    {
+                        "user_id": {"$nin": list(self.settings.admins)},
+                        "user_type": UserType.ADMIN,
+                    },
+                    {"$set": {"user_type": UserType.REGULAR}},
+                )
+                if result.modified_count:
+                    logger.info(
+                        f"Demoted {result.modified_count} admins to regular users"
+                    )
+
+            # Update friends (only promote, don't demote)
+            if self.settings.friends:
+                result = await self.db[self.collection].update_many(
+                    {
+                        "user_id": {"$in": list(self.settings.friends)},
+                        "user_type": UserType.REGULAR,  # Only update if regular user
+                    },
+                    {"$set": {"user_type": UserType.FRIEND}},
+                )
+                if result.modified_count:
+                    logger.info(f"Promoted {result.modified_count} users to friends")
+
+        except Exception as e:
+            logger.error(f"Failed to sync user types: {e}")
+            raise  # Re-raise to handle in startup
+
 
 class UserTrackingMiddleware(BaseMiddleware):
     """Middleware to track users and ensure they're registered."""
@@ -206,7 +256,6 @@ def init_component(**kwargs) -> UserManager:
         return None
 
     db = get_database()
-
     deps = get_dependency_manager()
 
     return UserManager(
@@ -250,3 +299,12 @@ def setup_component(dp: Dispatcher, **kwargs):
                 await message.answer("Failed to update user type")
 
         dp.include_router(router)
+
+    async def sync_types():
+        from botspot.utils.deps_getters import get_user_manager
+
+        manager = get_user_manager()
+
+        await manager.sync_user_types()
+
+    dp.startup.register(sync_types)
