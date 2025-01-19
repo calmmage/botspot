@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.2.20" # Rework ask_user handler to add support for 'return raw' feature
+version = "0.2.21" # Rework ask_user handler to add support for 'return raw' feature
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"

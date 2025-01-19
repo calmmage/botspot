@@ -1,15 +1,27 @@
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
-
-from aiogram import BaseMiddleware, Dispatcher
+from aiogram import BaseMiddleware, Dispatcher, Router
+from aiogram.filters import Command
 from aiogram.types import Message, TelegramObject
+from datetime import datetime, timezone
+from enum import Enum
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
 
+from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.deps_getters import get_database, get_user_manager
 
 if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorDatabase
+
+    from botspot.core.botspot_settings import BotspotSettings
+
+
+class UserType(str, Enum):
+    """User type enumeration"""
+
+    ADMIN = "admin"
+    FRIEND = "friend"
+    REGULAR = "regular"
 
 
 class User(BaseModel):
@@ -20,6 +32,7 @@ class User(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     timezone: Optional[str] = "UTC"
+    user_type: UserType = UserType.REGULAR
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -58,15 +71,30 @@ class UserManager:
     """Manager class for user operations"""
 
     def __init__(
-            self, db: "AsyncIOMotorDatabase", collection: str, user_class: Type[User]
+            self,
+            db: "AsyncIOMotorDatabase",
+            collection: str,
+            user_class: Type[User],
+            settings: Optional["BotspotSettings"] = None,
     ):
         self.db = db
         self.collection = collection
         self.user_class = user_class
+        from botspot.core.dependency_manager import get_dependency_manager
+
+        self.settings = settings or get_dependency_manager().botspot_settings
 
     async def add_user(self, user: User) -> bool:
         """Add or update user"""
         try:
+            # Set user type based on settings
+            if user.user_id in self.settings.admins:
+                user.user_type = UserType.ADMIN
+            elif user.user_id in self.settings.friends:
+                user.user_type = UserType.FRIEND
+            else:
+                user.user_type = UserType.REGULAR
+
             existing = await self.get_user(user.user_id)
             if existing:
                 if not existing.merge_with(user):
@@ -90,6 +118,21 @@ class UserManager:
         await self.db[self.collection].update_one(
             {"user_id": user_id}, {"$set": {"last_active": datetime.now(timezone.utc)}}
         )
+
+    async def make_friend(self, user_id: int) -> bool:
+        """Make user a friend (admin only operation)"""
+        try:
+            user = await self.get_user(user_id)
+            if not user:
+                return False
+
+            user.user_type = UserType.FRIEND
+            await self.db[self.collection].update_one(
+                {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
+            )
+            return True
+        except Exception:
+            return False
 
 
 class UserTrackingMiddleware(BaseMiddleware):
@@ -145,6 +188,7 @@ class UserDataSettings(BaseSettings):
     collection: str = "botspot_users"
     user_class: Type[User] = User
     cache_ttl: int = 300  # Cache TTL in seconds (5 minutes by default)
+    user_types_enabled: bool = True  # New setting
 
     class Config:
         env_prefix = "BOTSPOT_USER_DATA_"
@@ -155,13 +199,21 @@ class UserDataSettings(BaseSettings):
 
 def init_component(**kwargs) -> UserManager:
     """Initialize the user data component"""
+    from botspot.core.dependency_manager import get_dependency_manager
+
     settings = UserDataSettings(**kwargs)
     if not settings.enabled:
         return None
 
     db = get_database()
+
+    deps = get_dependency_manager()
+
     return UserManager(
-        db=db, collection=settings.collection, user_class=settings.user_class
+        db=db,
+        collection=settings.collection,
+        user_class=settings.user_class,
+        settings=deps.botspot_settings,
     )
 
 
@@ -173,3 +225,28 @@ def setup_component(dp: Dispatcher, **kwargs):
 
     if settings.middleware_enabled:
         dp.message.middleware(UserTrackingMiddleware(cache_ttl=settings.cache_ttl))
+
+    if settings.user_types_enabled:
+        from botspot.components import bot_commands_menu
+        from botspot.components.bot_commands_menu import Visibility
+
+        router = Router(name="user_data")
+        router.message.filter(AdminFilter())  # Only admins can use these commands
+
+        @bot_commands_menu.add_command("make_friend", visibility=Visibility.ADMIN_ONLY)
+        @router.message(Command("make_friend"))
+        async def make_friend_cmd(message: Message):
+            """Make a user a friend (admin only command)"""
+            if not message.reply_to_message:
+                await message.answer("Reply to a user's message to make them a friend")
+                return
+
+            user_id = message.reply_to_message.from_user.id
+            user_manager = get_user_manager()
+
+            if await user_manager.make_friend(user_id):
+                await message.answer(f"User {user_id} is now a friend!")
+            else:
+                await message.answer("Failed to update user type")
+
+        dp.include_router(router)

@@ -2,9 +2,8 @@
 BotManager class is responsible for setting up the bot, dispatcher etc.
 """
 
-from typing import Optional
-
 from aiogram import Bot, Dispatcher
+from typing import Optional
 
 from botspot.components import (
     ask_user_handler,
@@ -69,7 +68,7 @@ class BotManager(metaclass=Singleton):
             print_bot_url.setup_dispatcher(dp)
 
         if self.settings.bot_commands_menu.enabled:
-            bot_commands_menu.setup_dispatcher(dp)
+            bot_commands_menu.setup_dispatcher(dp, self.settings.bot_commands_menu)
 
         if self.settings.trial_mode.enabled:
             trial_mode.setup_dispatcher(dp)

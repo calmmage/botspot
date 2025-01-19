@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from botspot.components.ask_user_handler import AskUserSettings
@@ -15,6 +16,9 @@ from botspot.utils.send_safe import SendSafeSettings
 
 class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
+
+    admins: list[int] = Field(default_factory=list)  # Default admin
+    friends: list[int] = Field(default_factory=list)  # List of friend user IDs
 
     ask_user: AskUserSettings = AskUserSettings()
     bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()
