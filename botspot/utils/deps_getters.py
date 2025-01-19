@@ -91,3 +91,15 @@ def get_database() -> "AsyncIOMotorDatabase":
     if db is None:
         raise RuntimeError("MongoDB is not initialized")
     return db
+
+
+def get_user_manager():
+    """Get UserManager instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    user_manager = get_dependency_manager().user_manager
+    if user_manager is None:
+        raise RuntimeError(
+            "UserManager is not initialized. Make sure user_data component is enabled in settings."
+        )
+    return user_manager

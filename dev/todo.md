@@ -1,3 +1,7 @@
+# Todos from 06 Jan
+
+- [ ] Add timezone scheduling code from simple cat feeding reminder bot
+
 # Todos from 04 Jan
 
 - [ ] add enum support for

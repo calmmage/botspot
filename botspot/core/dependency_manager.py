@@ -27,6 +27,7 @@ class DependencyManager(metaclass=Singleton):
         self._mongo_database = mongo_database
         self._scheduler = None
         self._telethon_manager = None
+        self._user_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -76,6 +77,14 @@ class DependencyManager(metaclass=Singleton):
     @telethon_manager.setter
     def telethon_manager(self, value):
         self._telethon_manager = value
+
+    @property
+    def user_manager(self):
+        return self._user_manager
+
+    @user_manager.setter
+    def user_manager(self, value):
+        self._user_manager = value
 
     @classmethod
     def is_initialized(cls) -> bool:

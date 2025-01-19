@@ -9,6 +9,7 @@ from botspot.components.mongo_database import MongoDatabaseSettings
 from botspot.components.print_bot_url import PrintBotUrlSettings
 from botspot.components.telethon_manager import TelethonManagerSettings
 from botspot.components.trial_mode import TrialModeSettings
+from botspot.components.user_data import UserDataSettings
 from botspot.utils.send_safe import SendSafeSettings
 
 
@@ -25,6 +26,7 @@ class BotspotSettings(BaseSettings):
     telethon_manager: TelethonManagerSettings = TelethonManagerSettings()
     trial_mode: TrialModeSettings = TrialModeSettings()
     send_safe: SendSafeSettings = SendSafeSettings()
+    user_data: UserDataSettings = UserDataSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"

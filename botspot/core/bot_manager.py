@@ -16,6 +16,7 @@ from botspot.components import (
     print_bot_url,
     telethon_manager,
     trial_mode,
+    user_data,
 )
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
@@ -47,6 +48,11 @@ class BotManager(metaclass=Singleton):
         if self.settings.telethon_manager.enabled:
             self.deps.telethon_manager = telethon_manager.initialise(
                 self.settings.telethon_manager
+            )
+
+        if self.settings.user_data.enabled:
+            self.deps.user_manager = user_data.init_component(
+                **self.settings.user_data.model_dump()
             )
 
     def setup_dispatcher(self, dp: Dispatcher):
@@ -84,3 +90,6 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.telethon_manager.enabled:
             telethon_manager.setup_dispatcher(dp)
+
+        if self.settings.user_data.enabled:
+            user_data.setup_component(dp, **self.settings.user_data.model_dump())
