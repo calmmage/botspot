@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Union
 
 from aiogram import Bot
+from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile, Message
+from loguru import logger
 
 from botspot.utils.text_utils import MAX_TELEGRAM_MESSAGE_LENGTH, escape_md, split_long_message
 
@@ -25,7 +27,7 @@ class SendSafeSettings(BaseSettings):
     # Configuration
     preview_cutoff: int = 200
     wrap_width: int = 88
-    parse_mode: str = "HTML"  # or "MarkdownV2", "Markdown", None
+    parse_mode: ParseMode = ParseMode.HTML  # or "MarkdownV2", "Markdown", None
 
     class Config:
         env_prefix = "BOTSPOT_SEND_SAFE_"
@@ -65,6 +67,9 @@ async def _send_with_parse_mode_fallback(
             )
     except Exception:
         # Fallback to plain text if formatting fails
+        logger.warning(
+            f"Failed to send message {text} with parse mode, falling back to plain text"
+        )
         return await bot.send_message(chat_id, text, parse_mode=None, **kwargs)
 
 
