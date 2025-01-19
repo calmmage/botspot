@@ -1,11 +1,12 @@
+from datetime import datetime, timezone
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
+
 from aiogram import BaseMiddleware, Dispatcher, Router
 from aiogram.filters import Command
 from aiogram.types import Message, TelegramObject
-from datetime import datetime, timezone
-from enum import Enum
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
 
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.deps_getters import get_database, get_user_manager
@@ -74,11 +75,11 @@ class UserManager:
     """Manager class for user operations"""
 
     def __init__(
-            self,
-            db: "AsyncIOMotorDatabase",
-            collection: str,
-            user_class: Type[User],
-            settings: Optional["BotspotSettings"] = None,
+        self,
+        db: "AsyncIOMotorDatabase",
+        collection: str,
+        user_class: Type[User],
+        settings: Optional["BotspotSettings"] = None,
     ):
         self.db = db
         self.collection = collection
@@ -87,6 +88,7 @@ class UserManager:
 
         self.settings = settings or get_dependency_manager().botspot_settings
 
+    # todo: add functionality for searching users - by name etc.
     async def add_user(self, user: User) -> bool:
         """Add or update user"""
         try:
@@ -111,6 +113,7 @@ class UserManager:
         except Exception:
             return False
 
+    # todo: make sure this works with username as well
     async def get_user(self, user_id: int) -> Optional[User]:
         """Get user by ID"""
         data = await self.db[self.collection].find_one({"user_id": user_id})
@@ -122,6 +125,7 @@ class UserManager:
             {"user_id": user_id}, {"$set": {"last_active": datetime.now(timezone.utc)}}
         )
 
+    # todo: make sure this works with username as well
     async def make_friend(self, user_id: int) -> bool:
         """Make user a friend (admin only operation)"""
         try:
@@ -203,10 +207,10 @@ class UserTrackingMiddleware(BaseMiddleware):
         return (now - last_update).total_seconds() < self._cache_ttl
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         # Only process messages with user information
         if isinstance(event, Message) and event.from_user:
@@ -233,7 +237,7 @@ class UserTrackingMiddleware(BaseMiddleware):
 class UserDataSettings(BaseSettings):
     """User data component settings"""
 
-    enabled: bool = True
+    enabled: bool = False
     middleware_enabled: bool = True
     collection: str = "botspot_users"
     user_class: Type[User] = User
