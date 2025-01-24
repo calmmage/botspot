@@ -2,8 +2,10 @@
 BotManager class is responsible for setting up the bot, dispatcher etc.
 """
 
+from typing import Optional, Type
+
 from aiogram import Bot, Dispatcher
-from typing import Optional
+from loguru import logger
 
 from botspot.components import (
     ask_user_handler,
@@ -17,6 +19,7 @@ from botspot.components import (
     trial_mode,
     user_data,
 )
+from botspot.components.user_data import User
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 from botspot.utils.internal import Singleton
@@ -27,12 +30,17 @@ class BotManager(metaclass=Singleton):
         self,
         bot: Optional[Bot] = None,
         dispatcher: Optional[Dispatcher] = None,
-        **kwargs
+        user_class: Type[User] = None,
+        **kwargs,
     ):
         self.settings = BotspotSettings(**kwargs)
+        logger.info(
+            f"Initializing BotManager with config: {self.settings.model_dump_json(indent=2)}"
+        )
         self.deps = DependencyManager(
             botspot_settings=self.settings, bot=bot, dispatcher=dispatcher
         )
+        self.user_class = user_class
 
         if self.settings.mongo_database.enabled:
             self.deps.mongo_database = mongo_database.initialise(
@@ -50,8 +58,8 @@ class BotManager(metaclass=Singleton):
             )
 
         if self.settings.user_data.enabled:
-            self.deps.user_manager = user_data.init_component(
-                **self.settings.user_data.model_dump()
+            self.deps.user_manager = user_data.initialise(
+                user_class=user_class, **self.settings.user_data.model_dump()
             )
 
     def setup_dispatcher(self, dp: Dispatcher):
@@ -91,4 +99,4 @@ class BotManager(metaclass=Singleton):
             telethon_manager.setup_dispatcher(dp)
 
         if self.settings.user_data.enabled:
-            user_data.setup_component(dp, **self.settings.user_data.model_dump())
+            user_data.setup_dispatcher(dp, **self.settings.user_data.model_dump())

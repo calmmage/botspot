@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorDatabase
 
     from botspot.components.telethon_manager import TelethonManager
+    from botspot.components.user_data import UserManager
 
 
 class DependencyManager(metaclass=Singleton):
@@ -79,7 +80,7 @@ class DependencyManager(metaclass=Singleton):
         self._telethon_manager = value
 
     @property
-    def user_manager(self):
+    def user_manager(self) -> "UserManager":
         return self._user_manager
 
     @user_manager.setter

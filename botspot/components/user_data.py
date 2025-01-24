@@ -240,7 +240,6 @@ class UserDataSettings(BaseSettings):
     enabled: bool = False
     middleware_enabled: bool = True
     collection: str = "botspot_users"
-    user_class: Type[User] = User
     cache_ttl: int = 300  # Cache TTL in seconds (5 minutes by default)
     user_types_enabled: bool = True  # New setting
 
@@ -251,7 +250,7 @@ class UserDataSettings(BaseSettings):
         extra = "ignore"
 
 
-def init_component(**kwargs) -> UserManager:
+def initialise(user_class=None, **kwargs) -> UserManager:
     """Initialize the user data component"""
     from botspot.core.dependency_manager import get_dependency_manager
 
@@ -262,15 +261,18 @@ def init_component(**kwargs) -> UserManager:
     db = get_database()
     deps = get_dependency_manager()
 
+    if user_class is None:
+        user_class = User
+
     return UserManager(
         db=db,
         collection=settings.collection,
-        user_class=settings.user_class,
+        user_class=user_class,
         settings=deps.botspot_settings,
     )
 
 
-def setup_component(dp: Dispatcher, **kwargs):
+def setup_dispatcher(dp: Dispatcher, **kwargs):
     """Setup the user data component"""
     settings = UserDataSettings(**kwargs)
     if not settings.enabled:
