@@ -43,19 +43,13 @@ class BotManager(metaclass=Singleton):
         self.user_class = user_class
 
         if self.settings.mongo_database.enabled:
-            self.deps.mongo_database = mongo_database.initialise(
-                self.settings.mongo_database
-            )
+            self.deps.mongo_database = mongo_database.initialise(self.settings.mongo_database)
 
         if self.settings.event_scheduler.enabled:
-            self.deps.scheduler = event_scheduler.initialise(
-                self.settings.event_scheduler
-            )
+            self.deps.scheduler = event_scheduler.initialise(self.settings.event_scheduler)
 
         if self.settings.telethon_manager.enabled:
-            self.deps.telethon_manager = telethon_manager.initialise(
-                self.settings.telethon_manager
-            )
+            self.deps.telethon_manager = telethon_manager.initialise(self.settings.telethon_manager)
 
         if self.settings.user_data.enabled:
             self.deps.user_manager = user_data.initialise(
@@ -83,9 +77,7 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.ask_user.enabled:
             if not self.deps.bot:
-                raise RuntimeError(
-                    "Bot instance is required for ask_user functionality"
-                )
+                raise RuntimeError("Bot instance is required for ask_user functionality")
 
             ask_user_handler.setup_dispatcher(dp)
 

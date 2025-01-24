@@ -4,6 +4,10 @@ version = "0.2.25"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
+packages=[
+    { include = "botspot", from = "." },
+]
+
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
@@ -81,6 +85,15 @@ telethon = "^1.38.1"
 pytest = ">=6"
 #pytest-mongodb = "*"
 pytest-cov = "^6.0.0"
+black = {extras = ["jupyter"], version = "^24.10.0"}
+flake8 = "^7.1.1"
+flake8-docstrings = "^1.7.0"
+flake8-bugbear = "^24.12.12"
+flake8-comprehensions = "^3.16.0"
+flake8-simplify = "^0.21.0"
+isort = "^5.13.2"
+vulture = "^2.14"
+pyupgrade = "^3.19.1"
 
 [tool.poetry.group.docs.dependencies]
 #mkdocs = ">=1.6"
