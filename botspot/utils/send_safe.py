@@ -62,14 +62,10 @@ async def _send_with_parse_mode_fallback(
             return await bot.send_message(chat_id, text, **kwargs)
         else:
             # if parse_mode is specified, send message with specified parse mode
-            return await bot.send_message(
-                chat_id, text, parse_mode=parse_mode, **kwargs
-            )
+            return await bot.send_message(chat_id, text, parse_mode=parse_mode, **kwargs)
     except Exception:
         # Fallback to plain text if formatting fails
-        logger.warning(
-            f"Failed to send message {text} with parse mode, falling back to plain text"
-        )
+        logger.warning(f"Failed to send message {text} with parse mode, falling back to plain text")
         return await bot.send_message(chat_id, text, parse_mode=None, **kwargs)
 
 
@@ -140,7 +136,9 @@ async def send_safe(
         # Send preview if configured
         if settings.send_preview_for_long_messages:
             preview = text[: settings.preview_cutoff]
-            preview_text = f"Message is too long, sending as file {filename}\nPreview:\n{preview}..."
+            preview_text = (
+                f"Message is too long, sending as file {filename}\nPreview:\n{preview}..."
+            )
             await _send_with_parse_mode_fallback(
                 bot,
                 chat_id,
@@ -183,9 +181,7 @@ async def send_safe(
 
 async def reply_safe(message: Message, text: str, **kwargs):
     """Reply to a message with safe sending"""
-    await send_safe(
-        message.chat.id, text, reply_to_message_id=message.message_id, **kwargs
-    )
+    await send_safe(message.chat.id, text, reply_to_message_id=message.message_id, **kwargs)
 
 
 async def answer_safe(message: Message, text: str, **kwargs):

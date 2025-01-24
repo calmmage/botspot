@@ -19,9 +19,7 @@ def escape_md(text: str) -> str:
     return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", str(text))
 
 
-def split_long_message(
-    text: str, max_length: int = MAX_TELEGRAM_MESSAGE_LENGTH
-) -> List[str]:
+def split_long_message(text: str, max_length: int = MAX_TELEGRAM_MESSAGE_LENGTH) -> List[str]:
     """
     Split long message into chunks that fit Telegram's message length limit.
     Tries to split on newlines when possible.

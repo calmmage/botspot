@@ -1,11 +1,11 @@
 from collections import defaultdict
+from enum import Enum
+from typing import Dict, List, NamedTuple, Tuple
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import BotCommand, Message
-from enum import Enum
 from pydantic_settings import BaseSettings
-from typing import Dict, List, NamedTuple, Tuple
 
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
@@ -114,6 +114,7 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
     dp.startup.register(set_aiogram_bot_commands)
 
     if settings.botspot_help:
+
         @add_command("help_botspot", "Show available bot commands")
         @dp.message(Command("help_botspot"))
         async def help_botspot_cmd(message: Message):
