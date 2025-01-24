@@ -86,6 +86,6 @@ class App:
         async for user_data in cursor:
             user = self.user_manager.user_class(**user_data)
             stats["total"] += 1
-            stats["by_type"][user.user_type] += 1
+            stats["by_type"][user.user_class] += 1
 
         return stats

@@ -111,7 +111,13 @@ def add_global_limit(limit=100, period=24 * 60 * 60):
 
 
 class UsageLimitMiddleware:
-    def __init__(self, limit_per_user=3, global_limit=100, period_per_user=24 * 60 * 60, global_period=24 * 60 * 60):
+    def __init__(
+        self,
+        limit_per_user=3,
+        global_limit=100,
+        period_per_user=24 * 60 * 60,
+        global_period=24 * 60 * 60,
+    ):
         self.limit_per_user = limit_per_user
         self.global_limit = global_limit
         self.period_per_user = period_per_user
@@ -138,12 +144,16 @@ class UsageLimitMiddleware:
 
         if user_id and self.limit_per_user:
             # Update user usage list
-            self.user_usage[user_id] = [t for t in self.user_usage[user_id] if current_time - t < self.period_per_user]
+            self.user_usage[user_id] = [
+                t for t in self.user_usage[user_id] if current_time - t < self.period_per_user
+            ]
 
             if len(self.user_usage[user_id]) >= self.limit_per_user:
                 message = event.message if hasattr(event, "message") else event
 
-                remaining_seconds = int(self.user_usage[user_id][0] + self.period_per_user - current_time)
+                remaining_seconds = int(
+                    self.user_usage[user_id][0] + self.period_per_user - current_time
+                )
                 remaining_time = format_remaining_time(remaining_seconds)
                 await message.answer(
                     f"You have reached your personal usage limit. Please try again later. Reset in: {remaining_time}."
@@ -157,7 +167,9 @@ class UsageLimitMiddleware:
         return await handler(event, data)
 
 
-def setup_dispatcher(dp: Dispatcher, limit_per_user=None, global_limit=None, period_per_user=None, global_period=None):
+def setup_dispatcher(
+    dp: Dispatcher, limit_per_user=None, global_limit=None, period_per_user=None, global_period=None
+):
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
@@ -176,6 +188,8 @@ def setup_dispatcher(dp: Dispatcher, limit_per_user=None, global_limit=None, per
     dp.message.middleware(middleware)
     dp.callback_query.middleware(middleware)
 
-    logger.info(f"Router set up with usage limits: per-user={limit_per_user}, global={global_limit}")
+    logger.info(
+        f"Router set up with usage limits: per-user={limit_per_user}, global={global_limit}"
+    )
 
     return dp

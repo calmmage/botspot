@@ -58,9 +58,7 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
 
     # send the report to the developer
     if settings.developer_chat_id:
-        logger.debug(
-            f"Sending error report to the developer: {settings.developer_chat_id}"
-        )
+        logger.debug(f"Sending error report to the developer: {settings.developer_chat_id}")
         error_description = f"Error processing message:"
         for k, v in error_data.items():
             error_description += f"\n{k}: {v}"

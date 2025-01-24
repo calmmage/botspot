@@ -168,9 +168,7 @@ class UserManager:
                     {"$set": {"user_type": UserType.REGULAR}},
                 )
                 if result.modified_count:
-                    logger.info(
-                        f"Demoted {result.modified_count} admins to regular users"
-                    )
+                    logger.info(f"Demoted {result.modified_count} admins to regular users")
 
             # Update friends (only promote, don't demote)
             if self.settings.friends:

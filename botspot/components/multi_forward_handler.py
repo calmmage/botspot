@@ -56,7 +56,9 @@ async def chat_handler(self, message: Message, app: MyApp):
             item = await queue.get()
             messages.append(item)
         if not messages:
-            self.logger.debug("Aborting message processing. Messages got processed by another handler.")
+            self.logger.debug(
+                "Aborting message processing. Messages got processed by another handler."
+            )
             return
         if self.chat_handler_ignore_commands:
             messages.sort(key=lambda x: x.date)
@@ -129,7 +131,9 @@ def multimessage_command_handler(self, handler):
                 item = await queue.get()
                 messages.append(item)
             if not messages:
-                raise Exception("Messages got processed by another handler, should not happen with commands")
+                raise Exception(
+                    "Messages got processed by another handler, should not happen with commands"
+                )
             # test: send user the message count
             await handler.multi_message_handler(messages, app)
 

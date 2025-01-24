@@ -1,32 +1,25 @@
 repos:
-#  - repo: local
-#    hooks:
-#      - id: jupyter-nb-clear-output
-#        name: jupyter-nb-clear-output
-#        language: system
-#        entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
+
   - repo: https://github.com/kynan/nbstripout
     rev: 0.5.0
     hooks:
       - id: nbstripout
         files: \.ipynb$
-        stages: [commit]
+        stages: [pre-commit]
 
   - repo: https://github.com/psf/black
     rev: 24.2.0
     hooks:
-      # - id: black
-      #   args: [ --line-length=100 ]
-      - id: black-jupyter
-        name: black-jupyter
-        description:
-          "Black: The uncompromising Python code formatter (with Jupyter Notebook support)"
+      - id: black
+        args: [ --line-length=100 ]
+        name: black
+        description: "Black: The uncompromising Python code formatter (with Jupyter Notebook support)"
         entry: black
         language: python
         minimum_pre_commit_version: 2.9.2
         require_serial: true
-        types_or: [ python, pyi, jupyter ]
-        additional_dependencies: [ ".[jupyter]" ]
+        types_or: [python, pyi, jupyter]
+        additional_dependencies: [".[jupyter]"]
 
   - repo: https://github.com/jendrikseipp/vulture
     rev: 'v2.10'
@@ -38,42 +31,44 @@ repos:
         ]
         files: ^.*\.py$
         exclude: ^(.git|.venv|venv|build|dist)/.*$
-  
-  #  - repo: https://github.com/pycqa/flake8
-  #    rev: '7.0.0'  # Use the latest stable version
-  #    hooks:
-  #      - id: flake8
-  #        additional_dependencies: [
-  #        'flake8-docstrings',
-  #        'flake8-bugbear',
-  #        'flake8-comprehensions',
-  #        'flake8-simplify',
-  #        ]
-  #        args: [
-  #        "--max-line-length=100",
-  #        "--exclude=.git,__pycache__,build,dist",
-  #        "--ignore=E203,W503",  # Ignore some style errors that conflict with other tools
-  #        ]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: '7.0.0'
+    hooks:
+      - id: flake8
+        additional_dependencies: [
+          'flake8-docstrings',
+          'flake8-bugbear',
+          'flake8-comprehensions',
+          'flake8-simplify',
+        ]
+        args: [
+          "--max-line-length=100",
+          "--exclude=.venv,.git,__pycache__,build,dist",
+          "--ignore=E203,W503",  # Ignore some style errors that conflict with other tools
+        ]
+        files: ^botspot/.*\.py$ # project_name - path to scan
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
       - id: isort
         name: isort (python)
-  
-  #  - repo: local
-  #    hooks:
-  #      - id: pytest-check
-  #        name: pytest-check
-  #        entry: pytest
-  #        language: system
-  #        pass_filenames: false
-  #        always_run: true
-  #        args: [
-  #        "--cov=",
-  #        "--cov-report=xml",
-  #        "--cov-fail-under=50",
-  #        ]
+        files: ^.*\.py$
+
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        args: [
+          "--cov=botspot",  # project_name - path to scan
+          "--cov-report=xml",
+          "--cov-fail-under=50",
+        ]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.19.0
