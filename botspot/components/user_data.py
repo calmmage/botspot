@@ -1,15 +1,31 @@
 from datetime import datetime, timezone
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
 
-from aiogram import BaseMiddleware, Dispatcher
+from aiogram import BaseMiddleware, Dispatcher, Router
+from aiogram.filters import Command
 from aiogram.types import Message, TelegramObject
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.deps_getters import get_database, get_user_manager
+from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorDatabase
+
+    from botspot.core.botspot_settings import BotspotSettings
+
+logger = get_logger()
+
+
+class UserType(str, Enum):
+    """User type enumeration"""
+
+    ADMIN = "admin"
+    FRIEND = "friend"
+    REGULAR = "regular"
 
 
 class User(BaseModel):
@@ -20,6 +36,7 @@ class User(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     timezone: Optional[str] = "UTC"
+    user_type: UserType = UserType.REGULAR
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -58,15 +75,31 @@ class UserManager:
     """Manager class for user operations"""
 
     def __init__(
-            self, db: "AsyncIOMotorDatabase", collection: str, user_class: Type[User]
+        self,
+        db: "AsyncIOMotorDatabase",
+        collection: str,
+        user_class: Type[User],
+        settings: Optional["BotspotSettings"] = None,
     ):
         self.db = db
         self.collection = collection
         self.user_class = user_class
+        from botspot.core.dependency_manager import get_dependency_manager
 
+        self.settings = settings or get_dependency_manager().botspot_settings
+
+    # todo: add functionality for searching users - by name etc.
     async def add_user(self, user: User) -> bool:
         """Add or update user"""
         try:
+            # Set user type based on settings
+            if user.user_id in self.settings.admins:
+                user.user_type = UserType.ADMIN
+            elif user.user_id in self.settings.friends:
+                user.user_type = UserType.FRIEND
+            else:
+                user.user_type = UserType.REGULAR
+
             existing = await self.get_user(user.user_id)
             if existing:
                 if not existing.merge_with(user):
@@ -80,6 +113,7 @@ class UserManager:
         except Exception:
             return False
 
+    # todo: make sure this works with username as well
     async def get_user(self, user_id: int) -> Optional[User]:
         """Get user by ID"""
         data = await self.db[self.collection].find_one({"user_id": user_id})
@@ -90,6 +124,69 @@ class UserManager:
         await self.db[self.collection].update_one(
             {"user_id": user_id}, {"$set": {"last_active": datetime.now(timezone.utc)}}
         )
+
+    # todo: make sure this works with username as well
+    async def make_friend(self, user_id: int) -> bool:
+        """Make user a friend (admin only operation)"""
+        try:
+            user = await self.get_user(user_id)
+            if not user:
+                return False
+
+            user.user_type = UserType.FRIEND
+            await self.db[self.collection].update_one(
+                {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
+            )
+            return True
+        except Exception:
+            return False
+
+    async def sync_user_types(self) -> None:
+        """
+        Sync user types with current settings.
+        Updates only existing users:
+        - Admins: promote/demote based on settings
+        - Friends: promote only (no automatic demotion)
+        """
+        try:
+            # Update admins
+            if self.settings.admins:
+                # Promote current admins
+                result = await self.db[self.collection].update_many(
+                    {"user_id": {"$in": list(self.settings.admins)}},
+                    {"$set": {"user_type": UserType.ADMIN}},
+                )
+                if result.modified_count:
+                    logger.info(f"Promoted {result.modified_count} users to admin")
+
+                # Demote former admins
+                result = await self.db[self.collection].update_many(
+                    {
+                        "user_id": {"$nin": list(self.settings.admins)},
+                        "user_type": UserType.ADMIN,
+                    },
+                    {"$set": {"user_type": UserType.REGULAR}},
+                )
+                if result.modified_count:
+                    logger.info(
+                        f"Demoted {result.modified_count} admins to regular users"
+                    )
+
+            # Update friends (only promote, don't demote)
+            if self.settings.friends:
+                result = await self.db[self.collection].update_many(
+                    {
+                        "user_id": {"$in": list(self.settings.friends)},
+                        "user_type": UserType.REGULAR,  # Only update if regular user
+                    },
+                    {"$set": {"user_type": UserType.FRIEND}},
+                )
+                if result.modified_count:
+                    logger.info(f"Promoted {result.modified_count} users to friends")
+
+        except Exception as e:
+            logger.error(f"Failed to sync user types: {e}")
+            raise  # Re-raise to handle in startup
 
 
 class UserTrackingMiddleware(BaseMiddleware):
@@ -110,10 +207,10 @@ class UserTrackingMiddleware(BaseMiddleware):
         return (now - last_update).total_seconds() < self._cache_ttl
 
     async def __call__(
-            self,
-            handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-            event: TelegramObject,
-            data: Dict[str, Any],
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
     ) -> Any:
         # Only process messages with user information
         if isinstance(event, Message) and event.from_user:
@@ -140,11 +237,11 @@ class UserTrackingMiddleware(BaseMiddleware):
 class UserDataSettings(BaseSettings):
     """User data component settings"""
 
-    enabled: bool = True
+    enabled: bool = False
     middleware_enabled: bool = True
     collection: str = "botspot_users"
-    user_class: Type[User] = User
     cache_ttl: int = 300  # Cache TTL in seconds (5 minutes by default)
+    user_types_enabled: bool = True  # New setting
 
     class Config:
         env_prefix = "BOTSPOT_USER_DATA_"
@@ -153,19 +250,29 @@ class UserDataSettings(BaseSettings):
         extra = "ignore"
 
 
-def init_component(**kwargs) -> UserManager:
+def initialise(user_class=None, **kwargs) -> UserManager:
     """Initialize the user data component"""
+    from botspot.core.dependency_manager import get_dependency_manager
+
     settings = UserDataSettings(**kwargs)
     if not settings.enabled:
         return None
 
     db = get_database()
+    deps = get_dependency_manager()
+
+    if user_class is None:
+        user_class = User
+
     return UserManager(
-        db=db, collection=settings.collection, user_class=settings.user_class
+        db=db,
+        collection=settings.collection,
+        user_class=user_class,
+        settings=deps.botspot_settings,
     )
 
 
-def setup_component(dp: Dispatcher, **kwargs):
+def setup_dispatcher(dp: Dispatcher, **kwargs):
     """Setup the user data component"""
     settings = UserDataSettings(**kwargs)
     if not settings.enabled:
@@ -173,3 +280,37 @@ def setup_component(dp: Dispatcher, **kwargs):
 
     if settings.middleware_enabled:
         dp.message.middleware(UserTrackingMiddleware(cache_ttl=settings.cache_ttl))
+
+    if settings.user_types_enabled:
+        from botspot.components import bot_commands_menu
+        from botspot.components.bot_commands_menu import Visibility
+
+        router = Router(name="user_data")
+        router.message.filter(AdminFilter())  # Only admins can use these commands
+
+        @bot_commands_menu.add_command("make_friend", visibility=Visibility.ADMIN_ONLY)
+        @router.message(Command("make_friend"))
+        async def make_friend_cmd(message: Message):
+            """Make a user a friend (admin only command)"""
+            if not message.reply_to_message:
+                await message.answer("Reply to a user's message to make them a friend")
+                return
+
+            user_id = message.reply_to_message.from_user.id
+            user_manager = get_user_manager()
+
+            if await user_manager.make_friend(user_id):
+                await message.answer(f"User {user_id} is now a friend!")
+            else:
+                await message.answer("Failed to update user type")
+
+        dp.include_router(router)
+
+    async def sync_types():
+        from botspot.utils.deps_getters import get_user_manager
+
+        manager = get_user_manager()
+
+        await manager.sync_user_types()
+
+    dp.startup.register(sync_types)

@@ -1,10 +1,13 @@
-from enum import Enum
-from typing import Dict, NamedTuple
+from collections import defaultdict
 
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand
+from aiogram.filters import Command
+from aiogram.types import BotCommand, Message
+from enum import Enum
 from pydantic_settings import BaseSettings
+from typing import Dict, List, NamedTuple, Tuple
 
+from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -25,8 +28,9 @@ class CommandInfo(NamedTuple):
 
 class BotCommandsMenuSettings(BaseSettings):
     enabled: bool = True
-    default_commands: dict[str, str] = {"start": "Start the bot"}
+    default_commands: Dict[str, str] = {"start": "Start the bot"}
     admin_id: int = 0
+    botspot_help: bool = True  # New setting
 
     class Config:
         env_prefix = "BOTSPOT_BOT_COMMANDS_MENU_"
@@ -37,6 +41,47 @@ class BotCommandsMenuSettings(BaseSettings):
 
 commands: Dict[str, CommandInfo] = {}
 NO_COMMAND_DESCRIPTION = "No description"
+
+
+def get_commands_by_visibility(include_admin: bool = False) -> str:
+    """
+    Get formatted list of commands grouped by visibility
+
+    Args:
+        include_admin: Whether to include admin commands in the output
+
+    Returns:
+        Formatted string with command list
+    """
+    groups: Dict[Visibility, List[Tuple[str, str]]] = defaultdict(list)
+
+    # First add default commands
+    settings = BotCommandsMenuSettings()
+    for cmd, desc in settings.default_commands.items():
+        groups[Visibility.PUBLIC].append((cmd, desc))
+
+    # Then add user commands
+    for cmd, info in commands.items():
+        if info.visibility == Visibility.HIDDEN:
+            continue
+        if info.visibility == Visibility.ADMIN_ONLY and not include_admin:
+            continue
+        groups[info.visibility].append((cmd, info.description))
+
+    # Format output
+    result = []
+
+    if groups[Visibility.PUBLIC]:
+        result.append("📝 Available commands:")
+        for cmd, desc in sorted(groups[Visibility.PUBLIC]):
+            result.append(f"/{cmd} - {desc}")
+
+    if include_admin and groups[Visibility.ADMIN_ONLY]:
+        result.append("\n👑 Admin commands:")
+        for cmd, desc in sorted(groups[Visibility.ADMIN_ONLY]):
+            result.append(f"/{cmd} - {desc}")
+
+    return "\n".join(result) if result else "No commands available"
 
 
 async def set_aiogram_bot_commands(bot: Bot):
@@ -65,8 +110,17 @@ async def set_aiogram_bot_commands(bot: Bot):
     await bot.set_my_commands(bot_commands)
 
 
-def setup_dispatcher(dp: Dispatcher):
+def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
     dp.startup.register(set_aiogram_bot_commands)
+
+    if settings.botspot_help:
+        @add_command("help_botspot", "Show available bot commands")
+        @dp.message(Command("help_botspot"))
+        async def help_botspot_cmd(message: Message):
+            """Show available bot commands"""
+            is_admin = await AdminFilter()(message)
+            help_text = get_commands_by_visibility(include_admin=is_admin)
+            await message.answer(help_text)
 
 
 def add_command(names=None, description=None, visibility=Visibility.PUBLIC):

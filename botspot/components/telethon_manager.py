@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional
 
 from aiogram import Dispatcher
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 from botspot.components.ask_user_handler import ask_user
@@ -21,11 +22,9 @@ logger = get_logger()
 class TelethonManagerSettings(BaseSettings):
     enabled: bool = False
     api_id: Optional[int] = None
-    api_hash: Optional[str] = None
+    api_hash: Optional[SecretStr] = None
     sessions_dir: str = "sessions"
-    auto_auth: bool = (
-        True  # Whether to automatically trigger auth when client is missing
-    )
+    auto_auth: bool = True  # Whether to automatically trigger auth when client is missing
 
     class Config:
         env_prefix = "BOTSPOT_TELETHON_MANAGER_"
@@ -35,9 +34,7 @@ class TelethonManagerSettings(BaseSettings):
 
 
 class TelethonManager:
-    def __init__(
-        self, api_id: int, api_hash: str, sessions_dir: Path, auto_auth: bool = True
-    ):
+    def __init__(self, api_id: int, api_hash: str, sessions_dir: Path, auto_auth: bool = True):
         self.api_id = api_id
         self.api_hash = api_hash
         self.sessions_dir = sessions_dir
@@ -63,9 +60,7 @@ class TelethonManager:
             await client.connect()
 
             is_authorized = await client.is_user_authorized()
-            logger.info(
-                f"Session authorization check for user {user_id}: {is_authorized}"
-            )
+            logger.info(f"Session authorization check for user {user_id}: {is_authorized}")
 
             if is_authorized:
                 self.clients[user_id] = client
@@ -117,9 +112,7 @@ class TelethonManager:
             await client.disconnect()
         self.clients.clear()
 
-    async def setup_client(
-        self, user_id: int, state, force: bool = False
-    ) -> "TelegramClient":
+    async def setup_client(self, user_id: int, state, force: bool = False) -> "TelegramClient":
         """
         Setup Telethon client for a specific user
 
@@ -180,18 +173,14 @@ class TelethonManager:
             )
 
             if not code:
-                await send_safe(
-                    user_id, "Setup cancelled - no verification code provided."
-                )
+                await send_safe(user_id, "Setup cancelled - no verification code provided.")
                 return None
 
             code = code.replace(" ", "")
 
             try:
                 # Try to sign in with the code
-                await client.sign_in(
-                    phone, code, phone_code_hash=send_code_result.phone_code_hash
-                )
+                await client.sign_in(phone, code, phone_code_hash=send_code_result.phone_code_hash)
             except Exception as e:
                 if "password" in str(e).lower():
                     # 2FA is enabled, ask for password
@@ -204,9 +193,7 @@ class TelethonManager:
                     )
 
                     if not password:
-                        await send_safe(
-                            user_id, "Setup cancelled - no password provided."
-                        )
+                        await send_safe(user_id, "Setup cancelled - no password provided.")
                         return None
 
                     password = password.replace(" ", "")
@@ -235,7 +222,10 @@ def initialise(settings: TelethonManagerSettings) -> TelethonManager:
     """Initialize TelethonManager with settings"""
     sessions_dir = Path(settings.sessions_dir)
     return TelethonManager(
-        settings.api_id, settings.api_hash, sessions_dir, settings.auto_auth
+        settings.api_id,
+        settings.api_hash.get_secret_value(),
+        sessions_dir,
+        settings.auto_auth,
     )
 
 
@@ -281,9 +271,7 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     @add_command("setup_telethon_force", "Force new Telethon client setup")
     @dp.message(Command("setup_telethon_force"))
     async def setup_telethon_force_command(message: Message, state: FSMContext) -> None:
-        await telethon_manager.setup_client(
-            message.from_user.id, state=state, force=True
-        )
+        await telethon_manager.setup_client(message.from_user.id, state=state, force=True)
 
     @add_command("check_telethon", "Check if Telethon client is active")
     @dp.message(Command("check_telethon"))

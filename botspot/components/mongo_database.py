@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 from botspot.utils.internal import get_logger
@@ -12,7 +13,7 @@ logger = get_logger()
 
 class MongoDatabaseSettings(BaseSettings):
     enabled: bool = False
-    conn_str: str = "mongodb://localhost:27017"
+    conn_str: SecretStr = SecretStr("mongodb://localhost:27017")
     database: str = "test"
 
     class Config:
@@ -35,7 +36,7 @@ def initialise(settings: MongoDatabaseSettings) -> "AsyncIOMotorDatabase":
     try:
         from motor.motor_asyncio import AsyncIOMotorClient
 
-        client = AsyncIOMotorClient(settings.conn_str)
+        client = AsyncIOMotorClient(settings.conn_str.get_secret_value())
         db = client[settings.database]
         logger.info("MongoDB client initialized.")
         return db
