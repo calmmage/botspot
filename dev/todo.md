@@ -1,3 +1,5 @@
+- [x] Convert all the api keys in configs to secret_str
+
 # Todos from 06 Jan
 
 - [ ] Add timezone scheduling code from simple cat feeding reminder bot
