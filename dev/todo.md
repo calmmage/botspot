@@ -1,3 +1,8 @@
+# Todos from 25 Jan
+
+- [ ] Add new global setting 'dev_ids' for developer telegram ids. Automatically include them in admins.
+- [ ] convert "send_error_messages" component setting to flag and use dev ids by default
+
 # Todos from 19 Jan
 
 - [ ] Refactor botspot components - split into submodules

@@ -1,0 +1,1 @@
+- [ ] Add support for @username in all user lists (BOTSPOT_FRIENDS, BOTSPOT_ADMINS and possible others)
