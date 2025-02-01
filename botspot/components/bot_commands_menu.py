@@ -137,7 +137,10 @@ def add_command(names=None, description=None, visibility=Visibility.PUBLIC):
         elif isinstance(names, str):
             names = [names]
         if not description:
-            description = func.__doc__.strip() or NO_COMMAND_DESCRIPTION
+            docstring = func.__doc__
+            if docstring is not None:
+                description = docstring.strip()
+            description = docstring or NO_COMMAND_DESCRIPTION
 
         for n in names:
             n = n.lower()
