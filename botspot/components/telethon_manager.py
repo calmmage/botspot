@@ -246,39 +246,17 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     deps = get_dependency_manager()
     telethon_manager = deps.telethon_manager
 
-    @add_command("start", "Start the bot")
-    @dp.message(Command("start"))
-    async def start_command(message: Message) -> None:
-        """Send a welcome message when the command /start is issued"""
-        await message.answer(
-            f"Welcome! This bot helps you manage your Telegram user account.\n"
-            f"Use /help to see available commands."
-        )
-
-    @add_command("help", "Show available commands")
-    @dp.message(Command("help"))
-    async def help_command(message: Message) -> None:
-        """Show help message with available commands"""
-        help_text = (
-            "Available commands:\n"
-            "/setup_telethon - Setup a new Telethon user client\n"
-            "/setup_telethon_force - Force setup of a new Telethon client\n"
-            "/check_telethon - Check if you have an active Telethon client\n"
-            "\nNote: Some commands may require authentication."
-        )
-        await message.answer(help_text)
-
-    @add_command("setup_telethon", "Setup Telethon user client")
+    @add_command("setup_telethon", "Setup Telethon user client", visibility="hidden")
     @dp.message(Command("setup_telethon"))
     async def setup_telethon_command(message: Message, state: FSMContext) -> None:
         await telethon_manager.setup_client(message.from_user.id, state=state)
 
-    @add_command("setup_telethon_force", "Force new Telethon client setup")
+    @add_command("setup_telethon_force", "Force new Telethon client setup", visibility="hidden")
     @dp.message(Command("setup_telethon_force"))
     async def setup_telethon_force_command(message: Message, state: FSMContext) -> None:
         await telethon_manager.setup_client(message.from_user.id, state=state, force=True)
 
-    @add_command("check_telethon", "Check if Telethon client is active")
+    @add_command("check_telethon", "Check if Telethon client is active", visibility="hidden")
     @dp.message(Command("check_telethon"))
     async def check_telethon_handler(message: Message) -> None:
         """Check if user has an active Telethon client"""
