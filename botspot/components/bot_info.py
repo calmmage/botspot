@@ -32,8 +32,8 @@ _start_time = datetime.now()
 
 async def bot_info_handler(message: Message):
     """Show bot information and settings"""
-    from botspot.core.dependency_manager import get_dependency_manager
     import botspot
+    from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
     settings = deps.botspot_settings
@@ -78,4 +78,6 @@ def setup_dispatcher(dp: Dispatcher):
         dp.message.register(bot_info_handler, Command("bot_info"))
         if not settings.bot_info.hide_command:
             # todo: check that bot command menu is enabled
-            add_command("bot_info", "Show bot information and status")(bot_info_handler)
+            add_command("bot_info", "Show bot information and status", visibility="hidden")(
+                bot_info_handler
+            )
