@@ -248,7 +248,7 @@ class UserDataSettings(BaseSettings):
         extra = "ignore"
 
 
-def initialise(user_class=None, **kwargs) -> UserManager:
+def initialize(user_class=None, **kwargs) -> UserManager:
     """Initialize the user data component"""
     from botspot.core.dependency_manager import get_dependency_manager
 

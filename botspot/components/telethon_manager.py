@@ -218,8 +218,13 @@ class TelethonManager:
             return None
 
 
-def initialise(settings: TelethonManagerSettings) -> TelethonManager:
+def initialize(settings: TelethonManagerSettings) -> TelethonManager:
     """Initialize TelethonManager with settings"""
+    # Check that Telethon is installed
+    import telethon
+
+    assert telethon
+
     sessions_dir = Path(settings.sessions_dir)
     return TelethonManager(
         settings.api_id,
