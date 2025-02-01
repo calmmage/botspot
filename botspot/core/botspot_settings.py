@@ -17,8 +17,16 @@ from botspot.utils.send_safe import SendSafeSettings
 class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
 
-    admins: list[int] = Field(default_factory=list)  # Default admin
-    friends: list[int] = Field(default_factory=list)  # List of friend user IDs
+    admins: list[int] = Field(
+        default_factory=list,
+        description="Default admin",
+        json_schema_extra={"format": "comma_separated"},
+    )
+    friends: list[int] = Field(
+        default_factory=list,
+        description="List of friend user IDs",
+        json_schema_extra={"format": "comma_separated"},
+    )
 
     ask_user: AskUserSettings = AskUserSettings()
     bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()
