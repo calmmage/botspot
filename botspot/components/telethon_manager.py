@@ -166,7 +166,7 @@ class TelethonManager:
             # Ask for verification code
             code = await ask_user(
                 user_id,
-                "Please enter the verification code you received. ADD SPACES BETWEEN THE DIGITS OR TELEGRAM WILL NOT BLOCK THE CODE:",
+                "Please enter MODIFIED verification code as follows: YOUR CODE splitted with spaces e.g '21694' -> '2 1 6 9 4' or telegram WILL BLOCK IT",
                 state,
                 timeout=300.0,
                 cleanup=True,
@@ -174,6 +174,13 @@ class TelethonManager:
 
             if not code:
                 await send_safe(user_id, "Setup cancelled - no verification code provided.")
+                return None
+
+            if " " not in code.strip():
+                await send_safe(
+                    user_id,
+                    "Setup cancelled - YOU DID NOT split the code with spaces like this: '2 1 6 9 4'",
+                )
                 return None
 
             code = code.replace(" ", "")
