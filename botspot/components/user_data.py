@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
@@ -36,9 +37,11 @@ class User(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     timezone: Optional[str] = "UTC"
+    # location: Optional[dict] = None  # Can store coordinates or location name
     user_type: UserType = UserType.REGULAR
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # settings: dict = Field(default_factory=dict)  # For component-specific settings
 
     @property
     def full_name(self) -> str:
@@ -46,29 +49,6 @@ class User(BaseModel):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
         return self.first_name or self.username or str(self.user_id)
-
-    def merge_with(self, other: "User") -> bool:
-        """
-        Merge another user's data into this one.
-        Returns True if merge was successful, False if there were conflicts.
-        """
-        for field in self.model_fields:
-            other_value = getattr(other, field)
-            if other_value is not None:
-                current_value = getattr(self, field)
-                if current_value is None or field in [
-                    "last_active",
-                    "username",
-                    "first_name",
-                    "last_name",
-                ]:
-                    setattr(self, field, other_value)
-                elif current_value != other_value and field not in [
-                    "user_id",
-                    "created_at",
-                ]:
-                    return False
-        return True
 
 
 class UserManager:
@@ -102,15 +82,27 @@ class UserManager:
 
             existing = await self.get_user(user.user_id)
             if existing:
-                if not existing.merge_with(user):
-                    raise ValueError("Conflict in user data during merge")
-                user = existing
+                raise ValueError("User already exists - cannot add")
 
             await self.db[self.collection].update_one(
                 {"user_id": user.user_id}, {"$set": user.model_dump()}, upsert=True
             )
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to add user {user.user_id}: {e}")
+            logger.debug(traceback.format_exc())
+            return False
+
+    async def update_user(self, user_id: int, field: str, value: Any) -> bool:
+        """Update a user's field"""
+        try:
+            await self.db[self.collection].update_one(
+                {"user_id": user_id}, {"$set": {field: value}}
+            )
+            logger.debug(f"Updated user {user_id} field {field} to {value}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update user {user_id} field {field}: {e}")
             return False
 
     # todo: make sure this works with username as well
@@ -118,6 +110,10 @@ class UserManager:
         """Get user by ID"""
         data = await self.db[self.collection].find_one({"user_id": user_id})
         return self.user_class(**data) if data else None
+
+    async def has_user(self, user_id: int) -> bool:
+        """Check if user exists in the database"""
+        return bool(await self.get_user(user_id))
 
     async def update_last_active(self, user_id: int) -> None:
         """Update user's last active timestamp"""
@@ -217,13 +213,14 @@ class UserTrackingMiddleware(BaseMiddleware):
             # Skip DB operations if user was recently processed
             if not self._is_cache_valid(user_id):
                 user_manager = get_user_manager()
-                user = user_manager.user_class(
-                    user_id=user_id,
-                    username=event.from_user.username,
-                    first_name=event.from_user.first_name,
-                    last_name=event.from_user.last_name,
-                )
-                await user_manager.add_user(user)
+                if not await user_manager.has_user(user_id):
+                    user = user_manager.user_class(
+                        user_id=user_id,
+                        username=event.from_user.username,
+                        first_name=event.from_user.first_name,
+                        last_name=event.from_user.last_name,
+                    )
+                    await user_manager.add_user(user)
                 await user_manager.update_last_active(user_id)
 
                 # Update cache
@@ -248,7 +245,7 @@ class UserDataSettings(BaseSettings):
         extra = "ignore"
 
 
-def initialise(user_class=None, **kwargs) -> UserManager:
+def initialize(user_class=None, **kwargs) -> UserManager:
     """Initialize the user data component"""
     from botspot.core.dependency_manager import get_dependency_manager
 

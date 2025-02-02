@@ -24,7 +24,7 @@ class EventSchedulerSettings(BaseSettings):
         extra = "ignore"
 
 
-def initialise(settings: EventSchedulerSettings) -> Optional["AsyncIOScheduler"]:
+def initialize(settings: EventSchedulerSettings) -> Optional["AsyncIOScheduler"]:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
     if not settings.enabled:
