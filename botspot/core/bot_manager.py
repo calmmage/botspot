@@ -7,6 +7,7 @@ from typing import Optional, Type
 from aiogram import Bot, Dispatcher
 from loguru import logger
 
+from botspot import __version__
 from botspot.components import (
     ask_user_handler,
     bot_commands_menu,
@@ -34,6 +35,7 @@ class BotManager(metaclass=Singleton):
         **kwargs,
     ):
         self.settings = BotspotSettings(**kwargs)
+        logger.info(f"Using Botspot version {__version__}")
         logger.info(
             f"Initializing BotManager with config: {self.settings.model_dump_json(indent=2)}"
         )
