@@ -21,7 +21,7 @@ from botspot.components import (
     trial_mode,
     user_data,
 )
-from botspot.components.user_data import User
+from botspot.components.data.user_data import User
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 from botspot.utils.internal import Singleton

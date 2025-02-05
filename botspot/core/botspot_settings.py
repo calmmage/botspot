@@ -1,28 +1,30 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-from botspot.components.ask_user_handler import AskUserSettings
-from botspot.components.bot_commands_menu import BotCommandsMenuSettings
-from botspot.components.bot_info import BotInfoSettings
-from botspot.components.error_handler import ErrorHandlerSettings
-from botspot.components.event_scheduler import EventSchedulerSettings
-from botspot.components.mongo_database import MongoDatabaseSettings
-from botspot.components.print_bot_url import PrintBotUrlSettings
-from botspot.components.single_user_mode import SingleUserModeSettings
-from botspot.components.telethon_manager import TelethonManagerSettings
-from botspot.components.trial_mode import TrialModeSettings
-from botspot.components.user_data import UserDataSettings
+from botspot.components.data.mongo_database import MongoDatabaseSettings
+from botspot.components.data.user_data import UserDataSettings
+from botspot.components.features.ask_user_handler import AskUserSettings
+from botspot.components.main.event_scheduler import EventSchedulerSettings
+from botspot.components.main.single_user_mode import SingleUserModeSettings
+from botspot.components.main.telethon_manager import TelethonManagerSettings
+from botspot.components.main.trial_mode import TrialModeSettings
+from botspot.components.middlewares.error_handler import ErrorHandlerSettings
+from botspot.components.settings.bot_commands_menu import BotCommandsMenuSettings
+from botspot.components.settings.bot_info import BotInfoSettings
+from botspot.components.utils.print_bot_url import PrintBotUrlSettings
 from botspot.utils.send_safe import SendSafeSettings
 
 
 class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
 
+    # noinspection PyDataclass
     admins: list[int] = Field(
         default_factory=list,
         description="Default admin",
         json_schema_extra={"format": "comma_separated"},
     )
+    # noinspection PyDataclass
     friends: list[str] = Field(
         default_factory=list,
         description="List of friend user IDs",
@@ -38,9 +40,9 @@ class BotspotSettings(BaseSettings):
     print_bot_url: PrintBotUrlSettings = PrintBotUrlSettings()
     telethon_manager: TelethonManagerSettings = TelethonManagerSettings()
     trial_mode: TrialModeSettings = TrialModeSettings()
-    send_safe: SendSafeSettings = SendSafeSettings()
     user_data: UserDataSettings = UserDataSettings()
     single_user_mode: SingleUserModeSettings = SingleUserModeSettings()
+    send_safe: SendSafeSettings = SendSafeSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"

@@ -16,10 +16,10 @@ if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
     from aiogram.fsm.context import FSMContext
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorDatabase
+    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
     from telethon import TelegramClient
 
-    from botspot.components.telethon_manager import TelethonManager
+    from botspot.components.main.telethon_manager import TelethonManager
 
 
 def get_bot() -> "Bot":

@@ -6,7 +6,7 @@ from aiogram.types import Message, TelegramObject, Update
 from loguru import logger
 from pydantic_settings import BaseSettings
 
-from botspot.utils import UserRecord, compare_users, send_safe
+from botspot.utils import compare_users, send_safe, to_user_record
 
 
 class SingleUserModeSettings(BaseSettings):
@@ -45,7 +45,7 @@ async def single_user_mode_middleware(
         logger.debug(f"Event {type(message)} has no from_user attribute - ignoring")
         return
 
-    user_record = UserRecord(user_id=message.from_user.id, username=message.from_user.username)
+    user_record = to_user_record(message.from_user)
 
     if compare_users(user_record, settings.user):
         logger.debug(f"Single user mode: user {user_record} is allowed")

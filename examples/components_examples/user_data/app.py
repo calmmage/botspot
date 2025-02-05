@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 from pydantic_settings import BaseSettings
 
-from botspot.components.user_data import User
+from botspot.components.user_data import User, UserManager
 from botspot.utils.deps_getters import get_user_manager
 
 
@@ -40,7 +40,7 @@ class App:
         self._user_manager = None
 
     @property
-    def user_manager(self) -> "UserManager":
+    def user_manager(self) -> UserManager:
         """Get user manager with custom user class"""
         if self._user_manager is None:
             self._user_manager = get_user_manager()
@@ -54,12 +54,7 @@ class App:
 
     async def set_user_type(self, user_id: int, user_type: UserType) -> bool:
         """Set user type for a user"""
-        user = await self.get_user(user_id)
-        if not user:
-            return False
-
-        user.user_type = user_type
-        return await self.user_manager.add_user(user)
+        await self.user_manager.update_user(user_id, "user_type", user_type)
 
     async def is_admin(self, user_id: int) -> bool:
         """Check if user is admin"""

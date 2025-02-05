@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
-from botspot.components.bot_commands_menu import add_command
+from botspot.components.settings.bot_commands_menu import Visibility, add_command
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -76,8 +76,9 @@ def setup_dispatcher(dp: Dispatcher):
 
     if settings.bot_info.enabled:
         dp.message.register(bot_info_handler, Command("bot_info"))
+
         if not settings.bot_info.hide_command:
             # todo: check that bot command menu is enabled
-            add_command("bot_info", "Show bot information and status", visibility="hidden")(
-                bot_info_handler
-            )
+            add_command(
+                "bot_info", "Show bot information and status", visibility=Visibility.ADMIN_ONLY
+            )(bot_info_handler)

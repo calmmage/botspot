@@ -15,7 +15,7 @@ from botspot.utils.deps_getters import get_database, get_user_manager
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
+    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.core.botspot_settings import BotspotSettings
 
