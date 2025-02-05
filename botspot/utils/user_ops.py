@@ -73,3 +73,18 @@ def get_user_record(user_key: str):
         return UserRecord(username=user_key.lstrip("@"))
     else:
         return UserRecord(user_id=int(user_key))
+
+
+# admin only telegram filter
+def is_admin(user: UserLike) -> bool:
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    return any([compare_users(user, admin) for admin in deps.botspot_settings.admins])
+
+
+def is_friend(user: UserLike) -> bool:
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    return any([compare_users(user, friend) for friend in deps.botspot_settings.friends])

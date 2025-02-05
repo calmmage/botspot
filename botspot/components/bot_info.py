@@ -13,7 +13,7 @@ logger = get_logger()
 
 class BotInfoSettings(BaseSettings):
     enabled: bool = True
-    hide_command: bool = True  # hide command from bot command menu
+    hide_command: bool = False  # hide command from bot command menu
     show_detailed_settings: bool = True
 
     # todo: admin_only (only show to admins)

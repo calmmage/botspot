@@ -23,7 +23,7 @@ class BotspotSettings(BaseSettings):
         description="Default admin",
         json_schema_extra={"format": "comma_separated"},
     )
-    friends: list[int] = Field(
+    friends: list[str] = Field(
         default_factory=list,
         description="List of friend user IDs",
         json_schema_extra={"format": "comma_separated"},
