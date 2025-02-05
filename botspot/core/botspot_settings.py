@@ -8,6 +8,7 @@ from botspot.components.error_handler import ErrorHandlerSettings
 from botspot.components.event_scheduler import EventSchedulerSettings
 from botspot.components.mongo_database import MongoDatabaseSettings
 from botspot.components.print_bot_url import PrintBotUrlSettings
+from botspot.components.single_user_mode import SingleUserModeSettings
 from botspot.components.telethon_manager import TelethonManagerSettings
 from botspot.components.trial_mode import TrialModeSettings
 from botspot.components.user_data import UserDataSettings
@@ -39,6 +40,7 @@ class BotspotSettings(BaseSettings):
     trial_mode: TrialModeSettings = TrialModeSettings()
     send_safe: SendSafeSettings = SendSafeSettings()
     user_data: UserDataSettings = UserDataSettings()
+    single_user_mode: SingleUserModeSettings = SingleUserModeSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
