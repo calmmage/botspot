@@ -67,6 +67,7 @@ class TelethonManager:
                 return client
 
             logger.info(f"Session exists but not authorized for user {user_id}")
+            # todo: delete the file here and now - so that next attempt will try again..
             return None
 
         except Exception as e:
@@ -247,7 +248,7 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     from aiogram.fsm.context import FSMContext
     from aiogram.types import Message
 
-    from botspot.components.bot_commands_menu import add_command
+    from botspot.components.settings.bot_commands_menu import add_command
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()

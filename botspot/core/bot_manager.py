@@ -55,12 +55,10 @@ class BotManager(metaclass=Singleton):
             self.deps.telethon_manager = telethon_manager.initialize(self.settings.telethon_manager)
 
         if self.settings.user_data.enabled:
-            self.deps.user_manager = user_data.initialize(
-                user_class=user_class, **self.settings.user_data.model_dump()
-            )
+            self.deps.user_manager = user_data.initialize(self.settings, user_class=user_class)
 
         if self.settings.single_user_mode.enabled:
-            single_user_mode.initialize()
+            single_user_mode.initialize(self.settings.single_user_mode)
 
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""

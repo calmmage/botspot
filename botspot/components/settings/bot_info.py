@@ -54,7 +54,7 @@ async def bot_info_handler(message: Message):
     ]
 
     # Add enabled components
-    for field in settings.__fields__:
+    for field in settings.model_fields:
         component_settings = getattr(settings, field)
         if hasattr(component_settings, "enabled"):
             status = "✅" if component_settings.enabled else "❌"

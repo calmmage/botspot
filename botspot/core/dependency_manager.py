@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
 
+    from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
-    from botspot.components.user_data import UserManager
 
 
 class DependencyManager(metaclass=Singleton):

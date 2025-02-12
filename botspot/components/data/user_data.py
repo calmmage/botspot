@@ -116,7 +116,7 @@ class UserManager:
 
     @property
     def users_collection(self) -> "AsyncIOMotorCollection":
-        return self.users_collection
+        return self.db[self.collection]
 
     async def find_user(
         self,
@@ -302,25 +302,18 @@ class UserDataSettings(BaseSettings):
         extra = "ignore"
 
 
-def initialize(user_class=None, **kwargs) -> UserManager:
+def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
     """Initialize the user data component"""
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    settings = UserDataSettings(**kwargs)
-    if not settings.enabled:
-        return None
-
     db = get_database()
-    deps = get_dependency_manager()
 
     if user_class is None:
         user_class = User
 
     return UserManager(
         db=db,
-        collection=settings.collection,
+        collection=settings.user_data.collection,
         user_class=user_class,
-        settings=deps.botspot_settings,
+        settings=settings,
     )
 
 
@@ -335,7 +328,7 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
 
     if settings.user_types_enabled:
         from botspot.components import bot_commands_menu
-        from botspot.components.bot_commands_menu import Visibility
+        from botspot.components.settings.bot_commands_menu import Visibility
 
         router = Router(name="user_data")
         router.message.filter(AdminFilter())  # Only admins can use these commands

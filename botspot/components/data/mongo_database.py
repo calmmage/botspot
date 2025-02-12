@@ -29,10 +29,6 @@ def setup_dispatcher(dp):
 
 def initialize(settings: MongoDatabaseSettings) -> "AsyncIOMotorDatabase":
     """Initialize MongoDB connection."""
-    if not settings.enabled:
-        logger.info("MongoDB is disabled.")
-        return None
-
     from motor.motor_asyncio import AsyncIOMotorClient
 
     assert AsyncIOMotorClient
