@@ -9,7 +9,7 @@ from aiogram import Dispatcher
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
-from botspot.components.ask_user_handler import ask_user
+from botspot.components.features.ask_user_handler import ask_user
 from botspot.utils.internal import get_logger
 from botspot.utils.send_safe import send_safe
 
@@ -67,6 +67,7 @@ class TelethonManager:
                 return client
 
             logger.info(f"Session exists but not authorized for user {user_id}")
+            # todo: delete the file here and now - so that next attempt will try again..
             return None
 
         except Exception as e:
@@ -166,7 +167,7 @@ class TelethonManager:
             # Ask for verification code
             code = await ask_user(
                 user_id,
-                "Please enter the verification code you received. ADD SPACES BETWEEN THE DIGITS OR TELEGRAM WILL NOT BLOCK THE CODE:",
+                "Please enter MODIFIED verification code as follows: YOUR CODE splitted with spaces e.g '21694' -> '2 1 6 9 4' or telegram WILL BLOCK IT",
                 state,
                 timeout=300.0,
                 cleanup=True,
@@ -174,6 +175,13 @@ class TelethonManager:
 
             if not code:
                 await send_safe(user_id, "Setup cancelled - no verification code provided.")
+                return None
+
+            if " " not in code.strip():
+                await send_safe(
+                    user_id,
+                    "Setup cancelled - YOU DID NOT split the code with spaces like this: '2 1 6 9 4'",
+                )
                 return None
 
             code = code.replace(" ", "")
@@ -240,7 +248,7 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     from aiogram.fsm.context import FSMContext
     from aiogram.types import Message
 
-    from botspot.components.bot_commands_menu import add_command
+    from botspot.components.settings.bot_commands_menu import add_command
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()

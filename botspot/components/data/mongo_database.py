@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorDatabase
+    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
 
 logger = get_logger()
 
@@ -29,10 +29,6 @@ def setup_dispatcher(dp):
 
 def initialize(settings: MongoDatabaseSettings) -> "AsyncIOMotorDatabase":
     """Initialize MongoDB connection."""
-    if not settings.enabled:
-        logger.info("MongoDB is disabled.")
-        return None
-
     from motor.motor_asyncio import AsyncIOMotorClient
 
     assert AsyncIOMotorClient

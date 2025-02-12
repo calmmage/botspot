@@ -16,11 +16,12 @@ from botspot.components import (
     event_scheduler,
     mongo_database,
     print_bot_url,
+    single_user_mode,
     telethon_manager,
     trial_mode,
     user_data,
 )
-from botspot.components.user_data import User
+from botspot.components.data.user_data import User
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 from botspot.utils.internal import Singleton
@@ -54,13 +55,19 @@ class BotManager(metaclass=Singleton):
             self.deps.telethon_manager = telethon_manager.initialize(self.settings.telethon_manager)
 
         if self.settings.user_data.enabled:
-            self.deps.user_manager = user_data.initialize(
-                user_class=user_class, **self.settings.user_data.model_dump()
-            )
+            self.deps.user_manager = user_data.initialize(self.settings, user_class=user_class)
+
+        if self.settings.single_user_mode.enabled:
+            single_user_mode.initialize(self.settings.single_user_mode)
 
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
         # Remove global bot check - each component handles its own requirements
+        if self.settings.user_data.enabled:
+            user_data.setup_dispatcher(dp, **self.settings.user_data.model_dump())
+
+        if self.settings.single_user_mode.enabled:
+            single_user_mode.setup_dispatcher(dp)
 
         if self.settings.error_handling.enabled:
             error_handler.setup_dispatcher(dp)
@@ -91,6 +98,3 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.telethon_manager.enabled:
             telethon_manager.setup_dispatcher(dp)
-
-        if self.settings.user_data.enabled:
-            user_data.setup_dispatcher(dp, **self.settings.user_data.model_dump())

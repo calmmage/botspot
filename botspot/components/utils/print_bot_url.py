@@ -1,4 +1,4 @@
-from aiogram import Dispatcher, Bot
+from aiogram import Bot, Dispatcher
 from pydantic_settings import BaseSettings
 
 from botspot.utils.internal import get_logger

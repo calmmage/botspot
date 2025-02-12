@@ -1,96 +1,25 @@
-# python-project-template
+# Botspot
 
-## setup
+A collection of cross-integrated utils and components for Telegram bots.
 
-```shell
-pre-commit install
+## Description
+
+Botspot features 3 main sections:
+- core
+configure and connect the botspot components to your aiogram dispatcher
+- components
+featured: user_data
+- utils
+featured: send_safe
+
+## Quick Start
+
+1. Clone template repository https://github.com/calmmage/botspot-template
+2. Enable/disable components with example.env
+3. Run the bot with run.py
+4. You can see component usage examples at https://github.com/calmmage/botspot/tree/main/examples
+5. Generally, you can access components via singleton `deps` object and deps_getters utils 
+```python
+from botspot.utils.deps_getters import get_bot, get_database, get_scheduler
 ```
 
-## More libs to use if you want
-
-```toml
-# http framework
-# fastapi = "*"
-
-# request libs
-# uvicorn = "*"
-# httpx = "*"
-
-# CLI libs
-# typer = "*"
-# click = "*"
-# fire = "*"
-# beaupy = "*"
-
-# UI / frontend libs
-# fastui = "*"
-# streamlit = "*"
-# dash = "*"
-
-# data models
-# pydantic = "*"
-# pydantic-settings = "*"
-
-# data processing
-# pandas = "*"
-# numpy = "*"
-# scipy = "*"
-
-# data visualization
-# matplotlib = "*"
-# seaborn = "*"
-# plotly = "*"
-# altair = "*"
-
-# ml
-# scikit-learn = "*"
-# statsmodels = "*"
-# dask = "*"
-# xgboost = "*"
-
-# apis
-# openapi = "*"
-# graphql = "*"
-
-# libs - google drive, dropbox, git
-# pydrive2 = "*"
-# google-api-python-client = "*"
-# dropbox = "*"
-# gitpython = "*"
-
-# ---------------------------------
-
-# utils
-# pyperclip = "*"
-# pydub = "*"
-# pytz = "*"
-# python-dotenv = "*"
-
-# random untested libs
-# python-magic = "*"
-# beautifulsoup4 = "*"
-# dateparser = "*"
-# emoji = "*"
-# humanize = "*"
-# inflection = "*"
-# phonenumbers = "*"
-# qrcode = "*"
-# wordcloud = "*"
-# pyyaml = "*"
-# toml = "*"
-# json5 = "*"
-# dataclasses = "*"
-# dataclasses-json = "*"
-
-# db
-# sqlalchemy = "*"
-# asyncpg = "*"
-# databases = "*"
-# vertex = "*"
-# mongoengine = "*"
-
-# testing
-# hypothesis = "*"
-# pytest-cov = "*"
-# pytest-asyncio = "*"
-```

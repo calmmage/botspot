@@ -5,7 +5,6 @@ from typing import Dict, List, NamedTuple, Tuple
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import BotCommand, Message
-from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from botspot.utils.admin_filter import AdminFilter

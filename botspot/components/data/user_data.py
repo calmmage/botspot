@@ -9,12 +9,13 @@ from aiogram.types import Message, TelegramObject
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+from botspot.utils import compare_users
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.deps_getters import get_database, get_user_manager
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorDatabase
+    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.core.botspot_settings import BotspotSettings
 
@@ -75,7 +76,7 @@ class UserManager:
             # Set user type based on settings
             if user.user_id in self.settings.admins:
                 user.user_type = UserType.ADMIN
-            elif user.user_id in self.settings.friends:
+            elif any([compare_users(user, friend) for friend in self.settings.friends]):
                 user.user_type = UserType.FRIEND
             else:
                 user.user_type = UserType.REGULAR
@@ -84,7 +85,7 @@ class UserManager:
             if existing:
                 raise ValueError("User already exists - cannot add")
 
-            await self.db[self.collection].update_one(
+            await self.users_collection.update_one(
                 {"user_id": user.user_id}, {"$set": user.model_dump()}, upsert=True
             )
             return True
@@ -96,9 +97,7 @@ class UserManager:
     async def update_user(self, user_id: int, field: str, value: Any) -> bool:
         """Update a user's field"""
         try:
-            await self.db[self.collection].update_one(
-                {"user_id": user_id}, {"$set": {field: value}}
-            )
+            await self.users_collection.update_one({"user_id": user_id}, {"$set": {field: value}})
             logger.debug(f"Updated user {user_id} field {field} to {value}")
             return True
         except Exception as e:
@@ -108,16 +107,52 @@ class UserManager:
     # todo: make sure this works with username as well
     async def get_user(self, user_id: int) -> Optional[User]:
         """Get user by ID"""
-        data = await self.db[self.collection].find_one({"user_id": user_id})
+        data = await self.users_collection.find_one({"user_id": user_id})
         return self.user_class(**data) if data else None
 
     async def has_user(self, user_id: int) -> bool:
         """Check if user exists in the database"""
         return bool(await self.get_user(user_id))
 
+    @property
+    def users_collection(self) -> "AsyncIOMotorCollection":
+        return self.db[self.collection]
+
+    async def find_user(
+        self,
+        user_id: Optional[int] = None,
+        username: Optional[str] = None,
+        phone: Optional[str] = None,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+    ) -> Optional[User]:
+        """Find user by any of the fields"""
+        if not any([user_id, username, phone, first_name, last_name]):
+            raise ValueError("find_user requires at least one of the fields")
+        # if direct fields are provided - use them
+        if any([user_id, username, phone]):
+            return await self.users_collection.find_one(
+                {
+                    "$or": [
+                        {"user_id": user_id} if user_id else None,
+                        {"username": username} if username else None,
+                        {"phone": phone} if phone else None,
+                    ]
+                }
+            )
+        # if not - use fuzzy match on name
+        return await self.users_collection.find_one(
+            {
+                "$and": [
+                    {"first_name": first_name} if first_name else None,
+                    {"last_name": last_name} if last_name else None,
+                ]
+            }
+        )
+
     async def update_last_active(self, user_id: int) -> None:
         """Update user's last active timestamp"""
-        await self.db[self.collection].update_one(
+        await self.users_collection.update_one(
             {"user_id": user_id}, {"$set": {"last_active": datetime.now(timezone.utc)}}
         )
 
@@ -130,7 +165,7 @@ class UserManager:
                 return False
 
             user.user_type = UserType.FRIEND
-            await self.db[self.collection].update_one(
+            await self.users_collection.update_one(
                 {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
             )
             return True
@@ -148,7 +183,7 @@ class UserManager:
             # Update admins
             if self.settings.admins:
                 # Promote current admins
-                result = await self.db[self.collection].update_many(
+                result = await self.users_collection.update_many(
                     {"user_id": {"$in": list(self.settings.admins)}},
                     {"$set": {"user_type": UserType.ADMIN}},
                 )
@@ -156,7 +191,7 @@ class UserManager:
                     logger.info(f"Promoted {result.modified_count} users to admin")
 
                 # Demote former admins
-                result = await self.db[self.collection].update_many(
+                result = await self.users_collection.update_many(
                     {
                         "user_id": {"$nin": list(self.settings.admins)},
                         "user_type": UserType.ADMIN,
@@ -168,19 +203,41 @@ class UserManager:
 
             # Update friends (only promote, don't demote)
             if self.settings.friends:
-                result = await self.db[self.collection].update_many(
-                    {
-                        "user_id": {"$in": list(self.settings.friends)},
-                        "user_type": UserType.REGULAR,  # Only update if regular user
-                    },
-                    {"$set": {"user_type": UserType.FRIEND}},
-                )
-                if result.modified_count:
-                    logger.info(f"Promoted {result.modified_count} users to friends")
-
+                await self._promote_friends()
         except Exception as e:
             logger.error(f"Failed to sync user types: {e}")
             raise  # Re-raise to handle in startup
+
+    async def _promote_friends(self):
+        # handle int and str cases
+        friends_ids = []
+        friends_usernames = []
+        for friend in self.settings.friends:
+            try:
+                friends_ids.append(int(friend))
+            except ValueError:
+                friends_usernames.append(friend.lstrip("@"))
+        res = 0
+        if friends_ids:
+            result = await self.users_collection.update_many(
+                {
+                    "user_id": {"$in": friends_ids},
+                    "user_type": UserType.REGULAR,  # Only update if regular user
+                },
+                {"$set": {"user_type": UserType.FRIEND}},
+            )
+            res += result.modified_count
+        if friends_usernames:
+            result = await self.users_collection.update_many(
+                {
+                    "username": {"$in": friends_usernames},
+                    "user_type": UserType.REGULAR,  # Only update if regular user
+                },
+                {"$set": {"user_type": UserType.FRIEND}},
+            )
+            res += result.modified_count
+        if res:
+            logger.info(f"Promoted {res} users to friends")
 
 
 class UserTrackingMiddleware(BaseMiddleware):
@@ -245,25 +302,18 @@ class UserDataSettings(BaseSettings):
         extra = "ignore"
 
 
-def initialize(user_class=None, **kwargs) -> UserManager:
+def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
     """Initialize the user data component"""
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    settings = UserDataSettings(**kwargs)
-    if not settings.enabled:
-        return None
-
     db = get_database()
-    deps = get_dependency_manager()
 
     if user_class is None:
         user_class = User
 
     return UserManager(
         db=db,
-        collection=settings.collection,
+        collection=settings.user_data.collection,
         user_class=user_class,
-        settings=deps.botspot_settings,
+        settings=settings,
     )
 
 
@@ -278,7 +328,7 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
 
     if settings.user_types_enabled:
         from botspot.components import bot_commands_menu
-        from botspot.components.bot_commands_menu import Visibility
+        from botspot.components.settings.bot_commands_menu import Visibility
 
         router = Router(name="user_data")
         router.message.filter(AdminFilter())  # Only admins can use these commands
