@@ -7,13 +7,13 @@ def test_core_imports():
 
 
 def test_components_imports():
-    from botspot.components.ask_user_handler import AskUserSettings
-    from botspot.components.bot_commands_menu import BotCommandsMenuSettings
-    from botspot.components.error_handler import ErrorHandlerSettings
-    from botspot.components.event_scheduler import EventSchedulerSettings
-    from botspot.components.mongo_database import MongoDatabaseSettings
-    from botspot.components.print_bot_url import PrintBotUrlSettings
-    from botspot.components.trial_mode import TrialModeSettings
+    from botspot.components.data.mongo_database import MongoDatabaseSettings
+    from botspot.components.features.ask_user_handler import AskUserSettings
+    from botspot.components.main.event_scheduler import EventSchedulerSettings
+    from botspot.components.main.trial_mode import TrialModeSettings
+    from botspot.components.middlewares.error_handler import ErrorHandlerSettings
+    from botspot.components.settings.bot_commands_menu import BotCommandsMenuSettings
+    from botspot.components.utils.print_bot_url import PrintBotUrlSettings
 
     assert AskUserSettings
     assert BotCommandsMenuSettings
@@ -25,8 +25,15 @@ def test_components_imports():
 
 
 def test_utils_imports():
-    from botspot.utils import send_safe, reply_safe, answer_safe
-    from botspot.utils import get_user, get_name, get_message_text, strip_command
+    from botspot.utils import (
+        answer_safe,
+        get_message_text,
+        get_name,
+        get_user,
+        reply_safe,
+        send_safe,
+        strip_command,
+    )
 
     assert send_safe
     assert reply_safe
