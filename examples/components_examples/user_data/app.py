@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 from pydantic_settings import BaseSettings
 
-from botspot.components.user_data import User, UserManager
+from botspot.components.data.user_data import User, UserManager
 from botspot.utils.deps_getters import get_user_manager
 
 

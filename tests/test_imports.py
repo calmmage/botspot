@@ -8,12 +8,12 @@ def test_core_imports():
 
 def test_components_imports():
     from botspot.components.data.mongo_database import MongoDatabaseSettings
-    from botspot.components.features.ask_user_handler import AskUserSettings
+    from botspot.components.features.user_interactions import AskUserSettings
     from botspot.components.main.event_scheduler import EventSchedulerSettings
     from botspot.components.main.trial_mode import TrialModeSettings
     from botspot.components.middlewares.error_handler import ErrorHandlerSettings
-    from botspot.components.settings.bot_commands_menu import BotCommandsMenuSettings
-    from botspot.components.utils.print_bot_url import PrintBotUrlSettings
+    from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
+    from botspot.components.qol.print_bot_url import PrintBotUrlSettings
 
     assert AskUserSettings
     assert BotCommandsMenuSettings

@@ -1,3 +1,8 @@
+# Todos from 26 Jan
+
+- [ ] Add support for @username in all user lists (BOTSPOT_FRIENDS, BOTSPOT_ADMINS and
+  possible others)
+
 # Todos from 25 Jan
 
 - [ ] Add new global setting 'dev_ids' for developer telegram ids. Automatically include them in admins.

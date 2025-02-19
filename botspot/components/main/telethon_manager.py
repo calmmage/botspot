@@ -9,7 +9,7 @@ from aiogram import Dispatcher
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
-from botspot.components.features.ask_user_handler import ask_user
+from botspot.components.features.user_interactions import ask_user
 from botspot.utils.internal import get_logger
 from botspot.utils.send_safe import send_safe
 

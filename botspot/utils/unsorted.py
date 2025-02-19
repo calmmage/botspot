@@ -29,6 +29,7 @@ async def get_message_text(message: Message, as_markdown=False, include_reply=Fa
     :return: extracted text concatenated from all sources
     """
     result = await _extract_message_text(message, as_markdown, include_reply, as_dict=True)
+    # todo: if context_builder component enabled - augment with context from middleware
     return "\n\n".join(result.values())
 
 

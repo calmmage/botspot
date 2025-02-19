@@ -3,15 +3,15 @@ from pydantic_settings import BaseSettings
 
 from botspot.components.data.mongo_database import MongoDatabaseSettings
 from botspot.components.data.user_data import UserDataSettings
-from botspot.components.features.ask_user_handler import AskUserSettings
+from botspot.components.features.user_interactions import AskUserSettings
 from botspot.components.main.event_scheduler import EventSchedulerSettings
 from botspot.components.main.single_user_mode import SingleUserModeSettings
 from botspot.components.main.telethon_manager import TelethonManagerSettings
 from botspot.components.main.trial_mode import TrialModeSettings
 from botspot.components.middlewares.error_handler import ErrorHandlerSettings
-from botspot.components.settings.bot_commands_menu import BotCommandsMenuSettings
-from botspot.components.settings.bot_info import BotInfoSettings
-from botspot.components.utils.print_bot_url import PrintBotUrlSettings
+from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
+from botspot.components.qol.bot_info import BotInfoSettings
+from botspot.components.qol.print_bot_url import PrintBotUrlSettings
 from botspot.utils.send_safe import SendSafeSettings
 
 
