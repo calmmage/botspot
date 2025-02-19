@@ -8,20 +8,12 @@ from aiogram import Bot, Dispatcher
 from loguru import logger
 
 from botspot import __version__
-from botspot.components import (
-    ask_user_handler,
-    bot_commands_menu,
-    bot_info,
-    error_handler,
-    event_scheduler,
-    mongo_database,
-    print_bot_url,
-    single_user_mode,
-    telethon_manager,
-    trial_mode,
-    user_data,
-)
+from botspot.components.data import mongo_database, user_data
 from botspot.components.data.user_data import User
+from botspot.components.features import user_interactions
+from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
+from botspot.components.middlewares import error_handler
+from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 from botspot.utils.internal import Singleton
@@ -88,7 +80,7 @@ class BotManager(metaclass=Singleton):
             if not self.deps.bot:
                 raise RuntimeError("Bot instance is required for ask_user functionality")
 
-            ask_user_handler.setup_dispatcher(dp)
+            user_interactions.setup_dispatcher(dp)
 
         if self.settings.bot_info.enabled:
             bot_info.setup_dispatcher(dp)

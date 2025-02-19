@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
-from botspot.components.settings.bot_commands_menu import Visibility, add_command
+from botspot.components.qol.bot_commands_menu import Visibility, add_command
 from botspot.utils.internal import get_logger
 
 logger = get_logger()

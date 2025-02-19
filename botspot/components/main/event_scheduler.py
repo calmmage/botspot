@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from aiogram import Dispatcher
 from pydantic_settings import BaseSettings
 
+from botspot.utils.deps_getters import get_scheduler
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
@@ -62,3 +63,12 @@ async def run_scheduler():
 def setup_dispatcher(dp: Dispatcher):
     """Launch the scheduler."""
     dp.startup.register(run_scheduler)
+
+
+__all__ = [
+    "EventSchedulerSettings",
+    "initialize",
+    "setup_dispatcher",
+    "run_scheduler",
+    "get_scheduler",
+]
