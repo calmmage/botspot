@@ -74,7 +74,7 @@ class UserManager:
         """Add or update user"""
         try:
             # Set user type based on settings
-            if user.user_id in self.settings.admins:
+            if any([compare_users(user, friend) for friend in self.settings.admins]):
                 user.user_type = UserType.ADMIN
             elif any([compare_users(user, friend) for friend in self.settings.friends]):
                 user.user_type = UserType.FRIEND
