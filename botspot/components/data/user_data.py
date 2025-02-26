@@ -74,7 +74,7 @@ class UserManager:
         """Add or update user"""
         try:
             # Set user type based on settings
-            if user.user_id in self.settings.admins:
+            if any([compare_users(user, friend) for friend in self.settings.admins]):
                 user.user_type = UserType.ADMIN
             elif any([compare_users(user, friend) for friend in self.settings.friends]):
                 user.user_type = UserType.FRIEND
@@ -327,8 +327,8 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
         dp.message.middleware(UserTrackingMiddleware(cache_ttl=settings.cache_ttl))
 
     if settings.user_types_enabled:
-        from botspot.components import bot_commands_menu
-        from botspot.components.settings.bot_commands_menu import Visibility
+        from botspot import commands_menu as bot_commands_menu
+        from botspot.commands_menu import Visibility
 
         router = Router(name="user_data")
         router.message.filter(AdminFilter())  # Only admins can use these commands

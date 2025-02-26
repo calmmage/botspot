@@ -69,10 +69,11 @@ def _compare_user_recordss(user1: UserRecord, user2: UserRecord) -> bool:
 def get_user_record(user_key: str):
     if user_key.startswith("+"):
         return UserRecord(phone=user_key)
-    elif user_key.startswith("@"):
-        return UserRecord(username=user_key.lstrip("@"))
-    else:
+    if user_key.isdigit():
         return UserRecord(user_id=int(user_key))
+    if user_key.startswith("@"):
+        return UserRecord(username=user_key.lstrip("@"))
+    return UserRecord(username=user_key)
 
 
 # admin only telegram filter

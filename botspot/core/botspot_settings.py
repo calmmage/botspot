@@ -12,6 +12,7 @@ from botspot.components.middlewares.error_handler import ErrorHandlerSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
+from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
 
 
@@ -19,7 +20,7 @@ class BotspotSettings(BaseSettings):
     """New Bot Library settings"""
 
     # noinspection PyDataclass
-    admins: list[int] = Field(
+    admins: list[str] = Field(
         default_factory=list,
         description="Default admin",
         json_schema_extra={"format": "comma_separated"},
@@ -43,6 +44,7 @@ class BotspotSettings(BaseSettings):
     user_data: UserDataSettings = UserDataSettings()
     single_user_mode: SingleUserModeSettings = SingleUserModeSettings()
     send_safe: SendSafeSettings = SendSafeSettings()
+    admin_filter: AdminFilterSettings = AdminFilterSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
