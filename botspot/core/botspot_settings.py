@@ -14,17 +14,39 @@ from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
 from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
-
+from pydantic import BaseSettings, Field
+from functools import cached_property
+from typing import List
 
 class BotspotSettings(BaseSettings):
-    """New Bot Library settings"""
-
-    # noinspection PyDataclass
-    admins: list[str] = Field(
-        default_factory=list,
-        description="Default admin",
-        json_schema_extra={"format": "comma_separated"},
+    admins_str: str = Field(
+        default="",
+        description="Comma-separated list of admin usernames (e.g., '@abc,@def')"
     )
+
+    @cached_property
+    def admins(self) -> List[str]:
+        """Parse the comma-separated string of admin usernames into a list of strings."""
+        if not self.admins_str:
+            return []
+        return [x.strip() for x in self.admins_str.split(',') if x.strip()]
+
+    
+    friends_str: str = Field(
+        default="",
+        description="Comma-separated list of friends usernames (e.g., '@abc,@def')"
+    )
+
+    @cached_property
+    def friends(self) -> List[str]:
+        """Parse the comma-separated string of friend usernames into a list of strings."""
+        if not self.friends_str:
+            return []
+        return [x.strip() for x in self.friends_str.split(',') if x.strip()]
+
+
+
+
     # noinspection PyDataclass
     friends: list[str] = Field(
         default_factory=list,
