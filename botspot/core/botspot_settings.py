@@ -14,7 +14,7 @@ from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
 from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
-from pydantic import BaseSettings, Field
+
 from functools import cached_property
 from typing import List
 
