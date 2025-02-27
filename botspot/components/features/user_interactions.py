@@ -82,13 +82,14 @@ async def _ask_user_base(
     question: str,
     state: FSMContext,
     timeout: Optional[float] = 60.0,
-    keyboard: Optional[InlineKeyboardMarkup] = None,
+    reply_markup: Optional[InlineKeyboardMarkup] = None,
     notify_on_timeout: bool = True,
     default_choice: Optional[str] = None,
     return_raw: bool = False,
     cleanup: bool = False,
+    **kwargs,
 ) -> Optional[Union[str, Message]]:
-    """Base function for asking user questions with optional keyboard"""
+    """Base function for asking user questions with optional reply_markup"""
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
@@ -111,7 +112,7 @@ async def _ask_user_base(
         logger.error("Failed to create request")
         return None
 
-    sent_message = await bot.send_message(chat_id, question, reply_markup=keyboard)
+    sent_message = await bot.send_message(chat_id, question, reply_markup=reply_markup, **kwargs)
 
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
@@ -140,6 +141,7 @@ async def ask_user(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
     cleanup: bool = False,
+    **kwargs,
 ) -> Optional[str]:
     """
     Ask user a question and wait for text response
@@ -151,7 +153,7 @@ async def ask_user(
         timeout: How long to wait for response (seconds)
         cleanup: Whether to delete both question and answer messages after getting response
     """
-    return await _ask_user_base(chat_id, question, state, timeout, cleanup=cleanup)
+    return await _ask_user_base(chat_id, question, state, timeout, cleanup=cleanup, **kwargs)
 
 
 async def ask_user_raw(
@@ -160,8 +162,11 @@ async def ask_user_raw(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
     cleanup: bool = False,
+    **kwargs,
 ) -> Optional[Message]:
-    return await _ask_user_base(chat_id, question, state, timeout, return_raw=True, cleanup=cleanup)
+    return await _ask_user_base(
+        chat_id, question, state, timeout, return_raw=True, cleanup=cleanup, **kwargs
+    )
 
 
 async def ask_user_choice(
@@ -172,6 +177,7 @@ async def ask_user_choice(
     timeout: Optional[float] = 60.0,
     default_choice: Optional[str] = None,
     cleanup: bool = False,
+    **kwargs,
 ) -> Optional[str]:
     """Ask user to choose from options using inline buttons"""
     if isinstance(choices, list):
@@ -199,9 +205,10 @@ async def ask_user_choice(
         question=question,
         state=state,
         timeout=timeout,
-        keyboard=keyboard,
+        reply_markup=keyboard,
         default_choice=default_choice,
         cleanup=cleanup,
+        **kwargs,
     )
 
 
