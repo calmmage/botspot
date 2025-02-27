@@ -20,7 +20,7 @@ class SendSafeSettings(BaseSettings):
 
     # Feature flags
     enabled: bool = True
-    wrap_text: bool = True
+    wrap_text: bool = False
     send_long_messages_as_files: bool = True
     send_preview_for_long_messages: bool = False
 
