@@ -116,6 +116,9 @@ async def _ask_user_base(
 
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
+        # Remove buttons after getting response
+        if sent_message.reply_markup:
+            await sent_message.edit_text(text=sent_message.text, reply_markup=None)
         if cleanup:
             # Delete both the question and the answer
             await sent_message.delete()
