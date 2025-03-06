@@ -259,7 +259,7 @@ async def handle_user_input(message: types.Message, state: FSMContext) -> None:
     active_request.event.set()
 
 
-async def ask_user_raw_choice(
+async def ask_user_choice_raw(
     chat_id: int,
     question: str,
     choices: Union[List[str], Dict[str, str]],
