@@ -121,7 +121,11 @@ async def _ask_user_base(
             await sent_message.delete()
             if request.raw_response:
                 await request.raw_response.delete()
-        return request.raw_response if return_raw else request.response
+        return (
+            request.raw_response
+            if (return_raw and (request.raw_response is not None))
+            else request.response
+        )
     except asyncio.TimeoutError:
         if notify_on_timeout:
             if default_choice is not None:
@@ -179,7 +183,20 @@ async def ask_user_choice(
     cleanup: bool = False,
     **kwargs,
 ) -> Optional[str]:
-    """Ask user to choose from options using inline buttons"""
+    """
+    Ask user to choose from options using inline buttons
+
+    Parameters:
+        chat_id: ID of the chat to ask in
+        question: Question text to send
+        choices: List of choices or Dict mapping callback data to display text
+        state: FSMContext for state management
+        timeout: How long to wait for response (seconds)
+        default_choice: Choice to select if user doesn't respond
+        cleanup: Whether to delete both question and answer messages after getting response
+        add_hint: Whether to add a hint about text input option
+        **kwargs: Additional parameters passed to send_message
+    """
     if isinstance(choices, list):
         choices = {choice: choice for choice in choices}
 
@@ -237,6 +254,73 @@ async def handle_user_input(message: types.Message, state: FSMContext) -> None:
     active_request.raw_response = message
     active_request.response = message.text
     active_request.event.set()
+
+
+async def ask_user_raw_choice(
+    chat_id: int,
+    question: str,
+    choices: Union[List[str], Dict[str, str]],
+    state: FSMContext,
+    timeout: Optional[float] = 60.0,
+    default_choice: Optional[str] = None,
+    cleanup: bool = False,
+    add_hint: bool = False,
+    **kwargs,
+) -> Optional[Message]:
+    """
+    Ask user to choose from options using inline buttons and return the raw Message object
+
+    Parameters:
+        chat_id: ID of the chat to ask in
+        question: Question text to send
+        choices: List of choices or Dict mapping callback data to display text
+        state: FSMContext for state management
+        timeout: How long to wait for response (seconds)
+        default_choice: Choice to select if user doesn't respond
+        cleanup: Whether to delete both question and answer messages after getting response
+        add_hint: Whether to add a hint about text input option
+        **kwargs: Additional parameters passed to send_message
+
+    Returns:
+        The complete Message object containing the user's response
+    """
+    if isinstance(choices, list):
+        choices = {choice: choice for choice in choices}
+
+    # If default_choice not specified, use first option
+    if default_choice is None and choices:
+        default_choice = next(iter(choices.keys()))
+
+    # Add star to default choice text
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"⭐ {text}" if data == default_choice else text,
+                    callback_data=f"choice_{data}",
+                )
+            ]
+            for data, text in choices.items()
+        ]
+    )
+
+    # If adding hint is requested
+    displayed_question = question
+    if add_hint:
+        displayed_question = (
+            f"{question}\n\nTip: You can choose an option or type your own response."
+        )
+
+    return await _ask_user_base(
+        chat_id=chat_id,
+        question=displayed_question,
+        state=state,
+        timeout=timeout,
+        reply_markup=keyboard,
+        return_raw=True,
+        cleanup=cleanup,
+        **kwargs,
+    )
 
 
 async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSMContext):
