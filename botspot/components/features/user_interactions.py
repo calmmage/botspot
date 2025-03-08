@@ -339,13 +339,23 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
         await callback_query.answer("This choice is no longer valid.")
         return
 
+    # Protection against multiple callbacks for the same request
+    if active_request.response is not None:
+        # Request already has a response, this is likely a retry
+        await callback_query.answer("Your choice has already been recorded.")
+        return
+
     choice = callback_query.data[7:]
     active_request.response = choice
     active_request.event.set()
 
     await callback_query.answer()
+    # Edit the message to remove buttons and show selection
     new_text = f"{callback_query.message.text}\n\nSelected: {choice}"
-    await callback_query.message.edit_text(new_text)
+    try:
+        await callback_query.message.edit_text(new_text)
+    except Exception as e:
+        logger.warning(f"Failed to edit message after choice selection: {e}")
 
 
 def setup_dispatcher(dp):
