@@ -38,16 +38,19 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
         """    return await wrapped()
            ^^^^^^^^^^^^^^^"""
     )[-1]
-    assert event.update.message is not None
-    assert event.update.message.from_user is not None
+
+    logger.error(tb)
+
+    user = None
+    if event.update.message:
+        user = event.update.message.from_user.username
+
     error_data = {
-        "user": event.update.message.from_user.username,
+        "user": user,
         "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         "error": str(event.exception),
         "traceback": tb,
     }
-
-    logger.error(tb)
 
     if event.update.message:
         response = "Oops, something went wrong :("
