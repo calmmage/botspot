@@ -10,6 +10,7 @@ from botspot.components.features.user_interactions import (
     UserInputState,
     _ask_user_base,
     ask_user_choice,
+    ask_user_confirmation,
     handle_choice_callback,
     handle_user_input,
     input_manager,
@@ -19,11 +20,14 @@ from botspot.components.features.user_interactions import (
 @pytest.fixture
 def mock_bot():
     bot = AsyncMock(spec=Bot)
-    bot.send_message = AsyncMock(return_value=MagicMock(spec=Message))
-    bot.send_message.return_value.text = "Test question"
-    bot.send_message.return_value.message_id = 123
-    bot.send_message.return_value.edit_text = AsyncMock()
-    bot.send_message.return_value.delete = AsyncMock()
+    message_mock = MagicMock(spec=Message)
+    message_mock.text = "Test question"
+    message_mock.message_id = 123
+    message_mock.edit_text = AsyncMock()
+    message_mock.delete = AsyncMock()
+    message_mock.reply_markup = None  # Important for tests that check reply_markup
+
+    bot.send_message = AsyncMock(return_value=message_mock)
     return bot
 
 
@@ -275,3 +279,93 @@ class TestAskUserChoice:
         keyboard = call_kwargs["reply_markup"].inline_keyboard
         assert len(keyboard) == len(choices)
         assert "⭐" in keyboard[0][0].text
+
+
+class TestAskUserConfirmation:
+    @pytest.mark.asyncio
+    async def test_confirmation_yes(self, mock_deps, mock_state):
+        # Setup
+        chat_id = 789
+        question = "Are you sure?"
+
+        # Simulate user responding "yes"
+        async def simulate_yes_response():
+            request = input_manager.get_active_request(chat_id)
+            request.response = "yes"
+            request.event.set()
+
+        # Schedule response simulation
+        asyncio.create_task(simulate_yes_response())
+
+        # Call function
+        result = await ask_user_confirmation(
+            chat_id=chat_id,
+            question=question,
+            state=mock_state,
+            timeout=1.0,
+        )
+
+        # Assertions
+        assert result is True
+
+        # Verify keyboard was created correctly
+        call_kwargs = mock_deps.bot.send_message.call_args[1]
+        assert "reply_markup" in call_kwargs
+        assert isinstance(call_kwargs["reply_markup"], InlineKeyboardMarkup)
+
+        # Check Yes is marked as default (since default_choice=True)
+        keyboard = call_kwargs["reply_markup"].inline_keyboard
+        assert len(keyboard) == 2  # Yes and No buttons
+        assert "Yes" in keyboard[0][0].text
+        assert "No" in keyboard[1][0].text
+        assert "⭐" in keyboard[0][0].text  # Yes is default
+
+    @pytest.mark.asyncio
+    async def test_confirmation_no(self, mock_deps, mock_state):
+        # Setup
+        chat_id = 789
+        question = "Are you sure?"
+
+        # Simulate user responding "no"
+        async def simulate_no_response():
+            request = input_manager.get_active_request(chat_id)
+            request.response = "no"
+            request.event.set()
+
+        # Schedule response simulation
+        asyncio.create_task(simulate_no_response())
+
+        # Call function
+        result = await ask_user_confirmation(
+            chat_id=chat_id,
+            question=question,
+            state=mock_state,
+            timeout=1.0,
+        )
+
+        # Assertions
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_confirmation_timeout_with_default(self, mock_deps, mock_state):
+        # Setup
+        chat_id = 789
+        question = "Are you sure?"
+        default_choice = False  # Default to No
+
+        # Call function with short timeout - will timeout as no response is sent
+        result = await ask_user_confirmation(
+            chat_id=chat_id,
+            question=question,
+            state=mock_state,
+            timeout=0.1,
+            default_choice=default_choice,
+        )
+
+        # Assertions
+        assert result is False  # Should return the default (False/No)
+
+        # Check No is marked as default
+        call_kwargs = mock_deps.bot.send_message.call_args[1]
+        keyboard = call_kwargs["reply_markup"].inline_keyboard
+        assert "⭐" in keyboard[1][0].text  # No is default

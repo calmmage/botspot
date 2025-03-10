@@ -259,6 +259,55 @@ async def handle_user_input(message: types.Message, state: FSMContext) -> None:
     active_request.event.set()
 
 
+async def ask_user_confirmation(
+    chat_id: int,
+    question: str,
+    state: FSMContext,
+    timeout: Optional[float] = 60.0,
+    default_choice: Optional[bool] = True,
+    cleanup: bool = False,
+    **kwargs,
+) -> Optional[bool]:
+    """
+    Ask user a yes/no confirmation question using inline buttons
+
+    Parameters:
+        chat_id: ID of the chat to ask in
+        question: Question text to send
+        state: FSMContext for state management
+        timeout: How long to wait for response (seconds)
+        default_choice: Default boolean choice (True=Yes, False=No) if user doesn't respond
+        cleanup: Whether to delete both question and answer messages after getting response
+        **kwargs: Additional parameters passed to send_message
+
+    Returns:
+        Boolean representing user's choice (True for Yes, False for No),
+        or None if no response and no default
+    """
+    choices = {"yes": "Yes", "no": "No"}
+
+    # Set default based on boolean parameter
+    default = "yes" if default_choice else "no"
+
+    result = await ask_user_choice(
+        chat_id=chat_id,
+        question=question,
+        choices=choices,
+        state=state,
+        timeout=timeout,
+        default_choice=default,
+        cleanup=cleanup,
+        **kwargs,
+    )
+
+    # Convert string result to boolean
+    if result == "yes":
+        return True
+    elif result == "no":
+        return False
+    return None
+
+
 async def ask_user_choice_raw(
     chat_id: int,
     question: str,
