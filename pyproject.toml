@@ -83,6 +83,8 @@ telethon = "^1.38.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=6"
+pytest-mock = "^3.14.0"
+pytest-asyncio = "^0.25.3"
 #pytest-mongodb = "*"
 pytest-cov = "^6.0.0"
 black = {extras = ["jupyter"], version = "^24.10.0"}
@@ -113,8 +115,6 @@ tqdm = "*"                   # Progress bars
 #bokeh = "*"                 # Interactive visualizations
 #matplotlib = "*"            # Plotting library
 #numpy = "*"                 # Numerical computing
-pytest-mock = "^3.14.0"
-pytest-async = "^0.1.1"
 
 [build-system]
 requires = ["poetry-core"]
