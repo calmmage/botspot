@@ -71,6 +71,9 @@ async def single_user_mode_middleware(
 
 def initialize(settings: SingleUserModeSettings):
     if settings.user is None:
+        from botspot.core.dependency_manager import get_dependency_manager
+
+        deps = get_dependency_manager()
         logger.info(
             "Single user mode is enabled, but user is not set. Taking the first admin instead."
         )
