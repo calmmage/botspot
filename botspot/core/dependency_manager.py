@@ -7,7 +7,7 @@ from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
@@ -29,6 +29,7 @@ class DependencyManager(metaclass=Singleton):
         self._scheduler = None
         self._telethon_manager = None
         self._user_manager = None
+        self._chat_binder = None
         self.__dict__.update(kwargs)
 
     @property
@@ -86,6 +87,16 @@ class DependencyManager(metaclass=Singleton):
     @user_manager.setter
     def user_manager(self, value):
         self._user_manager = value
+
+    @property
+    def chat_binder(self) -> "AsyncIOMotorCollection":
+        if self._chat_binder is None:
+            raise RuntimeError("Bind chat is not initialized")
+        return self._chat_binder
+
+    @chat_binder.setter
+    def chat_binder(self, value):
+        self._chat_binder = value
 
     @classmethod
     def is_initialized(cls) -> bool:

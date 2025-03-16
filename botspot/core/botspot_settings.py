@@ -12,6 +12,7 @@ from botspot.components.main.single_user_mode import SingleUserModeSettings
 from botspot.components.main.telethon_manager import TelethonManagerSettings
 from botspot.components.main.trial_mode import TrialModeSettings
 from botspot.components.middlewares.error_handler import ErrorHandlerSettings
+from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
@@ -55,6 +56,7 @@ class BotspotSettings(BaseSettings):
     single_user_mode: SingleUserModeSettings = SingleUserModeSettings()
     send_safe: SendSafeSettings = SendSafeSettings()
     admin_filter: AdminFilterSettings = AdminFilterSettings()
+    chat_binder: ChatBinderSettings = ChatBinderSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
