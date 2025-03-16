@@ -63,7 +63,6 @@ class TelethonManager:
             logger.info(f"Session authorization check for user {user_id}: {is_authorized}")
 
             if is_authorized:
-                self.clients[user_id] = client
                 return client
 
             logger.info(f"Session exists but not authorized for user {user_id}")
@@ -84,7 +83,7 @@ class TelethonManager:
             try:
                 user_id = int(session_file.stem.split("_")[1])
                 logger.info(f"Found session file for user {user_id}")
-                await self.init_session(user_id)
+                self.clients[user_id] = await self.init_session(user_id)
             except Exception as e:
                 logger.warning(f"Failed to init session from {session_file}: {e}")
 
@@ -93,19 +92,21 @@ class TelethonManager:
         Get or initialize client for user_id.
         If auto_auth is True and state is provided, will trigger authentication if client is missing.
         """
-        if user_id in self.clients:
-            return self.clients[user_id]
-
-        client = await self.init_session(user_id)
-        if client:
-            return client
-
-        # If we get here, no client exists or it's not authorized
-        if self.auto_auth and state:
-            logger.info(f"Auto-authenticating client for user {user_id}")
-            return await self.setup_client(user_id, state)
-
-        return None
+        client = None
+        if user_id not in self.clients:
+            client = await self.init_session(user_id)
+            if not client:
+                # If we get here, no client exists or it's not authorized
+                if self.auto_auth:
+                    if state:
+                        logger.info(f"Auto-authenticating client for user {user_id}")
+                        client = await self.setup_client(user_id, state)
+                    else:
+                        logger.warning("State is required for auto-authentication")
+                if not client:
+                    raise RuntimeError(f"Client for {user_id} not found")
+            self.clients[user_id] = client
+        return self.clients[user_id]
 
     async def disconnect_all(self):
         """Disconnect all clients"""
@@ -248,7 +249,7 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     from aiogram.fsm.context import FSMContext
     from aiogram.types import Message
 
-    from botspot.components.settings.bot_commands_menu import add_command
+    from botspot.commands_menu import add_command
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
