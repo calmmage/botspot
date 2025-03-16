@@ -73,6 +73,18 @@ class BoundChatRecord(BaseModel):
     key: str = "default"
 
 
+# todo: rework everything to use this class
+class ChatBinder:
+    def __init__(self, settings: ChatBinderSettings):
+        self.settings = settings
+
+        # todo: move this method to self
+        self.collection = get_bind_chat_collection()
+
+    async def bind_chat(self, user_id: int, chat_id: int, key: str = "default"):
+        pass
+
+
 async def bind_chat(user_id: int, chat_id: int, key: str = "default"):
     collection = get_bind_chat_collection()
     record = BoundChatRecord(user_id=user_id, chat_id=chat_id, key=key)
