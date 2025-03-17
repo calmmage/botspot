@@ -14,7 +14,7 @@ from pydantic_settings import BaseSettings
 
 from botspot.utils.internal import get_logger
 from botspot.utils.send_safe import send_safe
-from botspot.utils.user_ops import compare_users, is_admin, is_friend
+from botspot.utils.user_ops import UserLike, compare_users_async
 
 if TYPE_CHECKING:
     from litellm.types.utils import ModelResponse  # noqa: F401
@@ -89,7 +89,7 @@ class LLMQueryParams:
     system_message: Optional[str] = None
     use_structured_output: bool = False
     structured_output_schema: Optional[Any] = None
-    user_id: Optional[Union[int, str]] = None
+    user: Optional[UserLike] = None
 
 
 # ---------------------------------------------
@@ -134,12 +134,12 @@ class LLMProvider:
     # region Synchronous Query Methods
     # ---------------------------------------------
 
-    async def _check_user_allowed(self, user_id: Optional[Union[int, str]]) -> bool:
+    async def _check_user_allowed(self, user: Optional[UserLike]) -> bool:
         """
         Check if the user is allowed to use LLM features.
 
         Args:
-            user_id: The user ID to check
+            user: The user to check (can be ID, username, User object, etc.)
 
         Returns:
             True if allowed, False otherwise
@@ -154,39 +154,67 @@ class LLMProvider:
 
         # Check if single user mode is enabled
         if deps.botspot_settings.single_user_mode.enabled:
-            if user_id is None:
-                # In single user mode, if user_id not provided, assume it's the authorized user
+            if user is None:
+                # In single user mode, if user not provided, assume it's the authorized user
                 return True
             # Otherwise, check if the user matches the single user
             single_user = deps.botspot_settings.single_user_mode.user
-            return compare_users(user_id, single_user)
+            return await compare_users_async(user, single_user)
 
         # Check if user is admin or friend
-        if user_id is not None and (is_admin(user_id) or is_friend(user_id)):
-            return True
+        if user is not None:
+            # Use enriched data for comparison if possible
+            for admin in deps.botspot_settings.admins:
+                if await compare_users_async(user, admin):
+                    return True
+
+            for friend in deps.botspot_settings.friends:
+                if await compare_users_async(user, friend):
+                    return True
 
         return False
 
-    async def _track_usage(self, user_id: Optional[Union[int, str]], model: str, tokens: int = 1):
+    async def _track_usage(self, user: Optional[UserLike], model: str, tokens: int = 1):
         """
         Track LLM usage for the given user.
 
         Args:
-            user_id: The user ID or username
+            user: The user (ID, username, User object, etc.)
             model: The model used
             tokens: Number of tokens used (approximate)
         """
         from botspot.core.dependency_manager import get_dependency_manager
+        from botspot.utils.user_ops import get_user_record_enriched, to_user_record
 
         deps = get_dependency_manager()
 
-        user_key = str(user_id) if user_id is not None else "unknown"
+        # Try to get a consistent user key to use for tracking
+        user_key = "unknown"
+        if user is not None:
+            try:
+                # Get enriched record if possible
+                if isinstance(user, (str, int)):
+                    record = await get_user_record_enriched(user)
+                else:
+                    record = to_user_record(user)
+
+                # Prefer user for tracking, but fallback to username
+                if record.user:
+                    user_key = str(record.user)
+                elif record.username:
+                    user_key = record.username
+                else:
+                    user_key = str(user)
+            except Exception as e:
+                logger.error(f"Error getting user record for tracking: {e}")
+                user_key = str(user)
 
         # If MongoDB is enabled, store stats there
+        # todo: adapt this to user
         if deps.botspot_settings.mongo_database.enabled and deps.mongo_database is not None:
             try:
                 await deps.mongo_database.llm_usage.update_one(
-                    {"user_id": user_key},
+                    {"user": user_key},
                     {"$inc": {f"models.{model}": tokens, "total": tokens}},
                     upsert=True,
                 )
@@ -202,7 +230,7 @@ class LLMProvider:
         self,
         prompt: str,
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -217,7 +245,7 @@ class LLMProvider:
 
         Args:
             prompt: The text prompt to send to the model
-            user_id: Optional user ID for access control and usage tracking
+            user: Optional user ID for access control and usage tracking
             system_message: Optional system message for the model
             model: Model name to use (can be a shortcut)
             temperature: Temperature for generation
@@ -238,23 +266,21 @@ class LLMProvider:
 
         deps = get_dependency_manager()
 
-        # Check if in single_user_mode with no user_id provided
+        # Check if in single_user_mode with no user provided
         if (
             deps.botspot_settings.single_user_mode.enabled
-            and user_id is None
+            and user is None
             and not self.settings.allow_everyone
         ):
             # Assume it's the single user
-            user_id = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user_id is None:
-            # If not in single_user_mode and no user_id provided, raise exception
-            raise ValueError("user_id is required when not in single_user_mode")
+            user = deps.botspot_settings.single_user_mode.user
+        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
+            # If not in single_user_mode and no user provided, raise exception
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not asyncio.run(self._check_user_allowed(user_id)):
-            chat_id = (
-                int(user_id) if isinstance(user_id, (int, str)) and str(user_id).isdigit() else None
-            )
+        if not asyncio.run(self._check_user_allowed(user)):
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -263,7 +289,7 @@ class LLMProvider:
                         "you can ask them to add you as a friend for unlimited usage.",
                     )
                 )
-            raise PermissionError(f"User {user_id} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
@@ -298,7 +324,7 @@ class LLMProvider:
 
             # Track usage asynchronously (approximate tokens used)
             token_estimate = len(prompt) // 4 + max_tokens
-            asyncio.run(self._track_usage(user_id, model, token_estimate))
+            asyncio.run(self._track_usage(user, model, token_estimate))
 
             return response
         except Exception as e:
@@ -309,7 +335,7 @@ class LLMProvider:
         self,
         prompt: str,
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -325,7 +351,7 @@ class LLMProvider:
         """
         response = self.query_llm_raw(
             prompt=prompt,
-            user_id=user_id,
+            user=user,
             system_message=system_message,
             model=model,
             temperature=temperature,
@@ -340,7 +366,7 @@ class LLMProvider:
         self,
         prompt: str,
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -362,23 +388,21 @@ class LLMProvider:
 
         deps = get_dependency_manager()
 
-        # Check if in single_user_mode with no user_id provided
+        # Check if in single_user_mode with no user provided
         if (
             deps.botspot_settings.single_user_mode.enabled
-            and user_id is None
+            and user is None
             and not self.settings.allow_everyone
         ):
             # Assume it's the single user
-            user_id = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user_id is None:
-            # If not in single_user_mode and no user_id provided, raise exception
-            raise ValueError("user_id is required when not in single_user_mode")
+            user = deps.botspot_settings.single_user_mode.user
+        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
+            # If not in single_user_mode and no user provided, raise exception
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not asyncio.run(self._check_user_allowed(user_id)):
-            chat_id = (
-                int(user_id) if isinstance(user_id, (int, str)) and str(user_id).isdigit() else None
-            )
+        if not asyncio.run(self._check_user_allowed(user)):
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -387,7 +411,7 @@ class LLMProvider:
                         "you can ask them to add you as a friend for unlimited usage.",
                     )
                 )
-            raise PermissionError(f"User {user_id} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
@@ -403,7 +427,7 @@ class LLMProvider:
 
         # Track usage at the start (approximate tokens)
         token_estimate = len(prompt) // 4 + max_tokens
-        asyncio.run(self._track_usage(user_id, model, token_estimate))
+        asyncio.run(self._track_usage(user, model, token_estimate))
 
         # Make the actual API call with streaming
         try:
@@ -430,7 +454,7 @@ class LLMProvider:
         prompt: str,
         output_schema: Type[BaseModel],
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -457,23 +481,21 @@ class LLMProvider:
 
         deps = get_dependency_manager()
 
-        # Check if in single_user_mode with no user_id provided
+        # Check if in single_user_mode with no user provided
         if (
             deps.botspot_settings.single_user_mode.enabled
-            and user_id is None
+            and user is None
             and not self.settings.allow_everyone
         ):
             # Assume it's the single user
-            user_id = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user_id is None:
-            # If not in single_user_mode and no user_id provided, raise exception
-            raise ValueError("user_id is required when not in single_user_mode")
+            user = deps.botspot_settings.single_user_mode.user
+        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
+            # If not in single_user_mode and no user provided, raise exception
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not asyncio.run(self._check_user_allowed(user_id)):
-            chat_id = (
-                int(user_id) if isinstance(user_id, (int, str)) and str(user_id).isdigit() else None
-            )
+        if not asyncio.run(self._check_user_allowed(user)):
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -482,7 +504,7 @@ class LLMProvider:
                         "you can ask them to add you as a friend for unlimited usage.",
                     )
                 )
-            raise PermissionError(f"User {user_id} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
@@ -516,7 +538,7 @@ class LLMProvider:
 
             # Track usage (approximate tokens)
             token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
-            asyncio.run(self._track_usage(user_id, model, token_estimate))
+            asyncio.run(self._track_usage(user, model, token_estimate))
 
             # Parse the response into the Pydantic model
             result_text = response.choices[0].message.content
@@ -538,7 +560,7 @@ class LLMProvider:
         self,
         prompt: str,
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -559,30 +581,28 @@ class LLMProvider:
 
         deps = get_dependency_manager()
 
-        # Check if in single_user_mode with no user_id provided
+        # Check if in single_user_mode with no user provided
         if (
             deps.botspot_settings.single_user_mode.enabled
-            and user_id is None
+            and user is None
             and not self.settings.allow_everyone
         ):
             # Assume it's the single user
-            user_id = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user_id is None:
-            # If not in single_user_mode and no user_id provided, raise exception
-            raise ValueError("user_id is required when not in single_user_mode")
+            user = deps.botspot_settings.single_user_mode.user
+        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
+            # If not in single_user_mode and no user provided, raise exception
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not await self._check_user_allowed(user_id):
-            chat_id = (
-                int(user_id) if isinstance(user_id, (int, str)) and str(user_id).isdigit() else None
-            )
+        if not await self._check_user_allowed(user):
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 await send_safe(
                     chat_id,
                     "You are not allowed to use LLM features. If you know the bot owner personally, "
                     "you can ask them to add you as a friend for unlimited usage.",
                 )
-            raise PermissionError(f"User {user_id} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
@@ -617,7 +637,7 @@ class LLMProvider:
 
             # Track usage asynchronously (approximate tokens used)
             token_estimate = len(prompt) // 4 + max_tokens
-            await self._track_usage(user_id, model, token_estimate)
+            await self._track_usage(user, model, token_estimate)
 
             return response
         except Exception as e:
@@ -628,7 +648,7 @@ class LLMProvider:
         self,
         prompt: str,
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -644,7 +664,7 @@ class LLMProvider:
         """
         response = await self.aquery_llm_raw(
             prompt=prompt,
-            user_id=user_id,
+            user=user,
             system_message=system_message,
             model=model,
             temperature=temperature,
@@ -659,7 +679,7 @@ class LLMProvider:
         self,
         prompt: str,
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -679,30 +699,28 @@ class LLMProvider:
 
         deps = get_dependency_manager()
 
-        # Check if in single_user_mode with no user_id provided
+        # Check if in single_user_mode with no user provided
         if (
             deps.botspot_settings.single_user_mode.enabled
-            and user_id is None
+            and user is None
             and not self.settings.allow_everyone
         ):
             # Assume it's the single user
-            user_id = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user_id is None:
-            # If not in single_user_mode and no user_id provided, raise exception
-            raise ValueError("user_id is required when not in single_user_mode")
+            user = deps.botspot_settings.single_user_mode.user
+        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
+            # If not in single_user_mode and no user provided, raise exception
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not await self._check_user_allowed(user_id):
-            chat_id = (
-                int(user_id) if isinstance(user_id, (int, str)) and str(user_id).isdigit() else None
-            )
+        if not await self._check_user_allowed(user):
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 await send_safe(
                     chat_id,
                     "You are not allowed to use LLM features. If you know the bot owner personally, "
                     "you can ask them to add you as a friend for unlimited usage.",
                 )
-            raise PermissionError(f"User {user_id} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
@@ -718,7 +736,7 @@ class LLMProvider:
 
         # Track usage at the start (approximate tokens)
         token_estimate = len(prompt) // 4 + max_tokens
-        await self._track_usage(user_id, model, token_estimate)
+        await self._track_usage(user, model, token_estimate)
 
         # Make the actual API call with streaming
         try:
@@ -745,7 +763,7 @@ class LLMProvider:
         prompt: str,
         output_schema: Type[BaseModel],
         *,
-        user_id: Optional[Union[int, str]] = None,
+        user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
@@ -770,30 +788,28 @@ class LLMProvider:
 
         deps = get_dependency_manager()
 
-        # Check if in single_user_mode with no user_id provided
+        # Check if in single_user_mode with no user provided
         if (
             deps.botspot_settings.single_user_mode.enabled
-            and user_id is None
+            and user is None
             and not self.settings.allow_everyone
         ):
             # Assume it's the single user
-            user_id = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user_id is None:
-            # If not in single_user_mode and no user_id provided, raise exception
-            raise ValueError("user_id is required when not in single_user_mode")
+            user = deps.botspot_settings.single_user_mode.user
+        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
+            # If not in single_user_mode and no user provided, raise exception
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not await self._check_user_allowed(user_id):
-            chat_id = (
-                int(user_id) if isinstance(user_id, (int, str)) and str(user_id).isdigit() else None
-            )
+        if not await self._check_user_allowed(user):
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 await send_safe(
                     chat_id,
                     "You are not allowed to use LLM features. If you know the bot owner personally, "
                     "you can ask them to add you as a friend for unlimited usage.",
                 )
-            raise PermissionError(f"User {user_id} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
@@ -827,7 +843,7 @@ class LLMProvider:
 
             # Track usage (approximate tokens)
             token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
-            await self._track_usage(user_id, model, token_estimate)
+            await self._track_usage(user, model, token_estimate)
 
             # Parse the response into the Pydantic model
             result_text = response.choices[0].message.content
@@ -931,7 +947,7 @@ def get_llm_provider() -> LLMProvider:
 def query_llm(
     prompt: str,
     *,
-    user_id: Optional[Union[int, str]] = None,
+    user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
     **kwargs,
@@ -943,14 +959,14 @@ def query_llm(
     """
     provider = get_llm_provider()
     return provider.query_llm_text(
-        prompt=prompt, user_id=user_id, system_message=system_message, model=model, **kwargs
+        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
     )
 
 
 async def aquery_llm(
     prompt: str,
     *,
-    user_id: Optional[Union[int, str]] = None,
+    user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
     **kwargs,
@@ -962,16 +978,17 @@ async def aquery_llm(
     """
     provider = get_llm_provider()
     return await provider.aquery_llm_text(
-        prompt=prompt, user_id=user_id, system_message=system_message, model=model, **kwargs
+        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
     )
 
 
-async def get_llm_usage_stats(user_id: Optional[Union[int, str]] = None) -> dict:
+# todo: adapt this to user not user_id
+async def get_llm_usage_stats(user: Optional[UserLike] = None) -> dict:
     """
     Get LLM usage statistics.
 
     Args:
-        user_id: Optional user ID to filter stats for a specific user
+        user: Optional user ID to filter stats for a specific user
 
     Returns:
         Dictionary with usage statistics
@@ -985,13 +1002,13 @@ async def get_llm_usage_stats(user_id: Optional[Union[int, str]] = None) -> dict
     if deps.botspot_settings.mongo_database.enabled and deps.mongo_database is not None:
         try:
             query = {}
-            if user_id is not None:
-                query["user_id"] = str(user_id)
+            if user is not None:
+                query["user"] = str(user)
 
             cursor = deps.mongo_database.llm_usage.find(query)
             stats = {}
             async for doc in cursor:
-                stats[doc["user_id"]] = {
+                stats[doc["user"]] = {
                     "models": doc.get("models", {}),
                     "total": doc.get("total", 0),
                 }
@@ -1001,8 +1018,8 @@ async def get_llm_usage_stats(user_id: Optional[Union[int, str]] = None) -> dict
             # Fall back to in-memory stats
 
     # Use in-memory stats
-    if user_id is not None:
-        user_key = str(user_id)
+    if user is not None:
+        user_key = str(user)
         if user_key in provider.usage_stats:
             return {user_key: provider.usage_stats[user_key]}
         return {}
