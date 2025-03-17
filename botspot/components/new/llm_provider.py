@@ -139,7 +139,7 @@ class LLMProvider:
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
         **extra_kwargs,
-    ) -> ModelResponse:
+    ) -> "ModelResponse":
         """
         Raw query to the LLM - returns the complete response object.
 
@@ -358,7 +358,7 @@ class LLMProvider:
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
         **extra_kwargs,
-    ) -> ModelResponse:
+    ) -> "ModelResponse":
         """
         Async raw query to the LLM - returns the complete response object.
 
