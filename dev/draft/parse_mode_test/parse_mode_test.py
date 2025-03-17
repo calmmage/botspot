@@ -1,6 +1,5 @@
 import asyncio
 import os
-from typing import cast
 
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
@@ -10,18 +9,19 @@ from loguru import logger
 
 load_dotenv()
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
-    raise ValueError("BOT_TOKEN environment variable is not set")
-
-CHAT_ID = os.getenv("TEST_CHAT_ID")
-if not CHAT_ID:
-    raise ValueError("TEST_CHAT_ID environment variable is not set")
-
-CHAT_ID_INT = int(CHAT_ID)  # Convert to int for type safety
-
 
 async def test_parse_mode():
+
+    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not TOKEN:
+        raise ValueError("BOT_TOKEN environment variable is not set")
+
+    CHAT_ID = os.getenv("TEST_CHAT_ID")
+    if not CHAT_ID:
+        raise ValueError("TEST_CHAT_ID environment variable is not set")
+
+    CHAT_ID_INT = int(CHAT_ID)  # Convert to int for type safety
+
     # Initialize bot with default properties including HTML parse mode
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     try:
