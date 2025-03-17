@@ -129,26 +129,36 @@ class UserManager:
         """Find user by any of the fields"""
         if not any([user_id, username, phone, first_name, last_name]):
             raise ValueError("find_user requires at least one of the fields")
-        # if direct fields are provided - use them
+
+        # Build query conditions
+        query = {}
+
+        # If direct fields are provided - use them
         if any([user_id, username, phone]):
-            return await self.users_collection.find_one(
-                {
-                    "$or": [
-                        {"user_id": user_id} if user_id else None,
-                        {"username": username} if username else None,
-                        {"phone": phone} if phone else None,
-                    ]
-                }
-            )
-        # if not - use fuzzy match on name
-        return await self.users_collection.find_one(
-            {
-                "$and": [
-                    {"first_name": first_name} if first_name else None,
-                    {"last_name": last_name} if last_name else None,
-                ]
-            }
-        )
+            or_conditions = []
+            if user_id:
+                or_conditions.append({"user": user_id})
+            if username:
+                or_conditions.append({"username": username})
+            if phone:
+                or_conditions.append({"phone": phone})
+
+            if or_conditions:
+                query["$or"] = or_conditions
+        # If not - use match on name fields
+        elif first_name or last_name:
+            if first_name:
+                query["first_name"] = first_name
+            if last_name:
+                query["last_name"] = last_name
+
+        # Execute query
+        result = await self.users_collection.find_one(query)
+
+        # Convert to User model if result found
+        if result:
+            return self.user_class(**result)
+        return None
 
     async def update_last_active(self, user_id: int) -> None:
         """Update user's last active timestamp"""
