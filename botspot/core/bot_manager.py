@@ -13,7 +13,7 @@ from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
 from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
 from botspot.components.middlewares import error_handler
-from botspot.components.new import chat_binder, llm_provider
+from botspot.components.new import chat_binder, chat_fetcher, llm_provider
 from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
@@ -61,6 +61,9 @@ class BotManager(metaclass=Singleton):
         if self.settings.llm_provider.enabled:
             self.deps.llm_provider = llm_provider.initialize(self.settings.llm_provider)
 
+        if self.settings.chat_fetcher.enabled:
+            self.deps.chat_fetcher = chat_fetcher.initialize(self.settings.chat_fetcher)
+
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
         # Remove global bot check - each component handles its own requirements
@@ -105,3 +108,6 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.llm_provider.enabled:
             llm_provider.setup_dispatcher(dp)
+
+        if self.settings.chat_fetcher.enabled:
+            chat_fetcher.setup_dispatcher(dp)

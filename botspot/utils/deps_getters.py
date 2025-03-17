@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
     from telethon import TelegramClient
 
+    from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.chat_fetcher import ChatFetcher
 
 # Core getters for bot and dispatcher
 def get_bot() -> "Bot":
@@ -73,3 +75,15 @@ __all__ = [
     "get_mongo_client",
     "get_chat_binder",
 ]
+
+
+def get_chat_fetcher() -> "ChatFetcher":
+    """Get ChatFetcher instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    chat_fetcher = get_dependency_manager().chat_fetcher
+    if chat_fetcher is None:
+        raise RuntimeError(
+            "ChatFetcher is not initialized. Make sure chat_fetcher component is enabled in settings."
+        )
+    return chat_fetcher

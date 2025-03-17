@@ -22,6 +22,28 @@
 
 ## Components:
 
+## Chat Fetcher
+
+- Main features (1-2):
+  - [ ] Get chats for user
+  - [ ] Get messages for user from specific chat
+  - [ ] Find chats and messages with simple lightweight interface
+
+- Secondary features:
+  - [ ] Use Telethon Manager to get client
+  - [ ] Use MongoDB to cache messages and chats
+  - [ ] Single user mode support (auto-detect user ID)
+  - [ ] Handle pagination, delays, and API limitations
+  - [ ] Adapt from existing telegram_downloader implementation
+
+Notes:
+
+- Implement caching to work around Telegram API limitations
+- Consider importing telegram_downloader as dependency vs. moving code
+- Reference implementation in projects/telegram_downloader
+- Draft in calmmage/seasonal/season_1_winter_2024/draft/download-telegram-messages
+- Should adapt telegram_downloader to use custom DB and telethon client
+
 ## LLM Provider - ✅ DONE
 
 - Main features (1-2):
