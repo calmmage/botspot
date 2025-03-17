@@ -40,10 +40,10 @@ def compare_users(
 ):
     user1 = to_user_record(user1)
     user2 = to_user_record(user2)
-    return _compare_user_recordss(user1, user2)
+    return _compare_user_records(user1, user2)
 
 
-def _compare_user_recordss(user1: UserRecord, user2: UserRecord) -> bool:
+def _compare_user_records(user1: UserRecord, user2: UserRecord) -> bool:
     if user1.user_id and user2.user_id and user1.user_id == user2.user_id:
         logger.debug("User IDs match")
         return True
