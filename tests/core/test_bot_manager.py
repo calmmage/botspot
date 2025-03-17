@@ -20,14 +20,37 @@ def clean_singleton():
 class TestBotManager:
     def test_singleton_pattern(self):
         """Test that BotManager follows singleton pattern"""
-        bm1 = BotManager()
-        bm2 = BotManager()
-        assert bm1 is bm2
+        with patch('botspot.core.bot_manager.BotspotSettings') as mock_settings_class, \
+             patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
+             patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
+             patch('botspot.core.bot_manager.user_data') as mock_user_data, \
+             patch('botspot.core.bot_manager.chat_binder') as mock_chat_binder, \
+             patch('botspot.core.bot_manager.logger'):
+            
+            # Configure mock settings with all components disabled
+            mock_settings = MagicMock()
+            for component in ['telethon_manager', 'mongo_database', 'event_scheduler', 
+                             'user_data', 'single_user_mode', 'chat_binder']:
+                component_settings = MagicMock()
+                component_settings.enabled = False
+                setattr(mock_settings, component, component_settings)
+            
+            mock_settings_class.return_value = mock_settings
+            
+            # Mock components to avoid real initialization
+            mock_telethon_manager.initialize.return_value = None
+            mock_user_data.initialize.return_value = None
+            mock_chat_binder.initialize.return_value = None
+            
+            bm1 = BotManager()
+            bm2 = BotManager()
+            assert bm1 is bm2
 
     def test_initialization_without_parameters(self):
         """Test initialization without parameters"""
         with patch('botspot.core.bot_manager.BotspotSettings') as mock_settings_class, \
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
+             patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
              patch('botspot.core.bot_manager.logger'):
             
             mock_settings = MagicMock()
@@ -35,6 +58,9 @@ class TestBotManager:
             
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
+            
+            # Mock telethon manager initialize to return None when disabled
+            mock_telethon_manager.initialize.return_value = None
             
             bm = BotManager()
             
@@ -47,6 +73,8 @@ class TestBotManager:
         """Test initialization with bot, dispatcher, and user_class"""
         with patch('botspot.core.bot_manager.BotspotSettings') as mock_settings_class, \
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
+             patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
+             patch('botspot.core.bot_manager.user_data') as mock_user_data, \
              patch('botspot.core.bot_manager.logger'):
             
             mock_settings = MagicMock()
@@ -54,6 +82,10 @@ class TestBotManager:
             
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
+            
+            # Mock telethon manager initialize to return None when disabled
+            mock_telethon_manager.initialize.return_value = None
+            mock_user_data.initialize.return_value = None
             
             # Create mock bot, dispatcher, and user_class
             mock_bot = MagicMock(spec=Bot)
@@ -92,6 +124,8 @@ class TestBotManager:
         with patch('botspot.core.bot_manager.BotspotSettings') as mock_settings_class, \
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
              patch(f'botspot.core.bot_manager.{component_name}') as mock_component, \
+             patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
+             patch('botspot.core.bot_manager.user_data') as mock_user_data, \
              patch('botspot.core.bot_manager.logger'):
             
             # Configure mock settings
@@ -100,11 +134,19 @@ class TestBotManager:
             component_settings.enabled = enabled
             # Use getattr dynamically to set the attribute
             setattr(mock_settings, component_name, component_settings)
+            # Mock telethon settings to prevent FileNotFoundError
+            mock_telethon_settings = MagicMock()
+            mock_telethon_settings.enabled = False
+            mock_settings.telethon_manager = mock_telethon_settings
             mock_settings_class.return_value = mock_settings
             
             # Configure mock deps
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
+            
+            # Mock components to avoid real initialization
+            mock_telethon_manager.initialize.return_value = None
+            mock_user_data.initialize.return_value = None
             
             # Create BotManager
             bm = BotManager()
@@ -129,6 +171,8 @@ class TestBotManager:
         """Test that ask_user setup raises an error if bot is not set"""
         with patch('botspot.core.bot_manager.BotspotSettings') as mock_settings_class, \
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
+             patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
+             patch('botspot.core.bot_manager.user_data') as mock_user_data, \
              patch('botspot.core.bot_manager.logger'):
             
             # Configure mock settings
@@ -136,12 +180,20 @@ class TestBotManager:
             ask_user_settings = MagicMock()
             ask_user_settings.enabled = True
             mock_settings.ask_user = ask_user_settings
+            # Mock telethon settings to prevent FileNotFoundError
+            mock_telethon_settings = MagicMock()
+            mock_telethon_settings.enabled = False
+            mock_settings.telethon_manager = mock_telethon_settings
             mock_settings_class.return_value = mock_settings
             
             # Configure mock deps with no bot
             mock_deps = MagicMock()
             mock_deps.bot = None
             mock_deps_class.return_value = mock_deps
+            
+            # Mock components to avoid real initialization
+            mock_telethon_manager.initialize.return_value = None
+            mock_user_data.initialize.return_value = None
             
             # Create BotManager
             bm = BotManager()
