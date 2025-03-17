@@ -25,7 +25,7 @@ class BotManager(metaclass=Singleton):
         self,
         bot: Optional[Bot] = None,
         dispatcher: Optional[Dispatcher] = None,
-        user_class: Type[User] = None,
+        user_class: Optional[Type[User]] = None,
         **kwargs,
     ):
         self.settings = BotspotSettings(**kwargs)

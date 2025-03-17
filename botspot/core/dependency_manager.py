@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from aiogram import Bot, Dispatcher
 
@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 class DependencyManager(metaclass=Singleton):
     def __init__(
         self,
-        botspot_settings: BotspotSettings = None,
-        bot: Bot = None,
-        dispatcher: Dispatcher = None,
-        mongo_database=None,
+        botspot_settings: Optional[BotspotSettings] = None,
+        bot: Optional[Bot] = None,
+        dispatcher: Optional[Dispatcher] = None,
+        mongo_database: Optional["AsyncIOMotorDatabase"] = None,
         **kwargs
     ):
         self._botspot_settings = botspot_settings or BotspotSettings()
@@ -42,6 +42,8 @@ class DependencyManager(metaclass=Singleton):
 
     @property
     def bot(self) -> Bot:
+        if self._bot is None:
+            raise RuntimeError("Bot is not initialized")
         return self._bot
 
     @bot.setter
@@ -50,6 +52,8 @@ class DependencyManager(metaclass=Singleton):
 
     @property
     def dispatcher(self) -> Dispatcher:
+        if self._dispatcher is None:
+            raise RuntimeError("Dispatcher is not initialized")
         return self._dispatcher
 
     @dispatcher.setter
@@ -58,6 +62,8 @@ class DependencyManager(metaclass=Singleton):
 
     @property
     def mongo_database(self) -> "AsyncIOMotorDatabase":
+        if self._mongo_database is None:
+            raise RuntimeError("Mongo database is not initialized")
         return self._mongo_database
 
     @mongo_database.setter
@@ -66,6 +72,8 @@ class DependencyManager(metaclass=Singleton):
 
     @property
     def scheduler(self) -> "AsyncIOScheduler":
+        if self._scheduler is None:
+            raise RuntimeError("Scheduler is not initialized")
         return self._scheduler
 
     @scheduler.setter
@@ -74,6 +82,8 @@ class DependencyManager(metaclass=Singleton):
 
     @property
     def telethon_manager(self) -> "TelethonManager":
+        if self._telethon_manager is None:
+            raise RuntimeError("Telethon manager is not initialized")
         return self._telethon_manager
 
     @telethon_manager.setter
@@ -82,6 +92,8 @@ class DependencyManager(metaclass=Singleton):
 
     @property
     def user_manager(self) -> "UserManager":
+        if self._user_manager is None:
+            raise RuntimeError("User manager is not initialized")
         return self._user_manager
 
     @user_manager.setter
