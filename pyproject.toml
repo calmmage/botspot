@@ -12,6 +12,7 @@ packages=[
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
 calmlib = { git = "https://github.com/calmmage/calmlib.git", branch = "main" }
+telegram-downloader = { git = "https://github.com/calmmage/telegram-downloader.git", branch = "main" }
 loguru = ">=0.7"
 # for parsing version
 toml = ">=0.10"
