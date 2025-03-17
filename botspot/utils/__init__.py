@@ -8,5 +8,5 @@ from .deps_getters import (
     get_user_manager,
 )
 from .send_safe import answer_safe, reply_safe, send_safe
-from .unsorted import get_message_text, get_name, get_user, strip_command
+from .unsorted import get_message_text, get_name, get_user, send_typing_status, strip_command
 from .user_ops import compare_users, is_admin, is_friend, to_user_record
