@@ -198,9 +198,9 @@ class LLMProvider:
                 else:
                     record = to_user_record(user)
 
-                # Prefer user for tracking, but fallback to username
-                if record.user:
-                    user_key = str(record.user)
+                # Prefer user_id for tracking, but fallback to username
+                if record.user_id:
+                    user_key = str(record.user_id)
                 elif record.username:
                     user_key = record.username
                 else:
