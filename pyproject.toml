@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.4.15"
+version = "0.4.16"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -115,6 +115,7 @@ tqdm = "*"                   # Progress bars
 #bokeh = "*"                 # Interactive visualizations
 #matplotlib = "*"            # Plotting library
 #numpy = "*"                 # Numerical computing
+pyright = "^1.1.396"
 
 [build-system]
 requires = ["poetry-core"]

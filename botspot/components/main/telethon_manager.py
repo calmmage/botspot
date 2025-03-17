@@ -40,11 +40,11 @@ class TelethonManager:
         self.sessions_dir = sessions_dir
         self.auto_auth = auto_auth
         self.sessions_dir.mkdir(exist_ok=True)
-        self.clients: Dict[int, "TelegramClient"] = {}
+        self.clients: Dict[int, Optional["TelegramClient"]] = {}
         logger.info(f"TelethonManager initialized with sessions dir: {sessions_dir}")
 
-    async def init_session(self, user_id: int) -> "TelegramClient":
-        """Initialize and verify a session for user_id"""
+    async def _init_session(self, user_id: int) -> Optional["TelegramClient"]:
+        """Initialize and verify a session for user_id without caching"""
         from telethon import TelegramClient
 
         session_key = self.sessions_dir / f"user_{user_id}"
@@ -83,7 +83,9 @@ class TelethonManager:
             try:
                 user_id = int(session_file.stem.split("_")[1])
                 logger.info(f"Found session file for user {user_id}")
-                self.clients[user_id] = await self.init_session(user_id)
+                client = await self._init_session(user_id)
+                if client:
+                    self.clients[user_id] = client
             except Exception as e:
                 logger.warning(f"Failed to init session from {session_file}: {e}")
 
@@ -91,30 +93,52 @@ class TelethonManager:
         """
         Get or initialize client for user_id.
         If auto_auth is True and state is provided, will trigger authentication if client is missing.
+        Raises RuntimeError if no client can be found or created.
         """
-        client = None
-        if user_id not in self.clients:
-            client = await self.init_session(user_id)
-            if not client:
-                # If we get here, no client exists or it's not authorized
-                if self.auto_auth:
-                    if state:
-                        logger.info(f"Auto-authenticating client for user {user_id}")
-                        client = await self.setup_client(user_id, state)
-                    else:
-                        logger.warning("State is required for auto-authentication")
-                if not client:
-                    raise RuntimeError(f"Client for {user_id} not found")
+        # Return cached client if available
+        if user_id in self.clients and self.clients[user_id] is not None:
+            client = self.clients[user_id]
+            assert client is not None  # Extra assertion for type checking
+            return client
+
+        # Try to initialize from existing session
+        client = await self._init_session(user_id)
+        if client:
             self.clients[user_id] = client
-        return self.clients[user_id]
+            return client
+
+        # No valid session exists, try auto-auth if enabled
+        if self.auto_auth:
+            if state:
+                logger.info(f"Auto-authenticating client for user {user_id}")
+                client = await self.setup_client(user_id, state)
+                if client:
+                    # setup_client already caches the client
+                    return client
+            else:
+                logger.warning("State is required for auto-authentication")
+
+        # No client could be initialized or created
+        raise RuntimeError(f"Client for {user_id} not found")
 
     async def disconnect_all(self):
         """Disconnect all clients"""
-        for client in self.clients.values():
-            await client.disconnect()
+        from telethon import TelegramClient
+
+        valid_clients = [
+            (user_id, client) for user_id, client in self.clients.items() if client is not None
+        ]
+        for user_id, client in valid_clients:
+            try:
+                # Guaranteed to be non-None because of the filtering above
+                await client.disconnect()  # type: ignore
+            except Exception as e:
+                logger.warning(f"Failed to disconnect client for user {user_id}: {e}")
         self.clients.clear()
 
-    async def setup_client(self, user_id: int, state, force: bool = False) -> "TelegramClient":
+    async def setup_client(
+        self, user_id: int, state, force: bool = False
+    ) -> Optional["TelegramClient"]:
         """
         Setup Telethon client for a specific user
 
@@ -130,14 +154,17 @@ class TelethonManager:
 
         # Check if user already has an authenticated session
         if not force:
-            existing_client = await self.get_client(user_id)
-            if existing_client:
+            try:
+                existing_client = await self.get_client(user_id)
                 await send_safe(
                     user_id,
                     "You already have an active Telethon session! "
                     "Use /setup_telethon_force to create a new one.",
                 )
                 return existing_client
+            except RuntimeError:
+                # No existing client, continue with setup
+                pass
 
         # Create new client
         session_key = self.sessions_dir / f"user_{user_id}"
