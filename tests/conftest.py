@@ -3,25 +3,37 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any
 
+# Mock the MongoDB client
+pytest.importorskip("motor.motor_asyncio")
+pytest.importorskip("pymongo")
+
+# Mock MongoDB connection
+@pytest.fixture(autouse=True)
+def mock_mongo():
+    with patch("motor.motor_asyncio.AsyncIOMotorClient") as mock_client:
+        mock_db = MagicMock()
+        mock_client.return_value.__getitem__.return_value = mock_db
+        yield mock_client
+
 from botspot.core.dependency_manager import DependencyManager
 from botspot.core.botspot_settings import BotspotSettings
 
 
 @pytest.fixture(autouse=True)
-def setup_env():
+def setup_env(monkeypatch):
     """Set up necessary environment variables for testing."""
-    os.environ["TELEGRAM_BOT_TOKEN"] = "mock_token_12345"
-    os.environ["BOTSPOT_ERROR_HANDLER_EASTER_EGGS"] = "False"
-    os.environ["BOTSPOT_ERROR_HANDLER_DEVELOPER_CHAT_ID"] = "123456789"
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "mock_token_12345")
+    monkeypatch.setenv("BOTSPOT_ERROR_HANDLER_EASTER_EGGS", "False")
+    monkeypatch.setenv("BOTSPOT_ERROR_HANDLER_DEVELOPER_CHAT_ID", "123456789")
+    monkeypatch.setenv("MONGODB_URI", "mongodb://localhost:27017")
+    monkeypatch.setenv("DATABASE_NAME", "test_db")
+    monkeypatch.setenv("COLLECTION_NAME", "test_collection")
+    monkeypatch.setenv("BOTSPOT_MONGO_DATABASE_CONN_STR", "mongodb://localhost:27017")
+    monkeypatch.setenv("BOTSPOT_MONGO_DATABASE_DATABASE", "test_db")
     
-    # Cleanup after test
-    yield
-    if "TELEGRAM_BOT_TOKEN" in os.environ:
-        del os.environ["TELEGRAM_BOT_TOKEN"]
-    if "BOTSPOT_ERROR_HANDLER_EASTER_EGGS" in os.environ:
-        del os.environ["BOTSPOT_ERROR_HANDLER_EASTER_EGGS"]
-    if "BOTSPOT_ERROR_HANDLER_DEVELOPER_CHAT_ID" in os.environ:
-        del os.environ["BOTSPOT_ERROR_HANDLER_DEVELOPER_CHAT_ID"]
+    # Component settings overrides for tests
+    monkeypatch.setenv("BOTSPOT_ERROR_HANDLER_ENABLED", "False")
+    monkeypatch.setenv("BOTSPOT_BOT_INFO_ENABLED", "False")
 
 
 @pytest.fixture
@@ -74,3 +86,24 @@ def mock_callback_query():
     callback_query.data = "test_data"
     callback_query.answer = AsyncMock()
     return callback_query
+
+
+@pytest.fixture
+def mock_botspot_deps():
+    """Mock BotSpot dependencies for all tests"""
+    with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_deps:
+        mock_manager = MagicMock()
+        mock_manager.bot = AsyncMock()
+        mock_deps.return_value = mock_manager
+        yield mock_deps
+
+
+@pytest.fixture
+def clean_singleton():
+    """Reset the singleton instance before each test"""
+    from botspot.utils.internal import Singleton
+    # Clear the singleton instances before each test
+    Singleton._instances = {}
+    yield
+    # Clean up after the test
+    Singleton._instances = {}
