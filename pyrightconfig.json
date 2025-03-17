@@ -1,0 +1,12 @@
+{
+  "include": ["botspot"],
+  "exclude": ["**/__pycache__", "**/.mypy_cache"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.12",
+  "ignore": [
+    "botspot/components/main/telethon_manager.py:initialize", 
+    "botspot/components/main/telethon_manager.py:setup_dispatcher"
+  ]
+}
