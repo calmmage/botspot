@@ -1,0 +1,693 @@
+Subject: [PATCH] Add telethon_manager component
+---
+Index: botspot/components/telethon_manager.py
+===================================================================
+diff --git a/botspot/components/telethon_manager.py b/botspot/components/telethon_manager.py
+new file mode 100644
+--- /dev/null	(revision cc18f0491d082431a813ac6298b3e899c139379b)
++++ b/botspot/components/telethon_manager.py	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -0,0 +1,294 @@
++"""
++Telethon Manager component for managing Telegram user clients.
++"""
++
++from pathlib import Path
++from typing import Dict, Optional
++
++from aiogram import Dispatcher
++from pydantic_settings import BaseSettings
++from telethon import TelegramClient
++
++from botspot.components.ask_user_handler import ask_user
++from botspot.utils.internal import get_logger
++from botspot.utils.send_safe import send_safe
++
++logger = get_logger()
++
++
++class TelethonManagerSettings(BaseSettings):
++    enabled: bool = False
++    api_id: Optional[int] = None
++    api_hash: Optional[str] = None
++    sessions_dir: str = "sessions"
++    auto_auth: bool = (
++        True  # Whether to automatically trigger auth when client is missing
++    )
++
++    class Config:
++        env_prefix = "BOTSPOT_TELETHON_MANAGER_"
++        env_file = ".env"
++        env_file_encoding = "utf-8"
++        extra = "ignore"
++
++
++class TelethonManager:
++    def __init__(
++        self, api_id: int, api_hash: str, sessions_dir: Path, auto_auth: bool = True
++    ):
++        self.api_id = api_id
++        self.api_hash = api_hash
++        self.sessions_dir = sessions_dir
++        self.auto_auth = auto_auth
++        self.sessions_dir.mkdir(exist_ok=True)
++        self.clients: Dict[int, TelegramClient] = {}
++        logger.info(f"TelethonManager initialized with sessions dir: {sessions_dir}")
++
++    async def init_session(self, user_id: int) -> Optional[TelegramClient]:
++        """Initialize and verify a session for user_id"""
++
++        session_key = self.sessions_dir / f"user_{user_id}"
++        session_file = session_key.with_suffix(".session")
++        logger.info(f"Initializing session for user {user_id} from {session_file}")
++
++        if not session_file.exists():
++            logger.info(f"No session file found for user {user_id}")
++            return None
++
++        client = TelegramClient(str(session_key), self.api_id, self.api_hash)
++        try:
++            await client.connect()
++
++            is_authorized = await client.is_user_authorized()
++            logger.info(
++                f"Session authorization check for user {user_id}: {is_authorized}"
++            )
++
++            if is_authorized:
++                self.clients[user_id] = client
++                return client
++
++            logger.info(f"Session exists but not authorized for user {user_id}")
++            return None
++
++        except Exception as e:
++            logger.warning(f"Failed to initialize session for user {user_id}: {e}")
++            return None
++
++    async def init_all_sessions(self):
++        """Initialize all existing sessions from disk"""
++        logger.info("Initializing all sessions...")
++        session_files = list(self.sessions_dir.glob("user_*"))
++        logger.info(f"Found {len(session_files)} session files: {session_files}")
++
++        for session_file in session_files:
++            try:
++                user_id = int(session_file.stem.split("_")[1])
++                logger.info(f"Found session file for user {user_id}")
++                await self.init_session(user_id)
++            except Exception as e:
++                logger.warning(f"Failed to init session from {session_file}: {e}")
++
++    async def get_client(self, user_id: int, state=None) -> Optional[TelegramClient]:
++        """
++        Get or initialize client for user_id.
++        If auto_auth is True and state is provided, will trigger authentication if client is missing.
++        """
++        if user_id in self.clients:
++            return self.clients[user_id]
++
++        client = await self.init_session(user_id)
++        if client:
++            return client
++
++        # If we get here, no client exists or it's not authorized
++        if self.auto_auth and state:
++            logger.info(f"Auto-authenticating client for user {user_id}")
++            return await self.setup_client(user_id, state)
++
++        return None
++
++    async def disconnect_all(self):
++        """Disconnect all clients"""
++        for client in self.clients.values():
++            await client.disconnect()
++        self.clients.clear()
++
++    async def setup_client(
++        self, user_id: int, state, force: bool = False
++    ) -> Optional[TelegramClient]:
++        """
++        Setup Telethon client for a specific user
++
++        Args:
++            user_id: Telegram user ID (also used as chat_id for messaging)
++            state: FSM state for ask_user
++            force: If True, will delete existing session and create new one
++
++        Returns:
++            TelegramClient if setup was successful, None otherwise
++        """
++        # Check if user already has an authenticated session
++        if not force:
++            existing_client = await self.get_client(user_id)
++            if existing_client:
++                await send_safe(
++                    user_id,
++                    "You already have an active Telethon session! "
++                    "Use /setup_telethon_force to create a new one.",
++                )
++                return existing_client
++
++        # Create new client
++        session_key = self.sessions_dir / f"user_{user_id}"
++        session_file = session_key.with_suffix(".session")
++        if session_file.exists():
++            session_file.unlink()
++
++        client = TelegramClient(str(session_key), self.api_id, self.api_hash)
++
++        try:
++            await client.connect()
++
++            # Ask for phone number
++            phone = await ask_user(
++                user_id,
++                "Please enter your phone number (including country code, e.g., +1234567890):",
++                state,
++                timeout=60.0,
++            )
++
++            if not phone:
++                await send_safe(user_id, "Setup cancelled - no phone number provided.")
++                return None
++
++            # Send code request
++            send_code_result = await client.send_code_request(phone)
++
++            # Ask for verification code
++            code = await ask_user(
++                user_id,
++                "Please enter the verification code you received. ADD SPACES BETWEEN THE DIGITS OR TELEGRAM WILL NOT BLOCK THE CODE:",
++                state,
++                timeout=300.0,
++                cleanup=True,
++            )
++
++            if not code:
++                await send_safe(
++                    user_id, "Setup cancelled - no verification code provided."
++                )
++                return None
++
++            code = code.replace(" ", "")
++
++            try:
++                # Try to sign in with the code
++                await client.sign_in(
++                    phone, code, phone_code_hash=send_code_result.phone_code_hash
++                )
++            except Exception as e:
++                if "password" in str(e).lower():
++                    # 2FA is enabled, ask for password
++                    password = await ask_user(
++                        user_id,
++                        "Two-factor authentication is enabled. Please enter your 2FA password:",
++                        state,
++                        timeout=300.0,
++                        cleanup=True,
++                    )
++
++                    if not password:
++                        await send_safe(
++                            user_id, "Setup cancelled - no password provided."
++                        )
++                        return None
++
++                    password = password.replace(" ", "")
++
++                    # Sign in with password
++                    await client.sign_in(password=password)
++                else:
++                    raise
++
++            # If we got here, authentication was successful
++            self.clients[user_id] = client
++            await send_safe(
++                user_id,
++                "Successfully set up Telethon client! The session is saved and ready to use.",
++            )
++            return client
++
++        except Exception as e:
++            await send_safe(user_id, f"Error during setup: {str(e)}")
++            if session_file.exists():
++                session_file.unlink()
++            return None
++
++
++def initialise(settings: TelethonManagerSettings) -> TelethonManager:
++    """Initialize TelethonManager with settings"""
++    sessions_dir = Path(settings.sessions_dir)
++    return TelethonManager(
++        settings.api_id, settings.api_hash, sessions_dir, settings.auto_auth
++    )
++
++
++def setup_dispatcher(dp: Dispatcher) -> None:
++    """Setup dispatcher with TelethonManager handlers"""
++    from aiogram.filters import Command
++    from aiogram.fsm.context import FSMContext
++    from aiogram.types import Message
++
++    from botspot.components.bot_commands_menu import add_command
++    from botspot.core.dependency_manager import get_dependency_manager
++
++    deps = get_dependency_manager()
++    telethon_manager = deps.telethon_manager
++
++    @add_command("start", "Start the bot")
++    @dp.message(Command("start"))
++    async def start_command(message: Message) -> None:
++        """Send a welcome message when the command /start is issued"""
++        await message.answer(
++            f"Welcome! This bot helps you manage your Telegram user account.\n"
++            f"Use /help to see available commands."
++        )
++
++    @add_command("help", "Show available commands")
++    @dp.message(Command("help"))
++    async def help_command(message: Message) -> None:
++        """Show help message with available commands"""
++        help_text = (
++            "Available commands:\n"
++            "/setup_telethon - Setup a new Telethon user client\n"
++            "/setup_telethon_force - Force setup of a new Telethon client\n"
++            "/check_telethon - Check if you have an active Telethon client\n"
++            "\nNote: Some commands may require authentication."
++        )
++        await message.answer(help_text)
++
++    @add_command("setup_telethon", "Setup Telethon user client")
++    @dp.message(Command("setup_telethon"))
++    async def setup_telethon_command(message: Message, state: FSMContext) -> None:
++        await telethon_manager.setup_client(message.from_user.id, state=state)
++
++    @add_command("setup_telethon_force", "Force new Telethon client setup")
++    @dp.message(Command("setup_telethon_force"))
++    async def setup_telethon_force_command(message: Message, state: FSMContext) -> None:
++        await telethon_manager.setup_client(
++            message.from_user.id, state=state, force=True
++        )
++
++    @add_command("check_telethon", "Check if Telethon client is active")
++    @dp.message(Command("check_telethon"))
++    async def check_telethon_handler(message: Message) -> None:
++        """Check if user has an active Telethon client"""
++        client = await telethon_manager.get_client(message.from_user.id)
++        if client and await client.is_user_authorized():
++            me = await client.get_me()
++            await message.reply(f"Active Telethon session found for {me.first_name}!")
++        else:
++            await message.reply(
++                "No active Telethon session found. Use /setup_telethon to create one."
++            )
+Index: botspot/core/bot_manager.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/botspot/core/bot_manager.py b/botspot/core/bot_manager.py
+--- a/botspot/core/bot_manager.py	(revision 1e711220f395b6603f1428854fefe431afb287ba)
++++ b/botspot/core/bot_manager.py	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -7,14 +7,15 @@
+ from aiogram import Bot, Dispatcher
+
+ from botspot.components import (
++    ask_user_handler,
++    bot_commands_menu,
++    bot_info,
+     error_handler,
+-    trial_mode,
+     event_scheduler,
+-    print_bot_url,
+-    bot_commands_menu,
+     mongo_database,
+-    ask_user_handler,
+-    bot_info,
++    print_bot_url,
++    telethon_manager,
++    trial_mode,
+ )
+ from botspot.core.botspot_settings import BotspotSettings
+ from botspot.core.dependency_manager import DependencyManager
+@@ -27,10 +28,19 @@
+         self.deps = DependencyManager(botspot_settings=self.settings, bot=bot)
+
+         if self.settings.mongo_database.enabled:
+-            self.deps.mongo_database = mongo_database.initialise(self.settings.mongo_database)
++            self.deps.mongo_database = mongo_database.initialise(
++                self.settings.mongo_database
++            )
+
+         if self.settings.event_scheduler.enabled:
+-            self.deps.scheduler = event_scheduler.initialise(self.settings.event_scheduler)
++            self.deps.scheduler = event_scheduler.initialise(
++                self.settings.event_scheduler
++            )
++
++        if self.settings.telethon_manager.enabled:
++            self.deps.telethon_manager = telethon_manager.initialise(
++                self.settings.telethon_manager
++            )
+
+     def setup_dispatcher(self, dp: Dispatcher):
+         """Setup dispatcher with components"""
+@@ -53,7 +63,9 @@
+
+         if self.settings.ask_user.enabled:
+             if not self.deps.bot:
+-                raise RuntimeError("Bot instance is required for ask_user functionality")
++                raise RuntimeError(
++                    "Bot instance is required for ask_user functionality"
++                )
+
+             ask_user_handler.setup_dispatcher(dp)
+
+@@ -62,3 +74,6 @@
+
+         if self.settings.event_scheduler.enabled:
+             event_scheduler.setup_dispatcher(dp)
++
++        if self.settings.telethon_manager.enabled:
++            telethon_manager.setup_dispatcher(dp)
+Index: botspot/core/botspot_settings.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/botspot/core/botspot_settings.py b/botspot/core/botspot_settings.py
+--- a/botspot/core/botspot_settings.py	(revision 1e711220f395b6603f1428854fefe431afb287ba)
++++ b/botspot/core/botspot_settings.py	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -7,6 +7,7 @@
+ from botspot.components.event_scheduler import EventSchedulerSettings
+ from botspot.components.mongo_database import MongoDatabaseSettings
+ from botspot.components.print_bot_url import PrintBotUrlSettings
++from botspot.components.telethon_manager import TelethonManagerSettings
+ from botspot.components.trial_mode import TrialModeSettings
+
+
+@@ -20,6 +21,7 @@
+     event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
+     mongo_database: MongoDatabaseSettings = MongoDatabaseSettings()
+     print_bot_url: PrintBotUrlSettings = PrintBotUrlSettings()
++    telethon_manager: TelethonManagerSettings = TelethonManagerSettings()
+     trial_mode: TrialModeSettings = TrialModeSettings()
+
+     class Config:
+Index: botspot/core/dependency_manager.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/botspot/core/dependency_manager.py b/botspot/core/dependency_manager.py
+--- a/botspot/core/dependency_manager.py	(revision 1e711220f395b6603f1428854fefe431afb287ba)
++++ b/botspot/core/dependency_manager.py	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -9,13 +9,22 @@
+     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+     from pymongo import Database
+
++    from botspot.components.telethon_manager import TelethonManager
++
+
+ class DependencyManager(metaclass=Singleton):
+-    def __init__(self, botspot_settings: BotspotSettings = None, bot: Bot = None, mongo_database=None, **kwargs):
++    def __init__(
++        self,
++        botspot_settings: BotspotSettings = None,
++        bot: Bot = None,
++        mongo_database=None,
++        **kwargs
++    ):
+         self._botspot_settings = botspot_settings or BotspotSettings()
+         self._bot = bot
+         self._mongo_database = mongo_database
+         self._scheduler = None
++        self._telethon_manager = None
+         self.__dict__.update(kwargs)
+
+     @property
+@@ -50,6 +59,14 @@
+     def scheduler(self, value):
+         self._scheduler = value
+
++    @property
++    def telethon_manager(self) -> "TelethonManager":
++        return self._telethon_manager
++
++    @telethon_manager.setter
++    def telethon_manager(self, value):
++        self._telethon_manager = value
++
+     @classmethod
+     def is_initialized(cls) -> bool:
+         return cls in cls._instances
+Index: botspot/utils/deps_getters.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/botspot/utils/deps_getters.py b/botspot/utils/deps_getters.py
+--- a/botspot/utils/deps_getters.py	(revision 1e711220f395b6603f1428854fefe431afb287ba)
++++ b/botspot/utils/deps_getters.py	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -10,41 +10,62 @@
+ - explains how to enable the dependency if it is not initialized
+ """
+
+-from typing import Optional
++from typing import TYPE_CHECKING, Optional
+
+-from aiogram import Bot
+-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+-from telethon import TelegramClient
++if TYPE_CHECKING:
++    from aiogram import Bot
++    from aiogram.fsm.context import FSMContext
++    from apscheduler.schedulers.asyncio import AsyncIOScheduler
++    from telethon import TelegramClient
+
++    from botspot.components.telethon_manager import TelethonManager
+
+-def get_bot() -> Bot:
++
++def get_bot() -> "Bot":
+     from botspot.core.dependency_manager import get_dependency_manager
+
+     deps = get_dependency_manager()
+-    bot: Bot = deps.bot
++    bot: "Bot" = deps.bot
+     assert (
+-            bot is not None
++        bot is not None
+     ), "Bot is not initialized. To enable pass bot instance to BotManager() constructor"
+     return bot
+
+
+-def get_scheduler() -> AsyncIOScheduler:
++def get_scheduler() -> "AsyncIOScheduler":
+     from botspot.core.dependency_manager import get_dependency_manager
+
+     deps = get_dependency_manager()
+-    scheduler: AsyncIOScheduler = deps.scheduler
++    scheduler: "AsyncIOScheduler" = deps.scheduler
+     assert (
+-            scheduler is not None
++        scheduler is not None
+     ), "Scheduler is not initialized. To enable set ENABLE_SCHEDULER or pass enable_scheduler=True into botspot config"
+     return scheduler
+
+
+-def get_telethon_client(user_id: int) -> Optional[TelegramClient]:
++def get_telethon_manager() -> "TelethonManager":
++    """Get the TelethonManager instance from dependency manager"""
+     from botspot.core.dependency_manager import get_dependency_manager
+
+     deps = get_dependency_manager()
+-    telethon_manager = deps.telethon_manager
+-    assert (
+-            telethon_manager is not None
+-    ), "TelethonManager is not initialized. To enable set ENABLE_TELETHON_MANAGER or pass enable_telethon_manager=True into botspot config"
+-    return telethon_manager.get_client(user_id)
++    if not deps.telethon_manager:
++        raise RuntimeError(
++            "TelethonManager is not initialized. Make sure it's enabled in settings."
++        )
++    return deps.telethon_manager
++
++
++async def get_telethon_client(
++    user_id: int, state: Optional["FSMContext"] = None
++) -> "TelegramClient":
++    """
++    Get a TelegramClient instance for a specific user.
++    If state is provided and auto_auth is enabled, will trigger authentication if client is missing.
++    """
++    telethon_manager = get_telethon_manager()
++    client = await telethon_manager.get_client(user_id, state)
++    if not client:
++        raise RuntimeError(
++            f"No active Telethon client found for user {user_id}. Use /setup_telethon to create one."
++        )
++    return client
+Index: examples/components_examples/telethon_manager_example/README.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/components_examples/telethon_manager_example/README.md b/examples/components_examples/telethon_manager_example/README.md
+new file mode 100644
+--- /dev/null	(revision cc18f0491d082431a813ac6298b3e899c139379b)
++++ b/examples/components_examples/telethon_manager_example/README.md	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -0,0 +1,54 @@
++# Telethon Manager Example
++
++This example demonstrates how to use the `telethon_manager` component to manage Telegram user clients in your bot.
++
++## Features
++
++- Setup Telegram user clients using Telethon
++- Manage multiple user sessions
++- Automatic session persistence
++- Support for 2FA authentication
++
++## Setup
++
++1. Copy `sample.env` to `.env` and fill in the required values:
++   ```env
++    # Bot token from @BotFather
++   TELEGRAM_BOT_TOKEN=your_bot_token
++   # Telethon manager settings
++   BOTSPOT_TELETHON_MANAGER_ENABLED=true
++   BOTSPOT_TELETHON_MANAGER_SESSIONS_DIR=sessions
++   # Telegram API credentials from https://my.telegram.org/apps
++   BOTSPOT_TELETHON_MANAGER_API_ID=your_api_id
++   BOTSPOT_TELETHON_MANAGER_API_HASH=your_api_hash
++   ```
++
++2. Install dependencies:
++   ```bash
++   pip install botspot telethon
++   ```
++
++3. Run the example:
++   ```bash
++   python main.py
++   ```
++
++## Available Commands
++
++- `/setup_telethon` - Setup a new Telethon user client
++- `/setup_telethon_force` - Force setup of a new Telethon client (removes existing session)
++- `/check_telethon` - Check if you have an active Telethon client
++
++## Usage Flow
++
++1. Start the bot and send `/setup_telethon`
++2. Enter your phone number when prompted
++3. Enter the verification code sent to your Telegram account
++4. If you have 2FA enabled, enter your password
++5. Your session will be saved and can be reused in future bot restarts
++
++## Notes
++
++- The component requires the `ask_user` component to be enabled for interactive setup
++- Sessions are stored in the `sessions` directory by default
++- Each user can have only one active session at a time
+\ No newline at end of file
+Index: examples/components_examples/telethon_manager_example/main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/components_examples/telethon_manager_example/main.py b/examples/components_examples/telethon_manager_example/main.py
+new file mode 100644
+--- /dev/null	(revision cc18f0491d082431a813ac6298b3e899c139379b)
++++ b/examples/components_examples/telethon_manager_example/main.py	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -0,0 +1,48 @@
++"""
++Example usage of the telethon_manager component.
++"""
++
++import asyncio
++import logging
++import sys
++from os import getenv
++
++from aiogram import Bot, Dispatcher
++from aiogram.enums import ParseMode
++from dotenv import load_dotenv
++
++from botspot.core.bot_manager import BotManager
++
++# Load environment variables
++load_dotenv()
++
++# Bot token can be obtained via https://t.me/BotFather
++TOKEN = getenv("TELEGRAM_BOT_TOKEN")
++
++# Configure logging
++logging.basicConfig(level=logging.INFO, stream=sys.stdout)
++
++
++async def main() -> None:
++    # Initialize Bot instance with a default parse mode
++    bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
++    dp = Dispatcher()
++
++    # Initialize BotManager with telethon_manager enabled
++    bm = BotManager(
++        bot=bot,
++        # Enable ask_user component as it's required for telethon_manager
++        ask_user={"enabled": True},
++        # Enable bot_commands_menu to register commands
++        bot_commands_menu={"enabled": True},
++    )
++
++    # Setup dispatcher with components
++    bm.setup_dispatcher(dp)
++
++    # Start polling
++    await dp.start_polling(bot)
++
++
++if __name__ == "__main__":
++    asyncio.run(main())
+Index: examples/components_examples/telethon_manager_example/sample.env
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/components_examples/telethon_manager_example/sample.env b/examples/components_examples/telethon_manager_example/sample.env
+new file mode 100644
+--- /dev/null	(revision cc18f0491d082431a813ac6298b3e899c139379b)
++++ b/examples/components_examples/telethon_manager_example/sample.env	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -0,0 +1,13 @@
++# Bot token from @BotFather
++TELEGRAM_BOT_TOKEN=your_bot_token
++
++# Enable required components
++BOTSPOT_ASK_USER_ENABLED=true
++BOTSPOT_BOT_COMMANDS_MENU_ENABLED=true
++
++# Telethon manager settings
++BOTSPOT_TELETHON_MANAGER_ENABLED=true
++BOTSPOT_TELETHON_MANAGER_SESSIONS_DIR=sessions
++# Telegram API credentials from https://my.telegram.org/apps
++BOTSPOT_TELETHON_MANAGER_API_ID=your_api_id
++BOTSPOT_TELETHON_MANAGER_API_HASH=your_api_hash
+\ No newline at end of file
+Index: pyproject.toml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/pyproject.toml b/pyproject.toml
+--- a/pyproject.toml	(revision 1e711220f395b6603f1428854fefe431afb287ba)
++++ b/pyproject.toml	(revision cc18f0491d082431a813ac6298b3e899c139379b)
+@@ -1,6 +1,6 @@
+ [tool.poetry]
+ name = "botspot"
+-version = "0.2.7" # Rework ask_user handler to add support for 'return raw' feature
++version = "0.2.8" # Rework ask_user handler to add support for 'return raw' feature
+ description = ""
+ authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
+ readme = "README.md"

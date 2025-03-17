@@ -5,6 +5,7 @@ from typing import Dict, List, NamedTuple, Tuple
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import BotCommand, Message
+from deprecated import deprecated
 from pydantic_settings import BaseSettings
 
 from botspot.utils.admin_filter import AdminFilter
@@ -114,35 +115,45 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
             await message.answer(help_text)
 
 
-def add_command(names=None, description=None, visibility=Visibility.PUBLIC):
+def add_botspot_command(func=None, names=None, description=None, visibility=Visibility.PUBLIC):
+    """Add a command to the bot's command list"""
+    visibility = Visibility(visibility)
+
+    if names is None:
+        if func is None:
+            raise ValueError("Either names or func must be provided")
+        names = [func.__name__]
+    elif isinstance(names, str):
+        names = [names]
+    if not description:
+        if func is None:
+            raise ValueError("Either description or func must be provided")
+        docstring = func.__doc__
+        if docstring is not None:
+            docstring = docstring.strip()
+        description = docstring or NO_COMMAND_DESCRIPTION
+
+    for n in names:
+        n = n.lower()
+        n = n.lstrip("/")  # just in case
+        if n in commands:
+            logger.warning(f"Trying to add duplicate command: /{n} - skipping")
+            continue
+        commands[n] = CommandInfo(description, visibility=visibility)
+
+
+def botspot_command(names=None, description=None, visibility=Visibility.PUBLIC):
     """Add a command to the bot's command list"""
     visibility = Visibility(visibility)
 
     def wrapper(func):
-        nonlocal names
-        nonlocal description
-        nonlocal visibility
-
-        if names is None:
-            names = [func.__name__]
-        elif isinstance(names, str):
-            names = [names]
-        if not description:
-            docstring = func.__doc__
-            if docstring is not None:
-                description = docstring.strip()
-            description = docstring or NO_COMMAND_DESCRIPTION
-
-        for n in names:
-            n = n.lower()
-            n = n.lstrip("/")  # just in case
-            if n in commands:
-                logger.warning(f"Trying to add duplicate command: /{n} - skipping")
-                continue
-            commands[n] = CommandInfo(description, visibility=visibility)
+        add_botspot_command(func, names, description, visibility)
         return func
 
     return wrapper
+
+
+add_command = deprecated("Please use commands_menu.botspot_command instead")(botspot_command)
 
 
 def add_hidden_command(names=None, description=None):
