@@ -6,12 +6,16 @@ using litellm as the backend client to support multiple LLM providers.
 
 import json
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Generator, Optional, Type
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 from botspot.utils.internal import get_logger
+
+if TYPE_CHECKING:
+    from litellm.types.utils import ModelResponse
+
 
 logger = get_logger()
 
@@ -135,7 +139,7 @@ class LLMProvider:
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
         **extra_kwargs,
-    ) -> Any:
+    ) -> ModelResponse:
         """
         Raw query to the LLM - returns the complete response object.
 
@@ -354,7 +358,7 @@ class LLMProvider:
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
         **extra_kwargs,
-    ) -> Any:
+    ) -> ModelResponse:
         """
         Async raw query to the LLM - returns the complete response object.
 
@@ -560,10 +564,11 @@ def setup_dispatcher(dp):
     return dp
 
 
-def initialize(settings: LLMProviderSettings) -> LLMProvider:
+def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
     """Initialize the LLM Provider component."""
     if not settings.enabled:
-        raise RuntimeError("LLM Provider component is disabled")
+        logger.info("LLM Provider component is disabled")
+        return None
 
     logger.info("Initializing LLM Provider component")
     provider = LLMProvider(settings)
