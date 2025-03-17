@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from telethon import TelegramClient
 
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.chat_fetcher import ChatFetcher
 
 
 def get_bot() -> "Bot":
@@ -103,3 +104,15 @@ def get_user_manager():
             "UserManager is not initialized. Make sure user_data component is enabled in settings."
         )
     return user_manager
+
+
+def get_chat_fetcher() -> "ChatFetcher":
+    """Get ChatFetcher instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    chat_fetcher = get_dependency_manager().chat_fetcher
+    if chat_fetcher is None:
+        raise RuntimeError(
+            "ChatFetcher is not initialized. Make sure chat_fetcher component is enabled in settings."
+        )
+    return chat_fetcher

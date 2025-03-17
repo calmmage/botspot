@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.chat_fetcher import ChatFetcher
+    from botspot.components.new.llm_provider import LLMProvider
 
 
 class DependencyManager(metaclass=Singleton):
@@ -30,6 +32,8 @@ class DependencyManager(metaclass=Singleton):
         self._telethon_manager = None
         self._user_manager = None
         self._chat_binder = None
+        self._llm_provider = None
+        self._chat_fetcher = None
         self.__dict__.update(kwargs)
 
     @property
@@ -109,6 +113,26 @@ class DependencyManager(metaclass=Singleton):
     @chat_binder.setter
     def chat_binder(self, value):
         self._chat_binder = value
+
+    @property
+    def llm_provider(self) -> "LLMProvider":
+        if self._llm_provider is None:
+            raise RuntimeError("LLM Provider is not initialized")
+        return self._llm_provider
+
+    @llm_provider.setter
+    def llm_provider(self, value):
+        self._llm_provider = value
+
+    @property
+    def chat_fetcher(self) -> "ChatFetcher":
+        if self._chat_fetcher is None:
+            raise RuntimeError("Chat Fetcher is not initialized")
+        return self._chat_fetcher
+
+    @chat_fetcher.setter
+    def chat_fetcher(self, value):
+        self._chat_fetcher = value
 
     @classmethod
     def is_initialized(cls) -> bool:
