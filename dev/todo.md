@@ -39,10 +39,10 @@
 Notes:
 
 - Implement caching to work around Telegram API limitations
-- Consider importing telegram_downloader as dependency vs. moving code
-- Reference implementation in projects/telegram_downloader
-- Draft in calmmage/seasonal/season_1_winter_2024/draft/download-telegram-messages
-- Should adapt telegram_downloader to use custom DB and telethon client
+- Imported telegram_downloader as dependency
+- Reference implementation from projects/telegram_downloader
+- Adapted telegram_downloader to use custom DB and telethon client
+- Added advanced load_chat_history method with proper incremental updates
 
 ## LLM Provider - ✅ DONE
 
