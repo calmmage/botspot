@@ -123,7 +123,7 @@ class TestBotInfoHandler:
         
         # Check if response contains expected info
         assert "🤖 Bot Information" in response_text
-        assert "Botspot Version: 0.4.10" in response_text
+        assert f"Botspot Version: {botspot.__version__}" in response_text
         assert "📊 Enabled Components:" in response_text
         assert "✅ component1" in response_text
         assert "❌ component2" in response_text
