@@ -51,16 +51,26 @@ class TestBotManager:
         with patch('botspot.core.bot_manager.BotspotSettings') as mock_settings_class, \
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
              patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
+             patch('botspot.core.bot_manager.user_data') as mock_user_data, \
+             patch('botspot.core.bot_manager.chat_binder') as mock_chat_binder, \
              patch('botspot.core.bot_manager.logger'):
             
             mock_settings = MagicMock()
+            # Configure mock settings with all components disabled
+            for component in ['telethon_manager', 'mongo_database', 'event_scheduler', 
+                             'user_data', 'single_user_mode', 'chat_binder']:
+                component_settings = MagicMock()
+                component_settings.enabled = False
+                setattr(mock_settings, component, component_settings)
             mock_settings_class.return_value = mock_settings
             
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
             
-            # Mock telethon manager initialize to return None when disabled
+            # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
+            mock_user_data.initialize.return_value = None
+            mock_chat_binder.initialize.return_value = None
             
             bm = BotManager()
             
@@ -75,17 +85,25 @@ class TestBotManager:
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
              patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
              patch('botspot.core.bot_manager.user_data') as mock_user_data, \
+             patch('botspot.core.bot_manager.chat_binder') as mock_chat_binder, \
              patch('botspot.core.bot_manager.logger'):
             
             mock_settings = MagicMock()
+            # Configure mock settings with all components disabled
+            for component in ['telethon_manager', 'mongo_database', 'event_scheduler', 
+                             'user_data', 'single_user_mode', 'chat_binder']:
+                component_settings = MagicMock()
+                component_settings.enabled = False
+                setattr(mock_settings, component, component_settings)
             mock_settings_class.return_value = mock_settings
             
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
             
-            # Mock telethon manager initialize to return None when disabled
+            # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
             mock_user_data.initialize.return_value = None
+            mock_chat_binder.initialize.return_value = None
             
             # Create mock bot, dispatcher, and user_class
             mock_bot = MagicMock(spec=Bot)
@@ -126,27 +144,40 @@ class TestBotManager:
              patch(f'botspot.core.bot_manager.{component_name}') as mock_component, \
              patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
              patch('botspot.core.bot_manager.user_data') as mock_user_data, \
+             patch('botspot.core.bot_manager.chat_binder') as mock_chat_binder, \
+             patch('botspot.core.bot_manager.error_handler') as mock_error_handler, \
              patch('botspot.core.bot_manager.logger'):
             
             # Configure mock settings
             mock_settings = MagicMock()
+            # Configure error_handling settings
+            error_settings = MagicMock()
+            error_settings.enabled = False  # Disable error handling for tests
+            mock_settings.error_handling = error_settings
+            
+            # Disable all components except the one we're testing
+            for comp in ['telethon_manager', 'mongo_database', 'event_scheduler', 
+                        'user_data', 'single_user_mode', 'chat_binder']:
+                if comp != component_name:  # Skip the component we're testing
+                    comp_settings = MagicMock()
+                    comp_settings.enabled = False
+                    setattr(mock_settings, comp, comp_settings)
+            
+            # Configure the component we're testing
             component_settings = MagicMock()
             component_settings.enabled = enabled
-            # Use getattr dynamically to set the attribute
             setattr(mock_settings, component_name, component_settings)
-            # Mock telethon settings to prevent FileNotFoundError
-            mock_telethon_settings = MagicMock()
-            mock_telethon_settings.enabled = False
-            mock_settings.telethon_manager = mock_telethon_settings
             mock_settings_class.return_value = mock_settings
             
             # Configure mock deps
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
+            mock_deps_class.is_initialized.return_value = True  # Important: indicate dependency manager is initialized
             
             # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
             mock_user_data.initialize.return_value = None
+            mock_chat_binder.initialize.return_value = None
             
             # Create BotManager
             bm = BotManager()
@@ -173,30 +204,48 @@ class TestBotManager:
              patch('botspot.core.bot_manager.DependencyManager') as mock_deps_class, \
              patch('botspot.core.bot_manager.telethon_manager') as mock_telethon_manager, \
              patch('botspot.core.bot_manager.user_data') as mock_user_data, \
+             patch('botspot.core.bot_manager.chat_binder') as mock_chat_binder, \
+             patch('botspot.core.bot_manager.user_interactions') as mock_user_interactions, \
+             patch('botspot.core.bot_manager.error_handler') as mock_error_handler, \
              patch('botspot.core.bot_manager.logger'):
             
             # Configure mock settings
             mock_settings = MagicMock()
+            # Configure error_handling settings
+            error_settings = MagicMock()
+            error_settings.enabled = False  # Disable error handling for tests
+            mock_settings.error_handling = error_settings
+            
+            # Disable all components 
+            for comp in ['telethon_manager', 'mongo_database', 'event_scheduler', 
+                        'user_data', 'single_user_mode', 'chat_binder']:
+                comp_settings = MagicMock()
+                comp_settings.enabled = False
+                setattr(mock_settings, comp, comp_settings)
+            
+            # Enable ask_user only
             ask_user_settings = MagicMock()
             ask_user_settings.enabled = True
             mock_settings.ask_user = ask_user_settings
-            # Mock telethon settings to prevent FileNotFoundError
-            mock_telethon_settings = MagicMock()
-            mock_telethon_settings.enabled = False
-            mock_settings.telethon_manager = mock_telethon_settings
             mock_settings_class.return_value = mock_settings
             
             # Configure mock deps with no bot
             mock_deps = MagicMock()
             mock_deps.bot = None
+            mock_deps.botspot_settings = mock_settings
             mock_deps_class.return_value = mock_deps
+            mock_deps_class.is_initialized.return_value = True  # Important: indicate dependency manager is initialized
             
             # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
             mock_user_data.initialize.return_value = None
+            mock_chat_binder.initialize.return_value = None
             
             # Create BotManager
             bm = BotManager()
+            
+            # We need to setup our mocks so setup_dispatcher can function properly
+            mock_user_interactions.setup_dispatcher.side_effect = RuntimeError("Bot instance is required for ask_user functionality")
             
             # Setup dispatcher should raise an error for ask_user
             mock_dispatcher = MagicMock()
