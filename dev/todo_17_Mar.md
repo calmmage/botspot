@@ -20,6 +20,13 @@ Small demo bots:
     - showcase tech: trial mode / subscription
     - showcase tech: gpt chat with history on timeout / schedule
 - b - multi-message chat bot.
+- c - chat with my telegram history. Find messages.
+- d - simple daily bot
+    - post 1 item per day to a telegram channel
+    - showcase tech: scheduler component
+    - showcase tech: queue component
+    - bonus: also post to Twitter
+    - bonus: companion bot to get a random item on demand
 
 Big real bots
 
