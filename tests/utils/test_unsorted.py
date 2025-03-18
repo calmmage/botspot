@@ -3,19 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from aiogram.enums import ChatAction
 
-from botspot.utils.unsorted import (
-    _extract_message_text,
-    get_message_text,
-    get_name,
-    get_user,
-    send_typing_status,
-    strip_command,
-)
-
 
 class TestGetUser:
     def test_get_user_from_message(self):
         """Test getting username from message.from_user"""
+        from botspot.utils.unsorted import get_user
+
         # Setup
         message = MagicMock()
         message.from_user.username = "test_user"
@@ -30,6 +23,8 @@ class TestGetUser:
 
     def test_get_user_id_when_no_username(self):
         """Test getting user ID when username is not set"""
+        from botspot.utils.unsorted import get_user
+
         # Setup
         message = MagicMock()
         message.from_user.username = None
@@ -44,6 +39,8 @@ class TestGetUser:
 
     def test_get_user_from_forward(self):
         """Test getting username from forwarded message"""
+        from botspot.utils.unsorted import get_user
+
         # Setup
         message = MagicMock()
         message.from_user.username = "original_user"
@@ -59,6 +56,8 @@ class TestGetUser:
 
     def test_get_user_id_from_forward_when_no_username(self):
         """Test getting user ID from forwarded message when username is not set"""
+        from botspot.utils.unsorted import get_user
+
         # Setup
         message = MagicMock()
         message.from_user.username = "original_user"
@@ -76,6 +75,8 @@ class TestGetUser:
 class TestGetName:
     def test_get_name_from_message(self):
         """Test getting full name from message.from_user"""
+        from botspot.utils.unsorted import get_name
+
         # Setup
         message = MagicMock()
         message.from_user.full_name = "Test User"
@@ -89,6 +90,8 @@ class TestGetName:
 
     def test_get_name_from_forward(self):
         """Test getting full name from forwarded message"""
+        from botspot.utils.unsorted import get_name
+
         # Setup
         message = MagicMock()
         message.from_user.full_name = "Original User"
@@ -104,6 +107,8 @@ class TestGetName:
 class TestStripCommand:
     def test_strip_command_with_text(self):
         """Test stripping command from text with arguments"""
+        from botspot.utils.unsorted import strip_command
+
         # Execute
         result = strip_command("/command some arguments")
 
@@ -112,6 +117,8 @@ class TestStripCommand:
 
     def test_strip_command_without_text(self):
         """Test stripping command from text without arguments"""
+        from botspot.utils.unsorted import strip_command
+
         # Execute
         result = strip_command("/command")
 
@@ -120,6 +127,8 @@ class TestStripCommand:
 
     def test_strip_command_not_a_command(self):
         """Test stripping command from text that is not a command"""
+        from botspot.utils.unsorted import strip_command
+
         # Execute
         result = strip_command("This is not a command")
 
@@ -131,6 +140,8 @@ class TestExtractMessageText:
     @pytest.mark.asyncio
     async def test_extract_message_text_with_text(self):
         """Test extracting text from message with text"""
+        from botspot.utils.unsorted import _extract_message_text
+
         # Setup
         message = MagicMock()
         message.text = "Test message"
@@ -148,6 +159,8 @@ class TestExtractMessageText:
     @pytest.mark.asyncio
     async def test_extract_message_text_with_markdown(self):
         """Test extracting text with markdown formatting"""
+        from botspot.utils.unsorted import _extract_message_text
+
         # Setup
         message = MagicMock()
         message.text = "Test message"
@@ -165,6 +178,8 @@ class TestExtractMessageText:
     @pytest.mark.asyncio
     async def test_extract_message_text_with_caption(self):
         """Test extracting text from message with caption"""
+        from botspot.utils.unsorted import _extract_message_text
+
         # Setup
         message = MagicMock()
         message.text = None
@@ -181,6 +196,8 @@ class TestExtractMessageText:
     @pytest.mark.asyncio
     async def test_extract_message_text_with_document(self):
         """Test extracting text from message with document"""
+        from botspot.utils.unsorted import _extract_message_text
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -209,6 +226,8 @@ class TestExtractMessageText:
     @pytest.mark.asyncio
     async def test_extract_message_text_with_reply(self):
         """Test extracting text from message with reply"""
+        from botspot.utils.unsorted import _extract_message_text
+
         # Setup
         reply_message = MagicMock()
         reply_message.text = "Reply message"
@@ -231,6 +250,8 @@ class TestExtractMessageText:
     @pytest.mark.asyncio
     async def test_extract_message_text_as_dict(self):
         """Test extracting text as dictionary"""
+        from botspot.utils.unsorted import _extract_message_text
+
         # Setup
         message = MagicMock()
         message.text = "Test message"
@@ -251,6 +272,8 @@ class TestGetMessageText:
     @pytest.mark.asyncio
     async def test_get_message_text(self):
         """Test getting message text"""
+        from botspot.utils.unsorted import get_message_text
+
         with patch("botspot.utils.unsorted._extract_message_text") as mock_extract:
             # Setup
             mock_extract.return_value = {"text": "Test message", "caption": "Test caption"}
@@ -269,6 +292,8 @@ class TestSendTypingStatus:
     @pytest.mark.asyncio
     async def test_send_typing_status_default(self):
         """Test sending typing status with default action"""
+        from botspot.utils.unsorted import send_typing_status
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -290,6 +315,8 @@ class TestSendTypingStatus:
     @pytest.mark.asyncio
     async def test_send_typing_status_custom_action(self):
         """Test sending typing status with custom action"""
+        from botspot.utils.unsorted import send_typing_status
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -311,6 +338,8 @@ class TestSendTypingStatus:
     @pytest.mark.asyncio
     async def test_send_typing_status_invalid_action(self):
         """Test sending typing status with invalid action falls back to typing"""
+        from botspot.utils.unsorted import send_typing_status
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
