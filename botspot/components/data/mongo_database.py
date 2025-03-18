@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
 
 logger = get_logger()
 
@@ -27,8 +27,10 @@ def setup_dispatcher(dp):
     return dp
 
 
-def initialize(settings: MongoDatabaseSettings) -> "AsyncIOMotorDatabase":
-    """Initialize MongoDB connection."""
+def initialize(
+    settings: MongoDatabaseSettings,
+) -> Tuple["AsyncIOMotorClient", "AsyncIOMotorDatabase"]:
+    """Initialize MongoDB connection and return both client and database."""
     from motor.motor_asyncio import AsyncIOMotorClient
 
     assert AsyncIOMotorClient
@@ -37,7 +39,7 @@ def initialize(settings: MongoDatabaseSettings) -> "AsyncIOMotorDatabase":
         client = AsyncIOMotorClient(settings.conn_str.get_secret_value())
         db = client[settings.database]
         logger.info("MongoDB client initialized.")
-        return db
+        return client, db
     except Exception as e:
         logger.error(f"Failed to initialize MongoDB: {e}")
         raise

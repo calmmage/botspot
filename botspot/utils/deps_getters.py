@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
     from aiogram.fsm.context import FSMContext
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
     from telethon import TelegramClient
 
     from botspot.components.main.telethon_manager import TelethonManager
@@ -83,13 +83,27 @@ async def get_telethon_client(
     return client
 
 
+def get_mongo_client() -> "AsyncIOMotorClient":
+    """Get MongoDB client instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    client = get_dependency_manager().mongo_client
+    if client is None:
+        raise RuntimeError(
+            "MongoDB client is not initialized. Make sure MongoDB is enabled in settings."
+        )
+    return client
+
+
 def get_database() -> "AsyncIOMotorDatabase":
     """Get MongoDB database instance from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
 
     db = get_dependency_manager().mongo_database
     if db is None:
-        raise RuntimeError("MongoDB is not initialized")
+        raise RuntimeError(
+            "MongoDB database is not initialized. Make sure MongoDB is enabled in settings."
+        )
     return db
 
 
