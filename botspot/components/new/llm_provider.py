@@ -982,6 +982,36 @@ async def aquery_llm(
     )
 
 
+async def astream_llm(
+    prompt: str,
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    **kwargs,
+) -> AsyncGenerator[str, None]:
+    """
+    Async stream text chunks from the LLM.
+
+    This is a convenience function that uses the global LLM provider.
+
+    Args:
+        prompt: The text prompt to send to the LLM
+        user: User identifier for tracking usage and permissions
+        system_message: Optional system message to prepend
+        model: Optional model to use (defaults to provider default)
+        **kwargs: Additional arguments to pass to the LLM provider
+
+    Returns:
+        An async generator that yields text chunks as they become available
+    """
+    provider = get_llm_provider()
+    async for chunk in provider.aquery_llm_stream(
+        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+    ):
+        yield chunk
+
+
 # todo: adapt this to user not user_id
 async def get_llm_usage_stats(user: Optional[UserLike] = None) -> dict:
     """
