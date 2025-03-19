@@ -2,22 +2,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Import the functions to test
-from botspot.utils.deps_getters import (
-    get_bot,
-    get_database,
-    get_dispatcher,
-    get_mongo_client,
-    get_scheduler,
-    get_telethon_client,
-    get_telethon_manager,
-    get_user_manager,
-)
-
 
 class TestGetBot:
     def test_get_bot_success(self):
         """Test successful retrieval of bot"""
+        from botspot.utils.deps_getters import get_bot
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -34,6 +24,8 @@ class TestGetBot:
 
     def test_get_bot_not_initialized(self):
         """Test error when bot is not initialized"""
+        from botspot.utils.deps_getters import get_bot
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -50,6 +42,8 @@ class TestGetBot:
 class TestGetDispatcher:
     def test_get_dispatcher_success(self):
         """Test successful retrieval of dispatcher"""
+        from botspot.utils.deps_getters import get_dispatcher
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -66,6 +60,8 @@ class TestGetDispatcher:
 
     def test_get_dispatcher_not_initialized(self):
         """Test error when dispatcher is not initialized"""
+        from botspot.utils.deps_getters import get_dispatcher
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -82,6 +78,8 @@ class TestGetDispatcher:
 class TestGetScheduler:
     def test_get_scheduler_success(self):
         """Test successful retrieval of scheduler"""
+        from botspot.utils.deps_getters import get_scheduler
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -98,6 +96,8 @@ class TestGetScheduler:
 
     def test_get_scheduler_not_initialized(self):
         """Test error when scheduler is not initialized"""
+        from botspot.utils.deps_getters import get_scheduler
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -114,6 +114,8 @@ class TestGetScheduler:
 class TestGetTelethonManager:
     def test_get_telethon_manager_success(self):
         """Test successful retrieval of telethon manager"""
+        from botspot.utils.deps_getters import get_telethon_manager
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -130,6 +132,8 @@ class TestGetTelethonManager:
 
     def test_get_telethon_manager_not_initialized(self):
         """Test error when telethon manager is not initialized"""
+        from botspot.utils.deps_getters import get_telethon_manager
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -147,6 +151,8 @@ class TestGetTelethonClient:
     @pytest.mark.asyncio
     async def test_get_telethon_client_success(self):
         """Test successful retrieval of telethon client"""
+        from botspot.utils.deps_getters import get_telethon_client
+
         with patch("botspot.utils.deps_getters.get_telethon_manager") as mock_get_telethon_manager:
             # Setup
             mock_manager = MagicMock()
@@ -165,6 +171,8 @@ class TestGetTelethonClient:
     @pytest.mark.asyncio
     async def test_get_telethon_client_with_state(self):
         """Test retrieval of telethon client with state"""
+        from botspot.utils.deps_getters import get_telethon_client
+
         with patch("botspot.utils.deps_getters.get_telethon_manager") as mock_get_telethon_manager:
             # Setup
             mock_manager = MagicMock()
@@ -184,6 +192,8 @@ class TestGetTelethonClient:
     @pytest.mark.asyncio
     async def test_get_telethon_client_not_found(self):
         """Test error when telethon client is not found"""
+        from botspot.utils.deps_getters import get_telethon_client
+
         with patch("botspot.utils.deps_getters.get_telethon_manager") as mock_get_telethon_manager:
             # Setup
             mock_manager = MagicMock()
@@ -201,6 +211,8 @@ class TestGetTelethonClient:
 class TestGetMongoClient:
     def test_get_mongo_client_success(self):
         """Test successful retrieval of MongoDB client"""
+        from botspot.utils.deps_getters import get_mongo_client
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -217,6 +229,8 @@ class TestGetMongoClient:
 
     def test_get_mongo_client_not_initialized(self):
         """Test error when MongoDB client is not initialized"""
+        from botspot.utils.deps_getters import get_mongo_client
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -233,6 +247,8 @@ class TestGetMongoClient:
 class TestGetDatabase:
     def test_get_database_success(self):
         """Test successful retrieval of database"""
+        from botspot.utils.deps_getters import get_database
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -249,6 +265,8 @@ class TestGetDatabase:
 
     def test_get_database_not_initialized(self):
         """Test error when database is not initialized"""
+        from botspot.utils.deps_getters import get_database
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -265,6 +283,8 @@ class TestGetDatabase:
 class TestGetUserManager:
     def test_get_user_manager_success(self):
         """Test successful retrieval of user manager"""
+        from botspot.utils.deps_getters import get_user_manager
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
@@ -281,6 +301,8 @@ class TestGetUserManager:
 
     def test_get_user_manager_not_initialized(self):
         """Test error when user manager is not initialized"""
+        from botspot.utils.deps_getters import get_user_manager
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Setup
             mock_deps = MagicMock()
