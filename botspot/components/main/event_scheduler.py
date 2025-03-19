@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 from aiogram import Dispatcher
 from pydantic_settings import BaseSettings
 
-from botspot.utils.deps_getters import get_scheduler
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
@@ -23,6 +22,18 @@ class EventSchedulerSettings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
+
+
+def get_scheduler() -> "AsyncIOScheduler":
+    """Get the scheduler instance from dependency manager"""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    scheduler: "AsyncIOScheduler" = deps.scheduler
+    assert (
+        scheduler is not None
+    ), "Scheduler is not initialized. To enable set ENABLE_SCHEDULER or pass enable_scheduler=True into botspot config"
+    return scheduler
 
 
 def initialize(settings: EventSchedulerSettings) -> Optional["AsyncIOScheduler"]:
@@ -49,6 +60,7 @@ def initialize(settings: EventSchedulerSettings) -> Optional["AsyncIOScheduler"]
 
 
 async def run_scheduler():
+    # Use the scheduler from dependency_manager directly to avoid circular imports
     from botspot.core.dependency_manager import get_dependency_manager
 
     scheduler = get_dependency_manager().scheduler

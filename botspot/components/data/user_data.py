@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings
 
 from botspot.utils import compare_users
 from botspot.utils.admin_filter import AdminFilter
-from botspot.utils.deps_getters import get_database, get_user_manager
+from botspot.utils.deps_getters import get_database
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
@@ -279,7 +279,10 @@ class UserTrackingMiddleware(BaseMiddleware):
 
             # Skip DB operations if user was recently processed
             if not self._is_cache_valid(user_id):
-                user_manager = get_user_manager()
+                # Direct access to dependency_manager to avoid circular imports
+                from botspot.core.dependency_manager import get_dependency_manager
+
+                user_manager = get_dependency_manager().user_manager
                 if not await user_manager.has_user(user_id):
                     user = user_manager.user_class(
                         user_id=user_id,
@@ -327,6 +330,18 @@ def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
     )
 
 
+def get_user_manager():
+    """Get UserManager instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    user_manager = get_dependency_manager().user_manager
+    if user_manager is None:
+        raise RuntimeError(
+            "UserManager is not initialized. Make sure user_data component is enabled in settings."
+        )
+    return user_manager
+
+
 def setup_dispatcher(dp: Dispatcher, **kwargs):
     """Setup the user data component"""
     settings = UserDataSettings(**kwargs)
@@ -352,7 +367,10 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
                 return
 
             user_id = message.reply_to_message.from_user.id
-            user_manager = get_user_manager()
+            # Direct access to dependency_manager to avoid circular imports
+            from botspot.core.dependency_manager import get_dependency_manager
+
+            user_manager = get_dependency_manager().user_manager
 
             if await user_manager.make_friend(user_id):
                 await message.answer(f"User {user_id} is now a friend!")
@@ -362,9 +380,9 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
         dp.include_router(router)
 
     async def sync_types():
-        from botspot.utils.deps_getters import get_user_manager
+        from botspot.core.dependency_manager import get_dependency_manager
 
-        manager = get_user_manager()
+        manager = get_dependency_manager().user_manager
 
         await manager.sync_user_types()
 

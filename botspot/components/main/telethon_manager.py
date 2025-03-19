@@ -270,6 +270,21 @@ def initialize(settings: TelethonManagerSettings) -> TelethonManager:
     )
 
 
+def get_telethon_manager() -> "TelethonManager":
+    """Get the TelethonManager instance from dependency manager"""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    if not deps.telethon_manager:
+        raise RuntimeError(
+            "TelethonManager is not initialized. Make sure it's enabled in settings."
+        )
+    return deps.telethon_manager
+
+
+# This functionality is now provided in deps_getters to avoid circular imports
+
+
 def setup_dispatcher(dp: Dispatcher) -> None:
     """Setup dispatcher with TelethonManager handlers"""
     from aiogram.filters import Command

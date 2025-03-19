@@ -27,6 +27,28 @@ def setup_dispatcher(dp):
     return dp
 
 
+def get_database() -> "AsyncIOMotorDatabase":
+    """Get MongoDB database instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    db = get_dependency_manager().mongo_database
+    if db is None:
+        raise RuntimeError("MongoDB database is not initialized")
+    return db
+
+
+def get_mongo_client() -> "AsyncIOMotorClient":
+    """Get MongoDB client instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    client = get_dependency_manager().mongo_client
+    if client is None:
+        raise RuntimeError(
+            "MongoDB client is not initialized. Make sure MongoDB is enabled in settings."
+        )
+    return client
+
+
 def initialize(
     settings: MongoDatabaseSettings,
 ) -> Tuple["AsyncIOMotorClient", "AsyncIOMotorDatabase"]:

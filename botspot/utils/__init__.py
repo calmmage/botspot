@@ -1,3 +1,5 @@
+# First import functions that have no dependencies on components or other utils
+# Then import deps_getters which depends on component functions
 from .deps_getters import (
     get_bot,
     get_database,

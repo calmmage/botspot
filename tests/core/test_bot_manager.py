@@ -1,11 +1,12 @@
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 from contextlib import ExitStack
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from aiogram import Bot, Dispatcher
+
+from botspot.components.data.user_data import User
 from botspot.core.bot_manager import BotManager
 from botspot.utils.internal import Singleton
-from botspot.components.data.user_data import User
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +23,7 @@ class TestBotManager:
     def test_singleton_pattern(self):
         """Test that BotManager follows singleton pattern"""
         with patch("botspot.core.bot_manager.BotspotSettings") as mock_settings_class, patch(
-                "botspot.core.bot_manager.DependencyManager"
+            "botspot.core.bot_manager.DependencyManager"
         ) as mock_deps_class, patch(
             "botspot.core.bot_manager.telethon_manager"
         ) as mock_telethon_manager, patch(
@@ -61,7 +62,7 @@ class TestBotManager:
     def test_initialization_without_parameters(self):
         """Test initialization without parameters"""
         with patch("botspot.core.bot_manager.BotspotSettings") as mock_settings_class, patch(
-                "botspot.core.bot_manager.telethon_manager"
+            "botspot.core.bot_manager.telethon_manager"
         ) as mock_telethon_manager, patch(
             "botspot.core.bot_manager.user_data"
         ) as mock_user_data, patch(
@@ -105,7 +106,7 @@ class TestBotManager:
     def test_initialization_with_parameters(self):
         """Test initialization with bot, dispatcher, and user_class"""
         with patch("botspot.core.bot_manager.BotspotSettings") as mock_settings_class, patch(
-                "botspot.core.bot_manager.DependencyManager"
+            "botspot.core.bot_manager.DependencyManager"
         ) as mock_deps_class, patch(
             "botspot.core.bot_manager.telethon_manager"
         ) as mock_telethon_manager, patch(
@@ -172,7 +173,7 @@ class TestBotManager:
         ],
     )
     def test_component_initialization(
-            self, component_name, enabled, expected_init_call, expected_setup_call
+        self, component_name, enabled, expected_init_call, expected_setup_call
     ):
         """Test component initialization based on settings"""
         # Create patch objects for all components except the one we're testing
@@ -214,6 +215,11 @@ class TestBotManager:
         # Patch the component we're testing separately
         component_patch = patch(f"botspot.core.bot_manager.{component_name}")
         mock_component = component_patch.start()
+
+        # Configure mongo_database.initialize to return a tuple of (client, db) if we're testing it
+        if component_name == "mongo_database":
+            mock_client, mock_db = MagicMock(), MagicMock()
+            mock_component.initialize.return_value = (mock_client, mock_db)
 
         try:
             # Configure mock settings
@@ -280,7 +286,7 @@ class TestBotManager:
         """Test that ask_user setup raises an error if bot is not set"""
         # Mock all the components that might be accessed in bot_manager.py
         with patch("botspot.core.bot_manager.BotspotSettings") as mock_settings_class, patch(
-                "botspot.core.bot_manager.DependencyManager"
+            "botspot.core.bot_manager.DependencyManager"
         ) as mock_deps_class, patch(
             "botspot.core.bot_manager.telethon_manager"
         ) as mock_telethon_manager, patch(
@@ -349,6 +355,6 @@ class TestBotManager:
                 # Setup dispatcher should raise an error for ask_user
                 mock_dispatcher = MagicMock()
                 with pytest.raises(
-                        RuntimeError, match="Bot instance is required for ask_user functionality"
+                    RuntimeError, match="Bot instance is required for ask_user functionality"
                 ):
                     bm.setup_dispatcher(mock_dispatcher)
