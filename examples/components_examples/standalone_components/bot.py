@@ -6,11 +6,12 @@ from os import getenv
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from botspot.components import error_handler, print_bot_url, bot_commands_menu
+from botspot.components.middlewares import error_handler
+from botspot.components.qol import bot_commands_menu, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 
