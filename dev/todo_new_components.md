@@ -5,7 +5,7 @@
 1. **LLM Provider** ✅
 2. **LLM Utils**
 3. **Context Builder**
-4. **Queue Manager**
+4. **Queue Manager** ✅
 5. **Contact Manager (for People Bot)**
 6. **Chat Fetcher**
 7. **Subscription Manager**

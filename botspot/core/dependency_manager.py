@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
     from botspot.components.new.llm_provider import LLMProvider
+    from botspot.components.new.queue_manager import QueueManager
 
 
 class DependencyManager(metaclass=Singleton):
@@ -38,6 +39,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = None
         self._chat_binder = None
         self._llm_provider = None
+        self._queue_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -137,6 +139,16 @@ class DependencyManager(metaclass=Singleton):
     @llm_provider.setter
     def llm_provider(self, value):
         self._llm_provider = value
+
+    @property
+    def queue_manager(self) -> "QueueManager":
+        if self._queue_manager is None:
+            raise RuntimeError("Queue Manager is not initialized")
+        return self._queue_manager
+
+    @queue_manager.setter
+    def queue_manager(self, value):
+        self._queue_manager = value
 
     @classmethod
     def is_initialized(cls) -> bool:
