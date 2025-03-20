@@ -1,74 +1,14 @@
-# LLM Utils Planning - 2025-03-18
+# LLM Utils - parse_input_into_form
 
-## Current State Analysis
+## Task
+"create a very basic implementation that can take input, data model, and return it parsed"
 
-The botspot LLM Provider component (`llm_provider.py`) currently offers these utilities:
+## Focus Areas
+- "system prompt text"
+- "how do we extract from pydantic schema info which fields are optional and which are not, and pass that to llm? Does litellm auto-extract that?"
+- "Test with simple code: make a schema with optionals and generate with dummy irrelevant input"
+- "how exactly we expect the llm to communicate us that info is not there?"
+- "maybe we can ask llm to return back all unused text (e.g. 'from these sentences i extracted no info')"
 
-- Core query functions: `query_llm`, `aquery_llm`
-- Structured output: `query_llm_structured`, `aquery_llm_structured`
-- Streaming: `query_llm_stream`, `astream_llm`
-- Usage tracking and permissions
-
-From calmlib, we've identified these additional utilities:
-
-- `query_llm_structured_stream`, `aquery_llm_structured_stream` (streaming structured
-  output)
-- Langfuse integration support
-
-## Implementation Plan
-
-### Architecture Decision
-
-- Keep the LLM Provider component focused on core query functionality
-- Add simple utility functions in `botspot/utils/llm_utils.py` (no classes/settings)
-- Add Langfuse tracing in LLM Provider settings
-
-### Implementation Priorities
-
-1. **Media Processing**
-    - Process images with vision models
-    - Handle file uploads from Telegram
-    - Extract text from images if needed
-
-2. **Smart Form Handling**
-    - Fill Pydantic models from user text
-    - Validate and identify missing fields
-    - Re-ask for missing required information
-
-3. **Message Parsing**
-    - Extract entities (contacts, dates, links)
-    - Parse unified format for chat messages
-    - Process forwarded message batches
-
-4. **Validation & Quality**
-    - Check text against guidelines
-    - Verify naming patterns or content quality
-    - Offer suggestions for improvements
-
-5. **Langfuse Integration**
-    - Add tracing to LLM Provider settings
-    - Track prompts, completions, and tokens
-    - Calculate costs and usage patterns
-
-## Usage Examples
-
-```python
-# Example: Image processing
-image_description = await process_image_for_llm(image_data)
-
-# Example: Form filling
-user_data, missing_fields = await smart_form_fill(UserSchema, message_text)
-
-# Example: Text validation
-validation = await validate_text(article, guidelines)
-
-# Example: Entity extraction
-entities = await extract_entities_from_message(message, ["email", "phone"])
-```
-
-## Future Considerations
-
-- Multi-user chat context management
-- Self-aware command assistant (with command registry)
-- Integration with context builder for richer prompts
-- Specialized prompt templates library
+## First step
+Test if existing litellm functionality already differentiates between optional and required fields
