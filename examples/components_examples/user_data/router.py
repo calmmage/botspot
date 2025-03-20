@@ -3,9 +3,9 @@
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
-
 from app import App, UserType
-from botspot.components.bot_commands_menu import add_command
+
+from botspot.commands_menu import add_command
 from botspot.utils import send_safe
 
 router = Router()
@@ -16,6 +16,7 @@ app = App()
 @router.message(CommandStart())
 async def start_handler(message: Message) -> None:
     """Register new user and send welcome message."""
+    assert message.from_user
     user = await app.get_user(message.from_user.id)
     await send_safe(
         message.chat.id,
@@ -49,9 +50,7 @@ async def help_handler(message: Message) -> None:
 
     await send_safe(
         message.chat.id,
-        f"This is {app.name}.\n\n"
-        f"{base_commands}"
-        f"{admin_commands if is_admin else ''}",
+        f"This is {app.name}.\n\n" f"{base_commands}" f"{admin_commands if is_admin else ''}",
     )
 
 
@@ -61,9 +60,7 @@ async def profile_handler(message: Message) -> None:
     """Show user profile information."""
     user = await app.get_user(message.from_user.id)
     if not user:
-        await send_safe(
-            message.chat.id, "Error: User not found. Please use /start first."
-        )
+        await send_safe(message.chat.id, "Error: User not found. Please use /start first.")
         return
 
     await send_safe(

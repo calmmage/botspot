@@ -3,10 +3,10 @@
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
+from app import App
 from dotenv import load_dotenv
 
-from app import App
-from botspot.components.bot_commands_menu import add_command
+from botspot.commands_menu import botspot_command
 from botspot.utils import send_safe
 
 load_dotenv()
@@ -15,7 +15,7 @@ router = Router()
 app = App()
 
 
-@add_command("start", "Start the bot")
+@botspot_command("start", "Start the bot")
 @router.message(CommandStart())
 async def start_handler(message: Message) -> None:
     """Handle the /start command."""
@@ -29,7 +29,7 @@ async def start_handler(message: Message) -> None:
     )
 
 
-@add_command("help", "Show this help message")
+@botspot_command("help", "Show this help message")
 @router.message(Command("help"))
 async def help_handler(message: Message) -> None:
     """Basic help command handler."""
@@ -42,15 +42,13 @@ async def help_handler(message: Message) -> None:
     )
 
 
-@add_command("add", "Add a new item")
+@botspot_command("add", "Add a new item")
 @router.message(Command("add"))
 async def add_item_handler(message: Message) -> None:
     """Add a new item to the database."""
     text = message.text.replace("/add", "").strip()
     if not text:
-        await send_safe(
-            message.chat.id, "Please provide some text to add.\nUsage: /add <text>"
-        )
+        await send_safe(message.chat.id, "Please provide some text to add.\nUsage: /add <text>")
         return
 
     try:
@@ -62,13 +60,11 @@ async def add_item_handler(message: Message) -> None:
         else:
             await send_safe(message.chat.id, "Failed to add item. Please try again.")
     except Exception as e:
-        await send_safe(
-            message.chat.id, "Error adding item to database. Please try again later."
-        )
+        await send_safe(message.chat.id, "Error adding item to database. Please try again later.")
         raise
 
 
-@add_command("list", "List all items")
+@botspot_command("list", "List all items")
 @router.message(Command("list"))
 async def list_items_handler(message: Message) -> None:
     """List all items from the database."""
@@ -76,9 +72,7 @@ async def list_items_handler(message: Message) -> None:
         items = await app.get_items(user_id=message.from_user.id)
 
         if not items:
-            await send_safe(
-                message.chat.id, "No items found. Use /add to add some items."
-            )
+            await send_safe(message.chat.id, "No items found. Use /add to add some items.")
             return
 
         response = "Your items:\n\n"

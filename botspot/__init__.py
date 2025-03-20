@@ -19,6 +19,7 @@ from .components.data import mongo_database
 from .components.features import multi_forward_handler
 from .components.main import event_scheduler, single_user_mode, telethon_manager
 from .components.middlewares import error_handler
+from .components.new import llm_provider
 from .components.qol import bot_commands_menu, bot_info, print_bot_url
 from .core import get_dependency_manager
 from .utils import (
@@ -68,6 +69,8 @@ __all__ = [
     # has getters
     # "telethon_manager",
     "get_telethon_manager",
+    # LLM Provider
+    "llm_provider",
     # utils
     "get_dependency_manager",
     "get_bot",

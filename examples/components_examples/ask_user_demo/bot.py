@@ -10,9 +10,9 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from botspot.components.ask_user_handler import ask_user, ask_user_choice
-from botspot.components.bot_commands_menu import add_command
+from botspot.commands_menu import add_command
 from botspot.core.bot_manager import BotManager
+from botspot.user_interactions import ask_user, ask_user_choice
 
 load_dotenv()
 TOKEN = getenv("TELEGRAM_BOT_TOKEN")
@@ -36,7 +36,9 @@ async def demo_command(message: Message, state) -> None:
 async def choose_command(message: Message, state) -> None:
     """Demo of asking user to choose from options"""
     choices = ["Red", "Green", "Blue"]
-    response = await ask_user_choice(message.chat.id, "What's your favorite color?", choices, state, timeout=30.0)
+    response = await ask_user_choice(
+        message.chat.id, "What's your favorite color?", choices, state, timeout=30.0
+    )
     if response:
         await message.reply(f"You chose: {response}!")
     else:

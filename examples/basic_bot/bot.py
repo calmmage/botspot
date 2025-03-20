@@ -6,11 +6,11 @@ from os import getenv
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 from dotenv import load_dotenv
 
-from botspot.components.bot_commands_menu import add_command
+from botspot.commands_menu import add_command
 from botspot.core.bot_manager import BotManager
 
 load_dotenv()
@@ -24,6 +24,7 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     """Send a welcome message when the command /start is issued"""
+    assert message.from_user is not None
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.4.16"
+version = "0.5.8"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -23,6 +23,7 @@ pydantic = "^2.9.2"
 [tool.poetry.group.extras.dependencies]
 apscheduler = "^3.10.4"
 pymongo = ">=4.9"
+litellm = "^1.63"  # For LLM provider component
 # dependencies for extra features
 
 # Main
