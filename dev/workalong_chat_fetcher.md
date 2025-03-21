@@ -102,10 +102,48 @@ async def get_telethon_client(self) -> TelegramClient:
 
 ## Next Steps
 
-1. Discuss this approach - confirm if this matches the intended integration
-2. Determine whether to:
-    - Fork telegram-downloader and implement these changes
-    - Create a pull request to upstream repository
-    - Or use a simpler approach like copying select code
+1. Continue work on the botspot-integration branch of the telegram-downloader repo
+2. Implement these changes:
+   - Add external client support to TelegramDownloader
+   - Add external database support to TelegramDownloader
+   - Update TelethonClientManager to support external clients
 3. Test the implementation with a real bot
 4. Document the API and provide usage examples
+
+## Implementation Tasks
+
+1. Modify `TelegramDownloader.__init__()`:
+   ```python
+   def __init__(self, 
+                config_path: Path | str = Path("config.yaml"), 
+                external_client: Optional[TelegramClient] = None,
+                external_db: Optional[Database] = None,
+                **kwargs):
+   ```
+
+2. Update `get_telethon_client()` to use the external client if provided
+   ```python
+   async def get_telethon_client(self) -> TelegramClient:
+       if self._telethon_client is not None:
+           return self._telethon_client
+           
+       if self._external_client is not None:
+           self._telethon_client = self._external_client
+           return self._telethon_client
+           
+       # Original code for creating a client...
+   ```
+
+3. Update the database property to use external_db if provided
+   ```python
+   @property
+   def db(self):
+       if self._external_db is not None:
+           return self._external_db
+           
+       if self._db is None:
+           self._db = self._get_database()
+       return self._db
+   ```
+
+4. Finally, update the botspot chat_fetcher to use these new features once they're implemented
