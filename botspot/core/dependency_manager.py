@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.context_builder import ContextBuilder
     from botspot.components.new.llm_provider import LLMProvider
 
 
@@ -37,6 +38,7 @@ class DependencyManager(metaclass=Singleton):
         self._telethon_manager = None
         self._user_manager = None
         self._chat_binder = None
+        self._context_builder = None
         self._llm_provider = None
         self.__dict__.update(kwargs)
 
@@ -127,6 +129,16 @@ class DependencyManager(metaclass=Singleton):
     @chat_binder.setter
     def chat_binder(self, value):
         self._chat_binder = value
+
+    @property
+    def context_builder(self) -> "ContextBuilder":
+        if self._context_builder is None:
+            raise RuntimeError("Context Builder is not initialized")
+        return self._context_builder
+
+    @context_builder.setter
+    def context_builder(self, value):
+        self._context_builder = value
 
     @property
     def llm_provider(self) -> "LLMProvider":
