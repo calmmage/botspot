@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
     from botspot.components.new.llm_provider import LLMProvider
+    from botspot.components.qol.settings_menu import SettingsRegistry
 
 
 class DependencyManager(metaclass=Singleton):
@@ -38,6 +39,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = None
         self._chat_binder = None
         self._llm_provider = None
+        self._settings_registry = None
         self.__dict__.update(kwargs)
 
     @property
@@ -137,6 +139,16 @@ class DependencyManager(metaclass=Singleton):
     @llm_provider.setter
     def llm_provider(self, value):
         self._llm_provider = value
+        
+    @property
+    def settings_registry(self) -> "SettingsRegistry":
+        if self._settings_registry is None:
+            raise RuntimeError("Settings Registry is not initialized")
+        return self._settings_registry
+    
+    @settings_registry.setter
+    def settings_registry(self, value):
+        self._settings_registry = value
 
     @classmethod
     def is_initialized(cls) -> bool:
