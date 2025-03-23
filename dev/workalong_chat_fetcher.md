@@ -26,6 +26,10 @@ telegram-downloader = { git = "https://github.com/calmmage/telegram-downloader.g
 - Implemented fallback mechanisms for reliability
 - Added separate messages and chats collections
 
+4. Created a demo bot (chat_analyzer_demo) that showcases the main features:
+   - `/ingest [chat_id]` to load messages from a chat into MongoDB cache
+   - `/stats` to get statistics about the cached messages
+
 ## Current Limitations
 
 Currently, the integration has a major limitation: telegram-downloader doesn't support:
@@ -147,3 +151,20 @@ async def get_telethon_client(self) -> TelegramClient:
    ```
 
 4. Finally, update the botspot chat_fetcher to use these new features once they're implemented
+
+## Demo Bots
+
+### 1. Chat Fetcher Demo (chat_fetcher_demo)
+This demo shows the basic ChatFetcher functionality:
+- Listing and searching chats
+- Fetching messages from chats
+- Searching message content
+
+### 2. Chat Analyzer Demo (chat_analyzer_demo)
+This demo focuses on caching and analysis:
+- `/ingest [chat_id]` - Loads messages from a specific chat into MongoDB
+- `/stats` - Shows statistics about cached chats (message count, last message)
+- Efficiently handles data by only downloading new messages when ingesting
+
+The Chat Analyzer demo demonstrates the "name of the game is caching" concept - ingesting data once
+into MongoDB and then performing all operations on the cached data for speed.
