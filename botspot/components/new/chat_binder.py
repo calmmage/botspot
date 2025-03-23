@@ -73,16 +73,28 @@ class BoundChatRecord(BaseModel):
     key: str = "default"
 
 
-# todo: rework everything to use this class
 class ChatBinder:
     def __init__(self, settings: ChatBinderSettings):
         self.settings = settings
-
-        # todo: move this method to self
         self.collection = get_bind_chat_collection()
 
     async def bind_chat(self, user_id: int, chat_id: int, key: str = "default"):
-        pass
+        record = BoundChatRecord(user_id=user_id, chat_id=chat_id, key=key)
+        await self.collection.insert_one(record.model_dump())
+        return record
+        
+    async def unbind_chat(self, user_id: int, chat_id: int, key: str = "default"):
+        await self.collection.delete_one({"user_id": user_id, "chat_id": chat_id, "key": key})
+        
+    async def get_bind_chat_id(self, user_id: int, key: str = "default") -> int:
+        record = await self.collection.find_one({"user_id": user_id, "key": key})
+        if record is None:
+            raise RuntimeError(f"No bind chat found for user {user_id} and key {key}")
+        return record["chat_id"]
+        
+    async def get_user_bound_chats(self, user_id: int) -> List[BoundChatRecord]:
+        records = await self.collection.find({"user_id": user_id}).to_list(length=100)
+        return [BoundChatRecord(**record) for record in records]
 
 
 async def bind_chat(user_id: int, chat_id: int, key: str = "default"):
