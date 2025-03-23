@@ -12,6 +12,7 @@ from botspot.components.data.mongo_database import get_database, get_mongo_clien
 from botspot.components.data.user_data import get_user_manager
 from botspot.components.main.event_scheduler import get_scheduler
 from botspot.components.main.telethon_manager import get_telethon_manager
+from botspot.components.new.auto_archive import get_auto_archive
 
 if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
@@ -70,4 +71,5 @@ __all__ = [
     "get_telethon_manager",
     "get_telethon_client",
     "get_mongo_client",
+    "get_auto_archive",
 ]

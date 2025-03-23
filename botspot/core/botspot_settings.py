@@ -12,6 +12,7 @@ from botspot.components.main.single_user_mode import SingleUserModeSettings
 from botspot.components.main.telethon_manager import TelethonManagerSettings
 from botspot.components.main.trial_mode import TrialModeSettings
 from botspot.components.middlewares.error_handler import ErrorHandlerSettings
+from botspot.components.new.auto_archive import AutoArchiveSettings
 from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
@@ -57,6 +58,7 @@ class BotspotSettings(BaseSettings):
     single_user_mode: SingleUserModeSettings = SingleUserModeSettings()
     send_safe: SendSafeSettings = SendSafeSettings()
     admin_filter: AdminFilterSettings = AdminFilterSettings()
+    auto_archive: AutoArchiveSettings = AutoArchiveSettings()
     chat_binder: ChatBinderSettings = ChatBinderSettings()
     llm_provider: LLMProviderSettings = LLMProviderSettings()
 

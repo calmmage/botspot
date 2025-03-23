@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.auto_archive import AutoArchive
     from botspot.components.new.llm_provider import LLMProvider
 
 
@@ -36,6 +37,7 @@ class DependencyManager(metaclass=Singleton):
         self._scheduler = None
         self._telethon_manager = None
         self._user_manager = None
+        self._auto_archive = None
         self._chat_binder = None
         self._llm_provider = None
         self.__dict__.update(kwargs)
@@ -117,6 +119,16 @@ class DependencyManager(metaclass=Singleton):
     @user_manager.setter
     def user_manager(self, value):
         self._user_manager = value
+
+    @property
+    def auto_archive(self) -> "AutoArchive":
+        if self._auto_archive is None:
+            raise RuntimeError("Auto Archive is not initialized")
+        return self._auto_archive
+
+    @auto_archive.setter
+    def auto_archive(self, value):
+        self._auto_archive = value
 
     @property
     def chat_binder(self) -> "AsyncIOMotorCollection":
