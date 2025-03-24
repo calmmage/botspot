@@ -26,6 +26,7 @@ from .utils import (
     answer_safe,
     compare_users,
     get_bot,
+    get_chat_fetcher,
     get_database,
     get_dispatcher,
     get_message_text,
