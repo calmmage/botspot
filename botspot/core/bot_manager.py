@@ -33,6 +33,7 @@ class BotManager(metaclass=Singleton):
         logger.info(
             f"Initializing BotManager with config: {self.settings.model_dump_json(indent=2)}"
         )
+        assert DependencyManager.is_initialized() is False, "BotManager is already initialized"
         self.deps = DependencyManager(
             botspot_settings=self.settings, bot=bot, dispatcher=dispatcher
         )

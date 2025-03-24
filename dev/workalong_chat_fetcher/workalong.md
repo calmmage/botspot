@@ -57,3 +57,30 @@ Based on the analysis above, these features could potentially be removed to simp
 3. Complex fallback mechanisms (simplify error handling)
 4. Some of the detailed fields in MessageModel and ChatModel
 5. `/download_chat` command (focus on simpler `/ingest`)
+
+# ChatFetcher Component Rework Analysis
+
+## Spec vs Implementation Analysis
+
+### Additional Features Implemented (Not in Spec)
+- Storage mode switching (mongo/local) when spec only mentioned MongoDB
+- Media handling and downloading (`download_media` method)
+- Complex fallback to direct Telethon usage when telegram-downloader fails
+- `/list_chats` and `/search_chat` commands not mentioned in spec
+- Advanced message searching with `find_messages`
+
+### Missing Features (In Spec But Not Implemented)
+- Chat Analyzer features (active users stats, message frequency analysis)
+- LLM integration for chat summaries
+- Optimized MongoDB queries for fast stats retrieval
+
+## Proposed Changes
+
+1. Remove direct Telethon usage in ChatFetcher class (use only telegram-downloader)
+2. Remove storage_mode option and simplify to MongoDB-only
+3. Remove media handling code (download_media method)
+4. Rename `/download_chat` command to `/ingest` to match spec
+5. Add basic analytics methods for chat stats
+6. Add LLM integration for chat summaries
+7. Add MongoDB indexing for optimized query performance
+8. Add ChatAnalyzer demo features (message frequency, active users)

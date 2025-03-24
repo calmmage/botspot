@@ -12,7 +12,7 @@ from telegram_downloader.telegram_downloader import TelegramDownloader
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection
+    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
     from telethon import TelegramClient
     from telethon.types import Message
 
@@ -362,6 +362,7 @@ class ChatFetcher:
                 max_id=max_id,
                 reverse=reverse,
             )
+            assert messages is not None
 
             # Convert to MessageModel
             result = []
@@ -393,6 +394,7 @@ class ChatFetcher:
         # If not found in cache, use telethon's search function
         client = await self.get_client(user_id)
         messages = await client.get_messages(chat_id, search=query, limit=limit)
+        assert messages is not None
 
         # Convert to MessageModel
         result = []

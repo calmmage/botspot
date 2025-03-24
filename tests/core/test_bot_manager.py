@@ -30,6 +30,10 @@ class TestBotManager:
         ) as mock_user_data, patch(
             "botspot.core.bot_manager.chat_binder"
         ) as mock_chat_binder, patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher, patch(
+            "botspot.core.bot_manager.llm_provider"
+        ) as mock_llm_provider, patch(
             "botspot.core.bot_manager.logger"
         ):
 
@@ -42,6 +46,8 @@ class TestBotManager:
                 "user_data",
                 "single_user_mode",
                 "chat_binder",
+                "chat_fetcher",
+                "llm_provider",
             ]:
                 component_settings = MagicMock()
                 component_settings.enabled = False
@@ -49,10 +55,17 @@ class TestBotManager:
 
             mock_settings_class.return_value = mock_settings
 
+            # Configure dependency manager mock
+            mock_deps_class.return_value = MagicMock()
+            # During initialization, is_initialized should return False, then True after initialization
+            mock_deps_class.is_initialized.side_effect = [False, True, True]
+
             # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
             mock_user_data.initialize.return_value = None
             mock_chat_binder.initialize.return_value = None
+            mock_chat_fetcher.initialize.return_value = None
+            mock_llm_provider.initialize.return_value = None
 
             bm1 = BotManager()
             bm2 = BotManager()
@@ -67,6 +80,10 @@ class TestBotManager:
         ) as mock_user_data, patch(
             "botspot.core.bot_manager.chat_binder"
         ) as mock_chat_binder, patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher, patch(
+            "botspot.core.bot_manager.llm_provider"
+        ) as mock_llm_provider, patch(
             "botspot.core.bot_manager.logger"
         ), patch(
             "botspot.core.bot_manager.DependencyManager"
@@ -81,6 +98,8 @@ class TestBotManager:
                 "user_data",
                 "single_user_mode",
                 "chat_binder",
+                "chat_fetcher",
+                "llm_provider",
             ]:
                 component_settings = MagicMock()
                 component_settings.enabled = False
@@ -89,11 +108,15 @@ class TestBotManager:
 
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
+            # During initialization, is_initialized should return False, then True after initialization
+            mock_deps_class.is_initialized.side_effect = [False, True, True]
 
             # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
             mock_user_data.initialize.return_value = None
             mock_chat_binder.initialize.return_value = None
+            mock_chat_fetcher.initialize.return_value = None
+            mock_llm_provider.initialize.return_value = None
 
             bm = BotManager()
 
@@ -113,6 +136,10 @@ class TestBotManager:
         ) as mock_user_data, patch(
             "botspot.core.bot_manager.chat_binder"
         ) as mock_chat_binder, patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher, patch(
+            "botspot.core.bot_manager.llm_provider"
+        ) as mock_llm_provider, patch(
             "botspot.core.bot_manager.logger"
         ):
 
@@ -125,6 +152,8 @@ class TestBotManager:
                 "user_data",
                 "single_user_mode",
                 "chat_binder",
+                "chat_fetcher",
+                "llm_provider",
             ]:
                 component_settings = MagicMock()
                 component_settings.enabled = False
@@ -133,11 +162,15 @@ class TestBotManager:
 
             mock_deps = MagicMock()
             mock_deps_class.return_value = mock_deps
+            # During initialization, is_initialized should return False, then True after initialization
+            mock_deps_class.is_initialized.side_effect = [False, True, True]
 
             # Mock components to avoid real initialization
             mock_telethon_manager.initialize.return_value = None
             mock_user_data.initialize.return_value = None
             mock_chat_binder.initialize.return_value = None
+            mock_chat_fetcher.initialize.return_value = None
+            mock_llm_provider.initialize.return_value = None
 
             # Create mock bot, dispatcher, and user_class
             mock_bot = MagicMock(spec=Bot)
@@ -169,6 +202,10 @@ class TestBotManager:
             ("user_data", False, False, False),
             ("single_user_mode", True, True, True),
             ("single_user_mode", False, False, False),
+            ("chat_fetcher", True, True, True),
+            ("chat_fetcher", False, False, False),
+            ("llm_provider", True, True, True),
+            ("llm_provider", False, False, False),
         ],
     )
     def test_component_initialization(
@@ -184,6 +221,8 @@ class TestBotManager:
             "user_data",
             "single_user_mode",
             "chat_binder",
+            "chat_fetcher",
+            "llm_provider",
         ]:
             if comp != component_name:
                 patches[comp] = patch(f"botspot.core.bot_manager.{comp}")
@@ -253,7 +292,8 @@ class TestBotManager:
             mock_deps = MagicMock()
             mock_deps.botspot_settings = mock_settings
             mocks["DependencyManager"].return_value = mock_deps
-            mocks["DependencyManager"].is_initialized.return_value = True
+            # During initialization, is_initialized should return False, then True after initialization
+            mocks["DependencyManager"].is_initialized.side_effect = [False, True, True]
             mocks["get_dependency_manager"].return_value = mock_deps
 
             # Create BotManager
@@ -293,6 +333,10 @@ class TestBotManager:
         ) as mock_user_data, patch(
             "botspot.core.bot_manager.chat_binder"
         ) as mock_chat_binder, patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher, patch(
+            "botspot.core.bot_manager.llm_provider"
+        ) as mock_llm_provider, patch(
             "botspot.core.bot_manager.user_interactions"
         ) as mock_user_interactions, patch(
             "botspot.core.bot_manager.error_handler"
@@ -326,6 +370,8 @@ class TestBotManager:
                 "print_bot_url",
                 "bot_commands_menu",
                 "bot_info",
+                "chat_fetcher",
+                "llm_provider",
             ]:
                 comp_settings = MagicMock()
                 comp_settings.enabled = False
@@ -342,7 +388,8 @@ class TestBotManager:
             mock_deps.bot = None
             mock_deps.botspot_settings = mock_settings
             mock_deps_class.return_value = mock_deps
-            mock_deps_class.is_initialized.return_value = True
+            # During initialization, is_initialized should return False, then True after initialization
+            mock_deps_class.is_initialized.side_effect = [False, True, True]
 
             # Mock dependency_manager in all components
             with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:

@@ -15,22 +15,22 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
-    from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.chat_binder import ChatBinder
+    from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
 
 
 class DependencyManager(metaclass=Singleton):
     def __init__(
         self,
-        botspot_settings: Optional[BotspotSettings] = None,
+        botspot_settings: BotspotSettings,
         bot: Optional[Bot] = None,
         dispatcher: Optional[Dispatcher] = None,
         mongo_client: Optional["AsyncIOMotorClient"] = None,
         mongo_database: Optional["AsyncIOMotorDatabase"] = None,
         **kwargs
     ):
-        self._botspot_settings = botspot_settings or BotspotSettings()
+        self._botspot_settings = botspot_settings
         self._bot = bot
         self._dispatcher = dispatcher
         self._mongo_client = mongo_client
@@ -159,4 +159,4 @@ class DependencyManager(metaclass=Singleton):
 def get_dependency_manager() -> DependencyManager:
     if not DependencyManager.is_initialized():
         raise ValueError("Dependency manager is not initialized")
-    return DependencyManager()
+    return Singleton.get_instance(DependencyManager)
