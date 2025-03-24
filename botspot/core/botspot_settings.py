@@ -17,6 +17,7 @@ from botspot.components.new.llm_provider import LLMProviderSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
+from botspot.components.qol.settings_menu import SettingsMenuSettings
 from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
 
@@ -59,6 +60,7 @@ class BotspotSettings(BaseSettings):
     admin_filter: AdminFilterSettings = AdminFilterSettings()
     chat_binder: ChatBinderSettings = ChatBinderSettings()
     llm_provider: LLMProviderSettings = LLMProviderSettings()
+    settings_menu: SettingsMenuSettings = SettingsMenuSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"

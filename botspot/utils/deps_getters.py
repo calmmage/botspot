@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from aiogram.fsm.context import FSMContext
     from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
     from telethon import TelegramClient
+    
+    from botspot.components.qol.settings_menu import SettingsRegistry
 
 
 # Core getters for bot and dispatcher
@@ -60,6 +62,14 @@ async def get_telethon_client(
     return client
 
 
+def get_settings_registry() -> "SettingsRegistry":
+    """Get the settings registry from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    return deps.settings_registry
+
+
 # Re-export all for convenience
 __all__ = [
     "get_bot",
@@ -70,4 +80,5 @@ __all__ = [
     "get_telethon_manager",
     "get_telethon_client",
     "get_mongo_client",
+    "get_settings_registry",
 ]
