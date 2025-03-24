@@ -9,7 +9,7 @@ Feature 2: bind chat to user with key
 """
 
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -22,9 +22,6 @@ if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
 
 logger = get_logger()
-
-# Global chat_binder instance accessed via get_chat_binder()
-_chat_binder = None  # Will be initialized in initialize()
 
 
 class RebindMode(str, Enum):
@@ -39,7 +36,7 @@ class ChatBinderSettings(BaseSettings):
     enabled: bool = False
     mongo_collection: str = "chat_binder"
     commands_visible: bool = False
-    rebind_mode: RebindMode = RebindMode.REPLACE
+    rebind_mode: RebindMode = RebindMode.ERROR
 
     class Config:
         env_prefix = "BOTSPOT_CHAT_BINDER_"
@@ -118,7 +115,9 @@ class ChatBinder:
         )
         return [BoundChatRecord(**record) for record in records]
 
-    async def unbind_chat(self, user_id: int, key: str = "default"):
+    async def unbind_chat(
+        self, user_id: int, key: str = "default", chat_id: Optional[int] = None
+    ) -> Tuple[bool, str]:
         """Unbind a chat from a user with the given key.
 
         Args:
@@ -133,27 +132,30 @@ class ChatBinder:
         """
         # First check if the binding exists
         existing = await self.collection.find_one({"user_id": user_id, "key": key})
-        if not existing:
-            raise ValueError(f"No binding found with key '{key}'")
 
-        # Special handling for default key - if no binding with default key,
-        # but there are bindings for this chat, delete first one found
-        if key == "default" and not existing:
-            # Find any binding for this user
-            any_binding = await self.collection.find_one({"user_id": user_id})
-            if any_binding:
-                result = await self.collection.delete_one(
-                    {
-                        "user_id": user_id,
-                        "chat_id": any_binding["chat_id"],
-                        "key": any_binding["key"],
-                    }
+        # If no binding found with the specified key
+        if not existing:
+            # Special case for default key: try to find any binding for this user
+            if key == "default" and chat_id is not None:
+                any_binding = await self.collection.find_one(
+                    {"user_id": user_id, "chat_id": chat_id}
                 )
-                return result.deleted_count > 0
+                if any_binding:
+                    # Found another binding, delete it instead
+                    result = await self.collection.delete_one(
+                        {
+                            "user_id": user_id,
+                            "chat_id": chat_id,
+                            "key": any_binding["key"],
+                        }
+                    )
+                    return result.deleted_count > 0, any_binding["key"]
+            # For non-default keys or when no alternative is found
+            raise ValueError(f"No binding found with key '{key}'")
 
         # Normal case - delete the specific binding
         result = await self.collection.delete_one({"user_id": user_id, "key": key})
-        return result.deleted_count > 0
+        return result.deleted_count > 0, key
 
     async def get_bind_chat_id(self, user_id: int, key: str = "default") -> int:
         """Get the chat ID for a user's bound chat with the given key."""
@@ -184,10 +186,10 @@ async def bind_chat(user_id: int, chat_id: int, key: str = "default"):
     return await chat_binder.bind_chat(user_id, chat_id, key)
 
 
-async def unbind_chat(user_id: int, key: str = "default"):
+async def unbind_chat(user_id: int, key: str = "default", chat_id: Optional[int] = None):
     """Unbind a chat from a user with the given key."""
     chat_binder = get_chat_binder()
-    return await chat_binder.unbind_chat(user_id, key)
+    return await chat_binder.unbind_chat(user_id, key, chat_id)
 
 
 async def get_bind_chat_id(user_id: int, key: str = "default") -> int:
@@ -241,11 +243,11 @@ async def unbind_chat_command_handler(message: Message):
         return
 
     key = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else "default"
-
+    assert message.chat is not None
     try:
-        result = await unbind_chat(user_id, key)
+        result, deleted_key = await unbind_chat(user_id, key, chat_id=message.chat.id)
         if result:
-            await message.reply(f"Chat unbound successfully with key: {key}")
+            await message.reply(f"Chat unbound successfully with key: {deleted_key}")
         else:
             await message.reply(f"No chat was bound with key: {key}")
     except Exception as e:
@@ -280,11 +282,52 @@ async def bind_status_command_handler(message: Message):
         await message.reply(f"Error checking binding status: {str(e)}")
 
 
+async def async_list_chats_handler(message: Message):
+    """Handler for the /list_chats command."""
+    if message.from_user is None:
+        await message.reply("User information is missing.")
+        return
+
+    try:
+        bound_chats = await get_user_bound_chats(message.from_user.id)
+        if not bound_chats:
+            await message.reply("You don't have any bound chats.")
+            return
+
+        chats_info = "\n".join(
+            [f"Key: {chat.key}, Chat ID: {chat.chat_id}" for chat in bound_chats]
+        )
+        await message.reply(f"Your bound chats:\n{chats_info}")
+    except Exception as e:
+        await message.reply(f"Error listing chats: {str(e)}")
+
+
+async def async_get_chat_handler(message: Message):
+    """Handler for the /get_chat command."""
+    if message.from_user is None:
+        await message.reply("User information is missing.")
+        return
+
+    if message.text is None:
+        await message.reply("Message text is missing.")
+        return
+
+    key = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else "default"
+
+    try:
+        chat_id = await get_bind_chat_id(message.from_user.id, key)
+        await message.reply(f"Bound chat for key '{key}': {chat_id}")
+    except Exception as e:
+        await message.reply(f"Error: {str(e)}")
+
+
 def setup_dispatcher(dp):
     """Register chat_binder command handlers with the dispatcher."""
     dp.message.register(bind_chat_command_handler, Command("bind_chat"))
     dp.message.register(unbind_chat_command_handler, Command("unbind_chat"))
     dp.message.register(bind_status_command_handler, Command("bind_status"))
+    dp.message.register(async_list_chats_handler, Command("list_chats"))
+    dp.message.register(async_get_chat_handler, Command("get_chat"))
     return dp
 
 
@@ -307,6 +350,7 @@ def initialize(settings: ChatBinderSettings) -> ChatBinder:
     # Register commands
     from botspot.components.qol.bot_commands_menu import Visibility, add_command
 
+    # Core bind/unbind commands are always visible if commands_visible is true
     visibility = Visibility.PUBLIC if settings.commands_visible else Visibility.HIDDEN
     add_command("bind_chat", "Bind this chat to you with an optional key", visibility=visibility)(
         bind_chat_command_handler
@@ -314,13 +358,23 @@ def initialize(settings: ChatBinderSettings) -> ChatBinder:
     add_command(
         "unbind_chat", "Unbind a chat from you with an optional key", visibility=visibility
     )(unbind_chat_command_handler)
+
+    # Utility commands are always hidden regardless of settings
     add_command(
         "bind_status",
         "Check if this chat is bound to you and with which keys",
-        visibility=visibility,
+        visibility=Visibility.HIDDEN,
     )(bind_status_command_handler)
 
-    # We don't add list_chats and get_chat commands here because they're defined in the demo bot
-    # This avoids duplicate command registration warnings
+    # These commands are registered in the component so they're available
+    # even if the demo bot isn't used
+    # Register list_chats and get_chat commands as hidden
+    add_command("list_chats", "List all your bound chats", visibility=Visibility.HIDDEN)(
+        async_list_chats_handler
+    )
+
+    add_command("get_chat", "Get a bound chat by key", visibility=Visibility.HIDDEN)(
+        async_get_chat_handler
+    )
 
     return ChatBinder(settings)
