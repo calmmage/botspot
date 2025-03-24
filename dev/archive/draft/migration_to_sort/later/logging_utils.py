@@ -26,7 +26,9 @@ def mongo_sink(message):
         message=message.record["message"],
         timestamp=message.record["time"],
         exception=str(message.record["exception"]),
-        traceback=message.record["exception"].__traceback__ if message.record["exception"] else None,
+        traceback=(
+            message.record["exception"].__traceback__ if message.record["exception"] else None
+        ),
         component=message.record["extra"].get("component", None),
         user=message.record["extra"].get("user", None),
         data=message.record["extra"].get("data", None),

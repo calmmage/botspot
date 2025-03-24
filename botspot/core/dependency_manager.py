@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.llm_provider import LLMProvider
 
 
@@ -119,7 +120,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = value
 
     @property
-    def chat_binder(self) -> "AsyncIOMotorCollection":
+    def chat_binder(self) -> "ChatBinder":
         if self._chat_binder is None:
             raise RuntimeError("Bind chat is not initialized")
         return self._chat_binder
