@@ -68,7 +68,7 @@ async def get_chat_handler(message: Message):
 
 
 # Echo feature - demonstrates a practical use of chat binding
-@router.message(~Command(), F.text)
+@router.message(F.text)
 async def echo_to_bound_chats(message: Message):
     """Echo messages to all bound chats."""
     if not message.from_user or not message.text:

@@ -9,7 +9,7 @@ Feature 2: bind chat to user with key
 """
 
 from enum import Enum
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -22,6 +22,9 @@ if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
 
 logger = get_logger()
+
+# Global chat_binder instance accessed via get_chat_binder()
+_chat_binder = None  # Will be initialized in initialize()
 
 
 class RebindMode(str, Enum):
@@ -45,48 +48,6 @@ class ChatBinderSettings(BaseSettings):
         extra = "ignore"
 
 
-def setup_dispatcher(dp):
-    dp.message.register(bind_chat_command_handler, Command("bind_chat"))
-
-    dp.message.register(unbind_chat_command_handler, Command("unbind_chat"))
-    return dp
-
-
-def initialize(settings: ChatBinderSettings) -> tuple["AsyncIOMotorCollection", ChatBinder]:
-    from botspot.core.dependency_manager import get_dependency_manager
-    from botspot.utils.deps_getters import get_database
-
-    # Check that MongoDB is available
-    deps = get_dependency_manager()
-    if not deps.botspot_settings.mongo_database.enabled:
-        raise RuntimeError("MongoDB is required for chat_binder component")
-
-    # Register commands
-    from botspot.components.qol.bot_commands_menu import Visibility, add_command
-
-    visibility = Visibility.PUBLIC if settings.commands_visible else Visibility.HIDDEN
-    add_command("bind_chat", "Bind this chat to you with an optional key", visibility=visibility)(
-        bind_chat_command_handler
-    )
-    add_command(
-        "unbind_chat", "Unbind a chat from you with an optional key", visibility=visibility
-    )(unbind_chat_command_handler)
-
-    # Initialize database collection
-    db = get_database()
-    logger.info(f"Initializing chat_binder with collection {settings.mongo_collection}")
-    collection = db.get_collection(settings.mongo_collection)
-
-    # Create and return the ChatBinder instance
-    chat_binder = ChatBinder(settings)
-
-    # Store both the collection and the ChatBinder instance in the dependency manager
-    deps.chat_binder = collection
-    deps.chat_binder_instance = chat_binder
-
-    return collection, chat_binder
-
-
 class BoundChatRecord(BaseModel):
     user_id: int
     chat_id: int
@@ -94,9 +55,24 @@ class BoundChatRecord(BaseModel):
 
 
 class ChatBinder:
-    def __init__(self, settings: ChatBinderSettings):
+    def __init__(
+        self, settings: ChatBinderSettings, collection: Optional["AsyncIOMotorCollection"] = None
+    ):
+        """Initialize the ChatBinder.
+
+        Args:
+            settings: Component settings
+            collection: MongoDB collection for storing chat bindings
+        """
         self.settings = settings
-        self.collection = get_bind_chat_collection()
+        if collection is None:
+            from botspot.utils.deps_getters import get_database
+
+            # Initialize database collection
+            db = get_database()
+            logger.info(f"Initializing chat_binder with collection {settings.mongo_collection}")
+            collection = db.get_collection(settings.mongo_collection)
+        self.collection = collection
 
     async def bind_chat(self, user_id: int, chat_id: int, key: str = "default"):
         """Bind a chat to a user with the given key.
@@ -145,23 +121,16 @@ class ChatBinder:
         return [BoundChatRecord(**record) for record in records]
 
 
-def get_bind_chat_collection() -> "AsyncIOMotorCollection":
-    """Get the MongoDB collection for chat bindings."""
+def get_chat_binder() -> ChatBinder:
+    """Get the ChatBinder instance initialized in the initialize function."""
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
+    assert deps.chat_binder is not None, "ChatBinder is not initialized"
     return deps.chat_binder
 
 
-def get_chat_binder() -> ChatBinder:
-    """Get the ChatBinder instance from the dependency manager."""
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    deps = get_dependency_manager()
-    return deps.chat_binder_instance
-
-
-# Wrapper functions that use the ChatBinder class
+# Wrapper functions using the global ChatBinder instance
 async def bind_chat(user_id: int, chat_id: int, key: str = "default"):
     """Bind a chat to a user with the given key."""
     chat_binder = get_chat_binder()
@@ -228,3 +197,40 @@ async def unbind_chat_command_handler(message: Message):
             await message.reply(f"No chat was bound with key: {key}")
     except Exception as e:
         await message.reply(f"Error: {str(e)}")
+
+
+def setup_dispatcher(dp):
+    """Register chat_binder command handlers with the dispatcher."""
+    dp.message.register(bind_chat_command_handler, Command("bind_chat"))
+    dp.message.register(unbind_chat_command_handler, Command("unbind_chat"))
+    return dp
+
+
+def initialize(settings: ChatBinderSettings) -> ChatBinder:
+    """Initialize the chat_binder component.
+
+    Args:
+        settings: Configuration for the chat_binder component
+
+    Returns:
+        ChatBinder instance that will be stored in the dependency manager
+    """
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    # Check that MongoDB is available
+    deps = get_dependency_manager()
+    if not deps.botspot_settings.mongo_database.enabled:
+        raise RuntimeError("MongoDB is required for chat_binder component")
+
+    # Register commands
+    from botspot.components.qol.bot_commands_menu import Visibility, add_command
+
+    visibility = Visibility.PUBLIC if settings.commands_visible else Visibility.HIDDEN
+    add_command("bind_chat", "Bind this chat to you with an optional key", visibility=visibility)(
+        bind_chat_command_handler
+    )
+    add_command(
+        "unbind_chat", "Unbind a chat from you with an optional key", visibility=visibility
+    )(unbind_chat_command_handler)
+
+    return ChatBinder(settings)
