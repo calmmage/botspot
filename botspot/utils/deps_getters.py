@@ -2,27 +2,27 @@
 Getters for all deps attributes
 
 Provides utility functions to access dependencies from the dependency manager.
-Each getter:
-- Gets the dependency manager instance
-- Retrieves the requested dependency
-- Validates it is not None
-- Returns the typed dependency
-- explains how to enable the dependency if it is not initialized
+This module compiles all the getter functions from their respective component files.
 """
 
 from typing import TYPE_CHECKING, Optional
 
+# Import component getters
+from botspot.components.data.mongo_database import get_database, get_mongo_client
+from botspot.components.data.user_data import get_user_manager
+from botspot.components.main.event_scheduler import get_scheduler
+from botspot.components.main.telethon_manager import get_telethon_manager
+
 if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
     from aiogram.fsm.context import FSMContext
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
     from telethon import TelegramClient
-
     from botspot.components.main.telethon_manager import TelethonManager
     from botspot.components.new.chat_fetcher import ChatFetcher
 
 
+# Core getters for bot and dispatcher
 def get_bot() -> "Bot":
     from botspot.core.dependency_manager import get_dependency_manager
 
@@ -45,29 +45,7 @@ def get_dispatcher() -> "Dispatcher":
     return dispatcher
 
 
-def get_scheduler() -> "AsyncIOScheduler":
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    deps = get_dependency_manager()
-    scheduler: "AsyncIOScheduler" = deps.scheduler
-    assert (
-        scheduler is not None
-    ), "Scheduler is not initialized. To enable set ENABLE_SCHEDULER or pass enable_scheduler=True into botspot config"
-    return scheduler
-
-
-def get_telethon_manager() -> "TelethonManager":
-    """Get the TelethonManager instance from dependency manager"""
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    deps = get_dependency_manager()
-    if not deps.telethon_manager:
-        raise RuntimeError(
-            "TelethonManager is not initialized. Make sure it's enabled in settings."
-        )
-    return deps.telethon_manager
-
-
+# Define get_telethon_client here to avoid circular imports
 async def get_telethon_client(
     user_id: int, state: Optional["FSMContext"] = None
 ) -> "TelegramClient":
@@ -83,29 +61,7 @@ async def get_telethon_client(
         )
     return client
 
-
-def get_database() -> "AsyncIOMotorDatabase":
-    """Get MongoDB database instance from dependency manager."""
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    db = get_dependency_manager().mongo_database
-    if db is None:
-        raise RuntimeError("MongoDB is not initialized")
-    return db
-
-
-def get_user_manager():
-    """Get UserManager instance from dependency manager."""
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    user_manager = get_dependency_manager().user_manager
-    if user_manager is None:
-        raise RuntimeError(
-            "UserManager is not initialized. Make sure user_data component is enabled in settings."
-        )
-    return user_manager
-
-
+# todo: move to chat_fetcher component
 def get_chat_fetcher() -> "ChatFetcher":
     """Get ChatFetcher instance from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
@@ -116,3 +72,17 @@ def get_chat_fetcher() -> "ChatFetcher":
             "ChatFetcher is not initialized. Make sure chat_fetcher component is enabled in settings."
         )
     return chat_fetcher
+  
+  
+# Re-export all for convenience
+__all__ = [
+    "get_bot",
+    "get_dispatcher",
+    "get_database",
+    "get_user_manager",
+    "get_scheduler",
+    "get_telethon_manager",
+    "get_telethon_client",
+    "get_mongo_client",
+    "get_chat_fetcher", 
+]

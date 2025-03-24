@@ -39,7 +39,9 @@ class BotManager(metaclass=Singleton):
         self.user_class = user_class
 
         if self.settings.mongo_database.enabled:
-            self.deps.mongo_database = mongo_database.initialize(self.settings.mongo_database)
+            mongo_client, mongo_db = mongo_database.initialize(self.settings.mongo_database)
+            self.deps.mongo_client = mongo_client
+            self.deps.mongo_database = mongo_db
 
         if self.settings.event_scheduler.enabled:
             self.deps.scheduler = event_scheduler.initialize(self.settings.event_scheduler)

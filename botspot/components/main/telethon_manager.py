@@ -123,7 +123,6 @@ class TelethonManager:
 
     async def disconnect_all(self):
         """Disconnect all clients"""
-        from telethon import TelegramClient
 
         valid_clients = [
             (user_id, client) for user_id, client in self.clients.items() if client is not None
@@ -260,6 +259,9 @@ def initialize(settings: TelethonManagerSettings) -> TelethonManager:
     import telethon
 
     assert telethon
+    assert settings.enabled
+    assert settings.api_hash
+    assert settings.api_id
 
     sessions_dir = Path(settings.sessions_dir)
     return TelethonManager(
@@ -268,6 +270,21 @@ def initialize(settings: TelethonManagerSettings) -> TelethonManager:
         sessions_dir,
         settings.auto_auth,
     )
+
+
+def get_telethon_manager() -> "TelethonManager":
+    """Get the TelethonManager instance from dependency manager"""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    if not deps.telethon_manager:
+        raise RuntimeError(
+            "TelethonManager is not initialized. Make sure it's enabled in settings."
+        )
+    return deps.telethon_manager
+
+
+# This functionality is now provided in deps_getters to avoid circular imports
 
 
 def setup_dispatcher(dp: Dispatcher) -> None:
@@ -285,20 +302,24 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     @add_command("setup_telethon", "Setup Telethon user client", visibility="hidden")
     @dp.message(Command("setup_telethon"))
     async def setup_telethon_command(message: Message, state: FSMContext) -> None:
+        assert message.from_user
         await telethon_manager.setup_client(message.from_user.id, state=state)
 
     @add_command("setup_telethon_force", "Force new Telethon client setup", visibility="hidden")
     @dp.message(Command("setup_telethon_force"))
     async def setup_telethon_force_command(message: Message, state: FSMContext) -> None:
+        assert message.from_user
         await telethon_manager.setup_client(message.from_user.id, state=state, force=True)
 
     @add_command("check_telethon", "Check if Telethon client is active", visibility="hidden")
     @dp.message(Command("check_telethon"))
     async def check_telethon_handler(message: Message) -> None:
         """Check if user has an active Telethon client"""
+        assert message.from_user
         client = await telethon_manager.get_client(message.from_user.id)
         if client and await client.is_user_authorized():
             me = await client.get_me()
+            assert me.first_name
             await message.reply(f"Active Telethon session found for {me.first_name}!")
         else:
             await message.reply(

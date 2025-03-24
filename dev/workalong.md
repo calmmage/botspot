@@ -1,3 +1,4 @@
+
 What is the plan?
 
 Idea 1: just make a bot and run it
@@ -15,3 +16,4 @@ Idea 5: Chat Fetcher - Adapt from existing telegram_downloader implementation
 - Adapt the chat_fetcher.py to use telegram-downloader features
 - Ensure compatibility with MongoDB caching and Telethon client
 - Update the component to leverage advanced features from telegram-downloader
+

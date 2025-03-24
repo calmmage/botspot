@@ -249,7 +249,7 @@ new file mode 100644
 +    from aiogram.fsm.context import FSMContext
 +    from aiogram.types import Message
 +
-+    from botspot.components.bot_commands_menu import add_command
++    from botspot.commands_menu import add_command
 +    from botspot.core.dependency_manager import get_dependency_manager
 +
 +    deps = get_dependency_manager()

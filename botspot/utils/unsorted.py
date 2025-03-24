@@ -1,5 +1,6 @@
 from typing import Dict, Union
 
+from aiogram.enums import ChatAction
 from aiogram.types import Message
 from loguru import logger
 
@@ -18,6 +19,37 @@ def get_name(message: Message, forward_priority=False) -> str:
     else:
         user = message.from_user
     return user.full_name
+
+
+async def send_typing_status(message: Message, action: str = "typing"):
+    """
+    Send typing or other chat action status to the chat.
+
+    Args:
+        message: The message object to get chat_id from
+        action: Chat action to send, default is "typing"
+               Other options include: "upload_photo", "record_video", "upload_video",
+               "record_voice", "upload_voice", "upload_document", "choose_sticker",
+               "find_location", "record_video_note", "upload_video_note"
+
+    Usage:
+        await send_typing_status(message)
+        await send_typing_status(message, "upload_document")
+    """
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    chat_action = action
+
+    # Convert string to ChatAction enum if needed
+    if isinstance(action, str):
+        try:
+            chat_action = ChatAction(action)
+        except ValueError:
+            logger.warning(f"Invalid chat action: {action}, using 'typing' instead")
+            chat_action = ChatAction.TYPING
+
+    await deps.bot.send_chat_action(chat_id=message.chat.id, action=chat_action)
 
 
 async def get_message_text(message: Message, as_markdown=False, include_reply=False) -> str:

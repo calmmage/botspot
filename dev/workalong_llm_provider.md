@@ -53,17 +53,26 @@ Implement the LLM Provider component in botspot with the following features:
 - calmlib/utils/llm_utils/gpt_utils.py - For interface design
 - register-146-meetup-2025-bot/app/routers/admin.py - For litellm usage example
 
-## LLM Provider Enhancements - 2025-03-17
+## LLM Provider Enhancements - 2025-03-17 (COMPLETED)
 
-1. Add user_id as optional arg to query llm methods
-2. If in single_user_mode, assume user_id is our user; if not provided and not in
+1. ✅ Add user_id as optional arg to query llm methods
+2. ✅ If in single_user_mode, assume user_id is our user; if not provided and not in
    single_user_mode, raise exception
-3. Check botspot admins list and botspot friends list
-4. Use compare_users util from user_ops.py
-5. Add flag
+3. ✅ Check botspot admins list and botspot friends list
+4. ✅ Use compare_users util from user_ops.py
+5. ✅ Add flag
    `allow_everyone: bool = False  # If False, only friends and admins can use LLM features`
    to LLMProviderSettings
-6. If flag not enabled, check if user is friend or admin; if not, send_safe a message
+6. ✅ If flag not enabled, check if user is friend or admin; if not, send_safe a message
    that they're not allowed but can ask to be added as friend
-7. Track per-user usage stats in MongoDB if enabled, otherwise in memory
-8. Add admin-only command to view usage statistics
+7. ✅ Track per-user usage stats in MongoDB if enabled, otherwise in memory
+8. ✅ Add admin-only command to view usage statistics
+
+## Bug Fixes - 2025-03-18 (COMPLETED)
+
+1. ✅ Fixed async LRU cache issue in get_user_record_enriched
+   - Created a new AsyncLRUCache class in botspot/utils/cache_utils.py
+   - Properly handles coroutines without reusing awaited ones
+   - Added TTL support for cached entries
+2. ✅ Fixed reference to non-existent record.user attribute (changed to record.user_id)
+3. ✅ Improved error handling in user record enrichment

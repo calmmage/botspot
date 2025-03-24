@@ -58,21 +58,35 @@ Notes:
 
 ## LLM Utils
 
+Idea:
+
 - Main features (1-2):
-  - [ ] Media processing for LLM analysis (screenshots, photos from aiogram)
-  - [ ] Smart questionnaire with Pydantic models (fill form, re-ask missing fields)
+  - util to attach telegram photo to llm (just add to query_llm as kwarg?)
+  - is_this_a_good_that(input_str, desired_thing, optional: criteria/guidelines) ->
+    Response(bool flag,
+    that, optional: reason)
+  - parse_input_into_form, allow missing optional fields (pydantic / json)
+    -> how do i do an integration with queue / bind to auto-parse items + request
+    missing fields from user. Should this be a new component, like LLM-parsed bound
+    queue?
+  -
 
 - Secondary features:
+  - 
   - [ ] Uniform parser for chat messages (integrate with chat_fetcher and queue)
   - [ ] "Is this good?" validator utility (names, text with guidelines)
   - [ ] Multi-user chat mode for group conversations
   - [ ] Self-aware command assistant (with command registry integration)
+  - [ ] Media processing for LLM analysis (screenshots, photos from aiogram). How do i
+    easily attach photo / doc to an llm call?
+  - [ ] Smart questionnaire with Pydantic models (fill form, re-ask missing fields)
 
 Notes:
 
 - Will build on top of the LLM Provider component
 - Reference 146 registry bot for media processing
-- Will need integration with chat_binder and queue components
+- [for questionairre] Will need integration with chat_binder and queue components - to
+  really
 - Smart form parser should handle various user input styles
 - Command registry could be a part of commands_menu
 - Dynamic commands example exists in dynamic_commands_bot

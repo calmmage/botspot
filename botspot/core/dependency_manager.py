@@ -7,7 +7,11 @@ from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import (  # noqa: F401
+        AsyncIOMotorClient,
+        AsyncIOMotorCollection,
+        AsyncIOMotorDatabase,
+    )
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
@@ -21,12 +25,14 @@ class DependencyManager(metaclass=Singleton):
         botspot_settings: Optional[BotspotSettings] = None,
         bot: Optional[Bot] = None,
         dispatcher: Optional[Dispatcher] = None,
+        mongo_client: Optional["AsyncIOMotorClient"] = None,
         mongo_database: Optional["AsyncIOMotorDatabase"] = None,
         **kwargs
     ):
         self._botspot_settings = botspot_settings or BotspotSettings()
         self._bot = bot
         self._dispatcher = dispatcher
+        self._mongo_client = mongo_client
         self._mongo_database = mongo_database
         self._scheduler = None
         self._telethon_manager = None
@@ -65,9 +71,19 @@ class DependencyManager(metaclass=Singleton):
         self._dispatcher = value
 
     @property
+    def mongo_client(self) -> "AsyncIOMotorClient":
+        if self._mongo_client is None:
+            raise RuntimeError("MongoDB client is not initialized")
+        return self._mongo_client
+
+    @mongo_client.setter
+    def mongo_client(self, value):
+        self._mongo_client = value
+
+    @property
     def mongo_database(self) -> "AsyncIOMotorDatabase":
         if self._mongo_database is None:
-            raise RuntimeError("Mongo database is not initialized")
+            raise RuntimeError("MongoDB database is not initialized")
         return self._mongo_database
 
     @mongo_database.setter

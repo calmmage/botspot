@@ -1,11 +1,11 @@
-import pytest
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Dict, Any
+
+import pytest
 
 # Mock the MongoDB client
 pytest.importorskip("motor.motor_asyncio")
 pytest.importorskip("pymongo")
+
 
 # Mock MongoDB connection
 @pytest.fixture(autouse=True)
@@ -14,9 +14,6 @@ def mock_mongo():
         mock_db = MagicMock()
         mock_client.return_value.__getitem__.return_value = mock_db
         yield mock_client
-
-from botspot.core.dependency_manager import DependencyManager
-from botspot.core.botspot_settings import BotspotSettings
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +27,7 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("COLLECTION_NAME", "test_collection")
     monkeypatch.setenv("BOTSPOT_MONGO_DATABASE_CONN_STR", "mongodb://localhost:27017")
     monkeypatch.setenv("BOTSPOT_MONGO_DATABASE_DATABASE", "test_db")
-    
+
     # Component settings overrides for tests
     monkeypatch.setenv("BOTSPOT_ERROR_HANDLER_ENABLED", "False")
     monkeypatch.setenv("BOTSPOT_BOT_INFO_ENABLED", "False")
@@ -39,12 +36,16 @@ def setup_env(monkeypatch):
 @pytest.fixture
 def settings():
     """Return BotspotSettings instance for testing."""
+    from botspot.core.botspot_settings import BotspotSettings
+
     return BotspotSettings()
 
 
 @pytest.fixture
 def dependency_manager(settings):
     """Create a dependency manager for testing."""
+    from botspot.core.dependency_manager import DependencyManager
+
     return DependencyManager(settings=settings)
 
 
@@ -102,6 +103,7 @@ def mock_botspot_deps():
 def clean_singleton():
     """Reset the singleton instance before each test"""
     from botspot.utils.internal import Singleton
+
     # Clear the singleton instances before each test
     Singleton._instances = {}
     yield

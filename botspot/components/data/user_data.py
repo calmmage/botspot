@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings
 
 from botspot.utils import compare_users
 from botspot.utils.admin_filter import AdminFilter
-from botspot.utils.deps_getters import get_database, get_user_manager
+from botspot.utils.deps_getters import get_database
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
@@ -129,26 +129,36 @@ class UserManager:
         """Find user by any of the fields"""
         if not any([user_id, username, phone, first_name, last_name]):
             raise ValueError("find_user requires at least one of the fields")
-        # if direct fields are provided - use them
+
+        # Build query conditions
+        query = {}
+
+        # If direct fields are provided - use them
         if any([user_id, username, phone]):
-            return await self.users_collection.find_one(
-                {
-                    "$or": [
-                        {"user_id": user_id} if user_id else None,
-                        {"username": username} if username else None,
-                        {"phone": phone} if phone else None,
-                    ]
-                }
-            )
-        # if not - use fuzzy match on name
-        return await self.users_collection.find_one(
-            {
-                "$and": [
-                    {"first_name": first_name} if first_name else None,
-                    {"last_name": last_name} if last_name else None,
-                ]
-            }
-        )
+            or_conditions = []
+            if user_id:
+                or_conditions.append({"user": user_id})
+            if username:
+                or_conditions.append({"username": username})
+            if phone:
+                or_conditions.append({"phone": phone})
+
+            if or_conditions:
+                query["$or"] = or_conditions
+        # If not - use match on name fields
+        elif first_name or last_name:
+            if first_name:
+                query["first_name"] = first_name
+            if last_name:
+                query["last_name"] = last_name
+
+        # Execute query
+        result = await self.users_collection.find_one(query)
+
+        # Convert to User model if result found
+        if result:
+            return self.user_class(**result)
+        return None
 
     async def update_last_active(self, user_id: int) -> None:
         """Update user's last active timestamp"""
@@ -269,7 +279,10 @@ class UserTrackingMiddleware(BaseMiddleware):
 
             # Skip DB operations if user was recently processed
             if not self._is_cache_valid(user_id):
-                user_manager = get_user_manager()
+                # Direct access to dependency_manager to avoid circular imports
+                from botspot.core.dependency_manager import get_dependency_manager
+
+                user_manager = get_dependency_manager().user_manager
                 if not await user_manager.has_user(user_id):
                     user = user_manager.user_class(
                         user_id=user_id,
@@ -317,6 +330,18 @@ def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
     )
 
 
+def get_user_manager():
+    """Get UserManager instance from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    user_manager = get_dependency_manager().user_manager
+    if user_manager is None:
+        raise RuntimeError(
+            "UserManager is not initialized. Make sure user_data component is enabled in settings."
+        )
+    return user_manager
+
+
 def setup_dispatcher(dp: Dispatcher, **kwargs):
     """Setup the user data component"""
     settings = UserDataSettings(**kwargs)
@@ -342,7 +367,10 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
                 return
 
             user_id = message.reply_to_message.from_user.id
-            user_manager = get_user_manager()
+            # Direct access to dependency_manager to avoid circular imports
+            from botspot.core.dependency_manager import get_dependency_manager
+
+            user_manager = get_dependency_manager().user_manager
 
             if await user_manager.make_friend(user_id):
                 await message.answer(f"User {user_id} is now a friend!")
@@ -352,9 +380,9 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
         dp.include_router(router)
 
     async def sync_types():
-        from botspot.utils.deps_getters import get_user_manager
+        from botspot.core.dependency_manager import get_dependency_manager
 
-        manager = get_user_manager()
+        manager = get_dependency_manager().user_manager
 
         await manager.sync_user_types()
 

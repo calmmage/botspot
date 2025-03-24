@@ -87,11 +87,11 @@ class TestDependencyManager:
         # After initialization
         DependencyManager()
         assert DependencyManager.is_initialized()
-        
+
     def test_default_attributes(self):
         """Test that default attributes are set when not provided"""
         dm = DependencyManager()
-        
+
         assert isinstance(dm.botspot_settings, BotspotSettings)
         # Check internal attributes directly instead of properties that raise exceptions
         assert dm._bot is None
@@ -100,40 +100,41 @@ class TestDependencyManager:
         assert dm._scheduler is None
         assert dm._telethon_manager is None
         assert dm._user_manager is None
-        
+
     def test_botspot_settings_default_initialization(self):
         """Test that botspot_settings is initialized with BotspotSettings if not provided"""
-        with patch('botspot.core.dependency_manager.BotspotSettings') as mock_settings_class:
+        with patch("botspot.core.dependency_manager.BotspotSettings") as mock_settings_class:
             mock_settings = MagicMock()
             mock_settings_class.return_value = mock_settings
-            
+
             dm = DependencyManager()
-            
+
             # Should create a default settings object
             mock_settings_class.assert_called_once()
             assert dm.botspot_settings is mock_settings
-            
+
     def test_multiple_dependency_instances(self):
         """Test that attributes from first instance persist in subsequent instances due to singleton"""
         # Reset Singleton for this test
         from botspot.utils.internal import Singleton
+
         Singleton._instances = {}
-        
+
         # Create a fresh instance
         dm1 = DependencyManager()
         mock_bot = MagicMock(spec=Bot)
-        
+
         # Set a property on the first instance
         dm1.bot = mock_bot
-        
+
         # Verify the first property is set
         assert dm1._bot is mock_bot
-        
+
         # Both instances should be the same object due to singleton
         dm2 = DependencyManager()
         assert dm1 is dm2
         assert dm2._bot is mock_bot
-        
+
         # Clean up after test
         Singleton._instances = {}
 
@@ -149,27 +150,27 @@ class TestGetDependencyManager:
         dm = DependencyManager()
         retrieved_dm = get_dependency_manager()
         assert retrieved_dm is dm
-        
+
     def test_dependency_manager_functionality(self):
         """Test that get_dependency_manager returns a fully functional DependencyManager"""
         mock_bot = MagicMock(spec=Bot)
-        
+
         # Initialize with a bot
         DependencyManager(bot=mock_bot)
-        
+
         # Get the manager
         dm = get_dependency_manager()
-        
+
         # Check the bot is set
         assert dm.bot is mock_bot
-        
+
         # Test we can set new attributes
         mock_dispatcher = MagicMock(spec=Dispatcher)
         dm.dispatcher = mock_dispatcher
-        
+
         # Get the manager again
         dm2 = get_dependency_manager()
-        
+
         # Both attributes should be set
         assert dm2.bot is mock_bot
         assert dm2.dispatcher is mock_dispatcher
