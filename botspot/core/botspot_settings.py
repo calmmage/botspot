@@ -13,6 +13,7 @@ from botspot.components.main.telethon_manager import TelethonManagerSettings
 from botspot.components.main.trial_mode import TrialModeSettings
 from botspot.components.middlewares.error_handler import ErrorHandlerSettings
 from botspot.components.new.chat_binder import ChatBinderSettings
+from botspot.components.new.contact_manager import ContactManagerSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
@@ -59,6 +60,7 @@ class BotspotSettings(BaseSettings):
     admin_filter: AdminFilterSettings = AdminFilterSettings()
     chat_binder: ChatBinderSettings = ChatBinderSettings()
     llm_provider: LLMProviderSettings = LLMProviderSettings()
+    contact_manager: ContactManagerSettings = ContactManagerSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"

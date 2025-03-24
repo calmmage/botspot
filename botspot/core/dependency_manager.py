@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.contact_manager import ContactManager
     from botspot.components.new.llm_provider import LLMProvider
 
 
@@ -38,6 +39,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = None
         self._chat_binder = None
         self._llm_provider = None
+        self._contact_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -137,6 +139,16 @@ class DependencyManager(metaclass=Singleton):
     @llm_provider.setter
     def llm_provider(self, value):
         self._llm_provider = value
+        
+    @property
+    def contact_manager(self) -> "ContactManager":
+        if self._contact_manager is None:
+            raise RuntimeError("Contact Manager is not initialized")
+        return self._contact_manager
+        
+    @contact_manager.setter
+    def contact_manager(self, value):
+        self._contact_manager = value
 
     @classmethod
     def is_initialized(cls) -> bool:
