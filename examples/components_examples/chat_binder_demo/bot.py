@@ -3,7 +3,11 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from botspot.commands_menu import botspot_command
-from botspot.components.new.chat_binder import get_bind_chat_id, get_user_bound_chats
+from botspot.components.new.chat_binder import (
+    get_bind_chat_id,
+    get_chat_binding_status,
+    get_user_bound_chats,
+)
 from botspot.utils.send_safe import send_safe
 from examples.base_bot import App, main, router
 
@@ -21,6 +25,7 @@ async def start_handler(message: Message):
         "📋 Available commands:\n"
         "/bind_chat [key] - Bind this chat to you with optional key\n"
         "/unbind_chat [key] - Unbind a chat with the given key\n"
+        "/bind_status - Check if this chat is bound to you and with which keys\n"
         "/list_chats - List all your bound chats\n"
         "/get_chat [key] - Get chat ID for specific key\n\n"
         "🔄 Feature Demo:\n"
@@ -65,6 +70,34 @@ async def get_chat_handler(message: Message):
         await message.reply(f"Bound chat for key '{key}': {chat_id}")
     except Exception as e:
         await message.reply(f"Error: {str(e)}")
+
+
+@router.message(Command("bind_status"))
+async def bind_status_handler(message: Message):
+    chat_id = message.chat.id
+    if not message.from_user:
+        await message.reply("User information is missing.")
+        return
+
+    user_id = message.from_user.id
+
+    try:
+        # Get bindings for this specific chat
+        bindings = await get_chat_binding_status(user_id, chat_id)
+
+        if not bindings:
+            await message.reply("This chat is not bound to you.")
+            return
+
+        # Format binding information
+        if len(bindings) == 1:
+            binding = bindings[0]
+            await message.reply(f"This chat is bound to you with key: '{binding.key}'")
+        else:
+            keys_list = ", ".join([f"'{binding.key}'" for binding in bindings])
+            await message.reply(f"This chat is bound to you with {len(bindings)} keys: {keys_list}")
+    except Exception as e:
+        await message.reply(f"Error checking binding status: {str(e)}")
 
 
 # Echo feature - demonstrates a practical use of chat binding

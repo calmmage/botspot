@@ -5,7 +5,8 @@ This example demonstrates how to use the Chat Binder component to bind chats to 
 ## Features
 
 - Bind a chat to a user with an optional key
-- Unbind a chat from a user
+- Unbind a chat from a user with proper validation
+- Check binding status of the current chat
 - List all chats bound to a user
 - Get a specific bound chat by key
 - Echo messages to all bound chats (practical demo feature)
@@ -43,6 +44,7 @@ Once the bot is running, you can use the following commands:
 - `/start` - Get a welcome message with available commands
 - `/bind_chat [key]` - Bind the current chat to you with an optional key (defaults to "default")
 - `/unbind_chat [key]` - Unbind the chat from you with the specified key
+- `/bind_status` - Check if the current chat is bound to you and with which keys
 - `/list_chats` - List all chats bound to you
 - `/get_chat [key]` - Get the chat ID for a specific key
 
