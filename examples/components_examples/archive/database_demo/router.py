@@ -46,12 +46,14 @@ async def help_handler(message: Message) -> None:
 @router.message(Command("add"))
 async def add_item_handler(message: Message) -> None:
     """Add a new item to the database."""
+    assert message.text is not None
     text = message.text.replace("/add", "").strip()
     if not text:
         await send_safe(message.chat.id, "Please provide some text to add.\nUsage: /add <text>")
         return
 
     try:
+        assert message.from_user is not None
         success = await app.add_item(
             user_id=message.from_user.id, text=text, created_at=message.date
         )
@@ -69,6 +71,7 @@ async def add_item_handler(message: Message) -> None:
 async def list_items_handler(message: Message) -> None:
     """List all items from the database."""
     try:
+        assert message.from_user is not None
         items = await app.get_items(user_id=message.from_user.id)
 
         if not items:

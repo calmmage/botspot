@@ -1,11 +1,11 @@
 import enum
 import re
 from pathlib import Path
-from typing import Type, List, Dict, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Type
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.types import Message, ErrorEvent
+from aiogram.types import ErrorEvent, Message
 from calmapp import App
 from calmlib.utils import get_logger
 from dotenv import load_dotenv
@@ -115,7 +115,9 @@ def on_startup(self, bot: Bot):
 
 
 @property
-@deprecated("Found old (pre-migration) style usage of _aiogram_bot. please rework and replace with self.bot")
+@deprecated(
+    "Found old (pre-migration) style usage of _aiogram_bot. please rework and replace with self.bot"
+)
 def _aiogram_bot(self):
     return self.bot
 
@@ -286,13 +288,17 @@ async def download_file(self, message: Message, file_desc, file_path=None):
     if file_desc.file_size < 20 * 1024 * 1024:
         return await self.bot.download(file_desc.file_id, destination=file_path)
     else:
-        return await self.download_large_file(message.chat.username, message.message_id, target_path=file_path)
+        return await self.download_large_file(
+            message.chat.username, message.message_id, target_path=file_path
+        )
 
 
 def _check_pyrogram_tokens(self):
     # todo: update, rework self.config, make it per-user
     if not (self.config.api_id.get_secret_value() and self.config.api_hash.get_secret_value()):
-        raise ValueError("Telegram api_id and api_hash must be provided for Pyrogram " "to download large files")
+        raise ValueError(
+            "Telegram api_id and api_hash must be provided for Pyrogram " "to download large files"
+        )
 
 
 def _init_pyrogram_client(self):

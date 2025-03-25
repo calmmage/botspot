@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Union
 from aiogram import Bot, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import InaccessibleMessage, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
@@ -16,6 +16,7 @@ logger = get_logger()
 
 class AskUserSettings(BaseSettings):
     enabled: bool = True
+    default_timeout: int = 60
 
     class Config:
         env_prefix = "BOTSPOT_ASK_USER_"
@@ -81,7 +82,7 @@ async def _ask_user_base(
     chat_id: int,
     question: str,
     state: FSMContext,
-    timeout: Optional[float] = 60.0,
+    timeout: Optional[float] = None,
     reply_markup: Optional[InlineKeyboardMarkup] = None,
     notify_on_timeout: bool = True,
     default_choice: Optional[str] = None,
@@ -111,8 +112,13 @@ async def _ask_user_base(
     if not request:
         logger.error("Failed to create request")
         return None
+    assert request.event is not None
 
     sent_message = await bot.send_message(chat_id, question, reply_markup=reply_markup, **kwargs)
+    assert sent_message.text is not None
+
+    if timeout is None:
+        timeout = deps.botspot_settings.ask_user.default_timeout
 
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
@@ -256,6 +262,7 @@ async def handle_user_input(message: types.Message, state: FSMContext) -> None:
 
     active_request.raw_response = message
     active_request.response = message.text
+    assert active_request.event is not None
     active_request.event.set()
 
 
@@ -376,9 +383,11 @@ async def ask_user_choice_raw(
 
 
 async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    assert callback_query.data is not None
     if not callback_query.data.startswith("choice_"):
         return
 
+    assert callback_query.message is not None
     chat_id = callback_query.message.chat.id
     state_data = await state.get_data()
     handler_id = state_data.get("handler_id")
@@ -396,9 +405,12 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
 
     choice = callback_query.data[7:]
     active_request.response = choice
+    assert active_request.event is not None
     active_request.event.set()
 
     await callback_query.answer()
+    assert not isinstance(callback_query.message, InaccessibleMessage)
+
     # Edit the message to remove buttons and show selection
     new_text = f"{callback_query.message.text}\n\nSelected: {choice}"
     try:

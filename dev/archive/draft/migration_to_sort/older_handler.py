@@ -7,12 +7,10 @@ from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from textwrap import dedent
-from typing import List
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import loguru
-from aiogram import F
-from aiogram import types
+from aiogram import F, types
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from pydantic import BaseModel
@@ -91,7 +89,10 @@ NO_COMMAND_DESCRIPTION = "No description provided"
 
 
 async def _set_aiogram_bot_commands(self):
-    bot_commands = [types.BotCommand(command=c, description=d or self.NO_COMMAND_DESCRIPTION) for c, d in self.commands]
+    bot_commands = [
+        types.BotCommand(command=c, description=d or self.NO_COMMAND_DESCRIPTION)
+        for c, d in self.commands
+    ]
     await self._aiogram_bot.set_my_commands(bot_commands)
 
 
