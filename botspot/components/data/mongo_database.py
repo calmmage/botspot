@@ -57,11 +57,7 @@ def initialize(
 
     assert AsyncIOMotorClient
 
-    try:
-        client = AsyncIOMotorClient(settings.conn_str.get_secret_value())
-        db = client[settings.database]
-        logger.info("MongoDB client initialized.")
-        return client, db
-    except Exception as e:
-        logger.error(f"Failed to initialize MongoDB: {e}")
-        raise
+    client = AsyncIOMotorClient(settings.conn_str.get_secret_value())
+    db = client[settings.database]
+    logger.info("MongoDB client initialized.")
+    return client, db

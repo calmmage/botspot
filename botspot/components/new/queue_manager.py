@@ -421,23 +421,19 @@ def setup_dispatcher(dp):
     @router.message(Command("queue_stats"))
     async def queue_stats_command(message: Message):
         """Handler for /queue_stats command - shows queue statistics."""
-        try:
-            queue_manager = get_queue_manager()
+        queue_manager = get_queue_manager()
 
-            # Get the default queue stats
-            default_queue = queue_manager.get_queue()
-            stats = await default_queue.get_queue_stats()
+        # Get the default queue stats
+        default_queue = queue_manager.get_queue()
+        stats = await default_queue.get_queue_stats()
 
-            await message.reply(
-                f"📊 **Queue Statistics**\n"
-                f"Queue: {stats.queue_key}\n"
-                f"Total items: {stats.total_items}\n"
-                f"Oldest item: {stats.oldest_item_date or 'N/A'}\n"
-                f"Newest item: {stats.newest_item_date or 'N/A'}"
-            )
-        except Exception as e:
-            logger.error(f"Error handling queue_stats command: {e}")
-            await message.reply(f"Error retrieving queue statistics: {e}")
+        await message.reply(
+            f"📊 **Queue Statistics**\n"
+            f"Queue: {stats.queue_key}\n"
+            f"Total items: {stats.total_items}\n"
+            f"Oldest item: {stats.oldest_item_date or 'N/A'}\n"
+            f"Newest item: {stats.newest_item_date or 'N/A'}"
+        )
 
     dp.include_router(router)
     return dp
