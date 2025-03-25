@@ -151,6 +151,16 @@ class DependencyManager(metaclass=Singleton):
     def queue_manager(self, value):
         self._queue_manager = value
 
+    @property
+    def queue_manager(self) -> "QueueManager":
+        if self._queue_manager is None:
+            raise RuntimeError("Queue Manager is not initialized")
+        return self._queue_manager
+
+    @queue_manager.setter
+    def queue_manager(self, value):
+        self._queue_manager = value
+
     @classmethod
     def is_initialized(cls) -> bool:
         return cls in cls._instances
