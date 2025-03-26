@@ -8,7 +8,6 @@ from aiogram.types import BotCommand, Message
 from deprecated import deprecated
 from pydantic_settings import BaseSettings
 
-from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -110,8 +109,10 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
         @dp.message(Command("help_botspot"))
         async def help_botspot_cmd(message: Message):
             """Show available bot commands"""
-            is_admin = await AdminFilter()(message)
-            help_text = get_commands_by_visibility(include_admin=is_admin)
+            from botspot.utils.user_ops import is_admin
+
+            assert message.from_user is not None
+            help_text = get_commands_by_visibility(include_admin=is_admin(message.from_user))
             await message.answer(help_text)
 
 
