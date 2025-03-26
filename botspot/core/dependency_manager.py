@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
     from botspot.components.new.chat_binder import ChatBinder
+    from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
 
@@ -23,14 +24,14 @@ if TYPE_CHECKING:
 class DependencyManager(metaclass=Singleton):
     def __init__(
         self,
-        botspot_settings: Optional[BotspotSettings] = None,
+        botspot_settings: BotspotSettings,
         bot: Optional[Bot] = None,
         dispatcher: Optional[Dispatcher] = None,
         mongo_client: Optional["AsyncIOMotorClient"] = None,
         mongo_database: Optional["AsyncIOMotorDatabase"] = None,
         **kwargs
     ):
-        self._botspot_settings = botspot_settings or BotspotSettings()
+        self._botspot_settings = botspot_settings
         self._bot = bot
         self._dispatcher = dispatcher
         self._mongo_client = mongo_client
@@ -40,6 +41,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = None
         self._chat_binder = None
         self._llm_provider = None
+        self._chat_fetcher = None
         self._queue_manager = None
         self.__dict__.update(kwargs)
 
@@ -142,14 +144,14 @@ class DependencyManager(metaclass=Singleton):
         self._llm_provider = value
 
     @property
-    def queue_manager(self) -> "QueueManager":
-        if self._queue_manager is None:
-            raise RuntimeError("Queue Manager is not initialized")
-        return self._queue_manager
+    def chat_fetcher(self) -> "ChatFetcher":
+        if self._chat_fetcher is None:
+            raise RuntimeError("Chat Fetcher is not initialized")
+        return self._chat_fetcher
 
-    @queue_manager.setter
-    def queue_manager(self, value):
-        self._queue_manager = value
+    @chat_fetcher.setter
+    def chat_fetcher(self, value):
+        self._chat_fetcher = value
 
     @property
     def queue_manager(self) -> "QueueManager":
@@ -169,4 +171,4 @@ class DependencyManager(metaclass=Singleton):
 def get_dependency_manager() -> DependencyManager:
     if not DependencyManager.is_initialized():
         raise ValueError("Dependency manager is not initialized")
-    return DependencyManager()
+    return Singleton.get_instance(DependencyManager)
