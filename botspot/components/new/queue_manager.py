@@ -3,7 +3,7 @@ from botspot.utils.internal import get_logger
 logger = get_logger()
 
 from datetime import datetime
-from typing import List, Optional, Type
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
@@ -25,12 +25,19 @@ class QueueManagerSettings(BaseSettings):
 class QueueItem(BaseModel):
     data: str
 
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
 
-class Queue:
+
+T = TypeVar("T", bound=QueueItem)
+
+
+class Queue(Generic[T]):
     def __init__(
         self,
         key: str,
-        item_model: Type[BaseModel],
+        item_model: Type[T],
         collection,
         use_timestamp: bool = True,
         use_priority: bool = False,
@@ -57,45 +64,58 @@ class Queue:
         if not self.use_done:
             projection["done"] = 0
         if not self.single_user_mode:
-            projection["username"] = 0
+            projection["user_id"] = 0
         return projection
 
-    def enrich_item(self, item: BaseModel, username: Optional[str] = None) -> dict:
+    def enrich_item(self, item: T, user_id: Optional[int] = None) -> dict:
         doc = item.model_dump()
-        doc["queue_id"] = self.key
+        # doc["queue_id"] = self.key
         if self.use_timestamp:
             doc["timestamp"] = datetime.now()
         if self.use_priority:
             doc["priority"] = 0
         if self.use_done:
             doc["done"] = False
-        if username:
-            doc["username"] = username
+        if user_id:
+            doc["user_id"] = user_id
         return doc
 
-    async def add_item(self, item: BaseModel, username: Optional[str] = None):
-        if not self.single_user_mode and username is None:
-            raise ValueError("username is required unless single_user_mode is enabled")
-        doc = self.enrich_item(item, username)
+    async def add_item(self, item: T, user_id: Optional[int] = None):
+        if not self.single_user_mode and user_id is None:
+            raise ValueError("user_id is required unless single_user_mode is enabled")
+        doc = self.enrich_item(item, user_id)
         await self.collection.insert_one(doc)
 
     async def get_items(
         self,
-        username: Optional[str] = None,
+        user_id: Optional[int] = None,
         limit: Optional[int] = None,
         provide_all_fields: bool = False,
-    ) -> List[dict]:
-        if not self.single_user_mode and username is None:
-            raise ValueError("username is required unless single_user_mode is enabled")
-        query = {"queue_id": self.key}
-        if username:
-            query["username"] = username
+    ) -> List[T]:
+        if not self.single_user_mode and user_id is None:
+            raise ValueError("user_id is required unless single_user_mode is enabled")
+        query = {}
+        if user_id:
+            query["user_id"] = user_id
         projection = None if provide_all_fields else self.projection
         cursor = self.collection.find(query, projection=projection)
         if limit is not None:
             cursor = cursor.limit(limit)
         items = await cursor.to_list(length=limit)
-        return items
+        return [self.item_model.model_validate(item) for item in items]
+
+    async def get_records(
+        self, user_id: Optional[int] = None, limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        if not self.single_user_mode and user_id is None:
+            raise ValueError("user_id is required unless single_user_mode is enabled")
+        query = {}
+        if user_id:
+            query["user_id"] = user_id
+        cursor = self.collection.find(query)
+        if limit is not None:
+            cursor = cursor.limit(limit)
+        return await cursor.to_list(length=limit)
 
 
 class QueueManager:
@@ -104,7 +124,7 @@ class QueueManager:
 
         self.settings = settings
         self.db = get_database()  # Fetch MongoDB database instance
-        self.queues = {}
+        self.queues: Dict[str, Queue] = {}
         if single_user_mode is None:
             from botspot.core.dependency_manager import get_dependency_manager
 
@@ -114,18 +134,17 @@ class QueueManager:
     def create_queue(
         self,
         key: str = "default",
-        item_model: Type[BaseModel] = QueueItem,
+        item_model: Type[T] = QueueItem,  # type: ignore
         use_timestamp: bool = True,
         use_priority: bool = False,
         use_done: bool = False,
         collection=None,
-    ) -> Queue:
-
+    ) -> Queue[T]:
         if collection is None:
-            collection_name = f"{self.settings.collection_name_prefix}queues"
+            collection_name = f"{self.settings.collection_name_prefix}{key}"
             collection = self.db[collection_name]
 
-        queue = Queue(
+        queue: Queue[T] = Queue(
             key=key,
             item_model=item_model,
             collection=collection,
@@ -150,7 +169,13 @@ def get_queue_manager() -> QueueManager:
     return deps.queue_manager
 
 
-def create_queue(key: str = "default", item_model: Type[BaseModel] = QueueItem) -> Queue:
+TItem = TypeVar("TItem", bound=BaseModel)
+
+
+def create_queue(
+    key: str = "default",
+    item_model: Type[TItem] = QueueItem,  # type: ignore
+) -> Queue[TItem]:
     qm = get_queue_manager()
     return qm.create_queue(key, item_model)
 
