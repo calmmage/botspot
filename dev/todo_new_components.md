@@ -5,13 +5,31 @@
 1. **LLM Provider** ✅
 2. **LLM Utils**
 3. **Context Builder**
-4. **Queue Manager**
+4. **Queue Manager** ✅
 5. **Contact Manager (for People Bot)**
 6. **Chat Fetcher**
 7. **Subscription Manager**
 8. **Auto Archive**
 9. **Chat Binder**
 10. **Bound LLM Queue**
+11.
+
+- For telethon manager
+
+- Features for sending messages - utils. Send message to contacts, queue members.
+  - this is implemented in
+- Features for working with reactions
+- features for working with polls
+  - make sure ... to vote
+  - use ef rc notifier aas example
+
+12.
+
+- Settings menu
+
+- for botspot settings
+- as mini-app
+- as inline buttons - e.g. ask_user_choice (inline keyboard) - maybe use aiogram-dialog
 
 ---
 
@@ -130,3 +148,16 @@ from convo. Binding sets up the archive chat once, then it’s fully automatic.
 - **d) Useful Bot**: **People Bot (Enhanced)** - Bind it to a chat; it auto-parses all
   messages (or forwarded ones) into contacts, stores them, and asks for missing
   details—all hands-off after `/bind`.
+
+- 11 - For telethon manager
+  - Features for sending messages - utils. Send message to contacts, queue members.
+    - this is implemented in
+  - Features for working with reactions
+  - features for working with polls
+    - make sure ... to vote
+    - use ef rc notifier aas example
+- 12 - Settings menu
+  - for botspot settings
+  - as mini-app
+  - as inline buttons - e.g. ask_user_choice (inline keyboard) - maybe use
+    aiogram-dialog

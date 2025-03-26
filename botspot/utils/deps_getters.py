@@ -13,6 +13,7 @@ from botspot.components.data.user_data import get_user_manager
 from botspot.components.main.event_scheduler import get_scheduler
 from botspot.components.main.telethon_manager import get_telethon_manager
 from botspot.components.new.chat_binder import get_chat_binder
+from botspot.components.new.queue_manager import get_queue_manager
 
 if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
@@ -88,4 +89,5 @@ __all__ = [
     "get_mongo_client",
     "get_chat_binder",
     "get_chat_fetcher",
+    "get_queue_manager",
 ]

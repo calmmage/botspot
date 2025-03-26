@@ -191,37 +191,28 @@ class LLMProvider:
         # Try to get a consistent user key to use for tracking
         user_key = "unknown"
         if user is not None:
-            try:
-                # Get enriched record if possible
-                if isinstance(user, (str, int)):
-                    record = await get_user_record_enriched(user)
-                else:
-                    record = to_user_record(user)
+            # Get enriched record if possible
+            if isinstance(user, (str, int)):
+                record = await get_user_record_enriched(user)
+            else:
+                record = to_user_record(user)
 
-                # Prefer user_id for tracking, but fallback to username
-                if record.user_id:
-                    user_key = str(record.user_id)
-                elif record.username:
-                    user_key = record.username
-                else:
-                    user_key = str(user)
-            except Exception as e:
-                logger.error(f"Error getting user record for tracking: {e}")
+            # Prefer user_id for tracking, but fallback to username
+            if record.user_id:
+                user_key = str(record.user_id)
+            elif record.username:
+                user_key = record.username
+            else:
                 user_key = str(user)
 
         # If MongoDB is enabled, store stats there
         # todo: adapt this to user
         if deps.botspot_settings.mongo_database.enabled and deps.mongo_database is not None:
-            try:
-                await deps.mongo_database.llm_usage.update_one(
-                    {"user": user_key},
-                    {"$inc": {f"models.{model}": tokens, "total": tokens}},
-                    upsert=True,
-                )
-            except Exception as e:
-                logger.error(f"Error tracking LLM usage in MongoDB: {e}")
-                # Fallback to in-memory storage
-                self.usage_stats[user_key] += tokens
+            await deps.mongo_database.llm_usage.update_one(
+                {"user": user_key},
+                {"$inc": {f"models.{model}": tokens, "total": tokens}},
+                upsert=True,
+            )
         else:
             # Use in-memory storage
             self.usage_stats[user_key] += tokens
@@ -319,17 +310,13 @@ class LLMProvider:
         logger.debug(f"Querying LLM with model {full_model_name}")
 
         # Make the actual API call
-        try:
-            response = completion(model=full_model_name, messages=messages, **params)
+        response = completion(model=full_model_name, messages=messages, **params)
 
-            # Track usage asynchronously (approximate tokens used)
-            token_estimate = len(prompt) // 4 + max_tokens
-            asyncio.run(self._track_usage(user, model, token_estimate))
+        # Track usage asynchronously (approximate tokens used)
+        token_estimate = len(prompt) // 4 + max_tokens
+        asyncio.run(self._track_usage(user, model, token_estimate))
 
-            return response
-        except Exception as e:
-            logger.error(f"Error querying LLM: {e}")
-            raise
+        return response
 
     def query_llm_text(
         self,
@@ -430,24 +417,20 @@ class LLMProvider:
         asyncio.run(self._track_usage(user, model, token_estimate))
 
         # Make the actual API call with streaming
-        try:
-            response = completion(
-                model=full_model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                request_timeout=timeout,
-                num_retries=max_retries,
-                stream=True,
-                **extra_kwargs,
-            )
+        response = completion(
+            model=full_model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            request_timeout=timeout,
+            num_retries=max_retries,
+            stream=True,
+            **extra_kwargs,
+        )
 
-            for chunk in response:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-        except Exception as e:
-            logger.error(f"Error streaming from LLM: {e}")
-            raise
+        for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     def query_llm_structured(
         self,
@@ -523,30 +506,26 @@ class LLMProvider:
 
         messages = self._prepare_messages(prompt, enhanced_system)
 
-        try:
-            # Make the API call
-            response = completion(
-                model=full_model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                request_timeout=timeout,
-                num_retries=max_retries,
-                response_format={"type": "json_object"},
-                **extra_kwargs,
-            )
+        # Make the API call
+        response = completion(
+            model=full_model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            request_timeout=timeout,
+            num_retries=max_retries,
+            response_format={"type": "json_object"},
+            **extra_kwargs,
+        )
 
-            # Track usage (approximate tokens)
-            token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
-            asyncio.run(self._track_usage(user, model, token_estimate))
+        # Track usage (approximate tokens)
+        token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
+        asyncio.run(self._track_usage(user, model, token_estimate))
 
-            # Parse the response into the Pydantic model
-            result_text = response.choices[0].message.content
-            result_json = json.loads(result_text)
-            return output_schema(**result_json)
-        except Exception as e:
-            logger.error(f"Error getting structured output from LLM: {e}")
-            raise
+        # Parse the response into the Pydantic model
+        result_text = response.choices[0].message.content
+        result_json = json.loads(result_text)
+        return output_schema(**result_json)
 
     # ---------------------------------------------
     # endregion Synchronous Query Methods
@@ -632,17 +611,13 @@ class LLMProvider:
         logger.debug(f"Async querying LLM with model {full_model_name}")
 
         # Make the actual API call
-        try:
-            response = await acompletion(model=full_model_name, messages=messages, **params)
+        response = await acompletion(model=full_model_name, messages=messages, **params)
 
-            # Track usage asynchronously (approximate tokens used)
-            token_estimate = len(prompt) // 4 + max_tokens
-            await self._track_usage(user, model, token_estimate)
+        # Track usage asynchronously (approximate tokens used)
+        token_estimate = len(prompt) // 4 + max_tokens
+        await self._track_usage(user, model, token_estimate)
 
-            return response
-        except Exception as e:
-            logger.error(f"Error in async query to LLM: {e}")
-            raise
+        return response
 
     async def aquery_llm_text(
         self,
@@ -739,24 +714,20 @@ class LLMProvider:
         await self._track_usage(user, model, token_estimate)
 
         # Make the actual API call with streaming
-        try:
-            response = await acompletion(
-                model=full_model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                request_timeout=timeout,
-                num_retries=max_retries,
-                stream=True,
-                **extra_kwargs,
-            )
+        response = await acompletion(
+            model=full_model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            request_timeout=timeout,
+            num_retries=max_retries,
+            stream=True,
+            **extra_kwargs,
+        )
 
-            async for chunk in response:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-        except Exception as e:
-            logger.error(f"Error async streaming from LLM: {e}")
-            raise
+        async for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     async def aquery_llm_structured(
         self,
@@ -828,30 +799,26 @@ class LLMProvider:
 
         messages = self._prepare_messages(prompt, enhanced_system)
 
-        try:
-            # Make the API call
-            response = await acompletion(
-                model=full_model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                request_timeout=timeout,
-                num_retries=max_retries,
-                response_format={"type": "json_object"},
-                **extra_kwargs,
-            )
+        # Make the API call
+        response = await acompletion(
+            model=full_model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            request_timeout=timeout,
+            num_retries=max_retries,
+            response_format={"type": "json_object"},
+            **extra_kwargs,
+        )
 
-            # Track usage (approximate tokens)
-            token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
-            await self._track_usage(user, model, token_estimate)
+        # Track usage (approximate tokens)
+        token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
+        await self._track_usage(user, model, token_estimate)
 
-            # Parse the response into the Pydantic model
-            result_text = response.choices[0].message.content
-            result_json = json.loads(result_text)
-            return output_schema(**result_json)
-        except Exception as e:
-            logger.error(f"Error getting async structured output from LLM: {e}")
-            raise
+        # Parse the response into the Pydantic model
+        result_text = response.choices[0].message.content
+        result_json = json.loads(result_text)
+        return output_schema(**result_json)
 
     # ---------------------------------------------
     # endregion Asynchronous Query Methods
@@ -881,33 +848,29 @@ def setup_dispatcher(dp):
     @router.message(Command("llm_usage"), AdminFilter())
     async def llm_usage_command(message: Message):
         """Handler for /llm_usage command - shows LLM usage statistics."""
-        try:
-            stats = await get_llm_usage_stats()
+        stats = await get_llm_usage_stats()
 
-            if not stats:
-                await message.reply("No LLM usage statistics available.")
-                return
+        if not stats:
+            await message.reply("No LLM usage statistics available.")
+            return
 
-            # Format stats nicely
-            lines = ["📊 **LLM Usage Statistics**"]
+        # Format stats nicely
+        lines = ["📊 **LLM Usage Statistics**"]
 
-            for user_id, user_stats in stats.items():
-                if isinstance(user_stats, dict) and "total" in user_stats:
-                    models_str = ""
-                    if "models" in user_stats and user_stats["models"]:
-                        models_list = [
-                            f"{model}: {count}" for model, count in user_stats["models"].items()
-                        ]
-                        models_str = f" ({', '.join(models_list)})"
+        for user_id, user_stats in stats.items():
+            if isinstance(user_stats, dict) and "total" in user_stats:
+                models_str = ""
+                if "models" in user_stats and user_stats["models"]:
+                    models_list = [
+                        f"{model}: {count}" for model, count in user_stats["models"].items()
+                    ]
+                    models_str = f" ({', '.join(models_list)})"
 
-                    lines.append(f"User {user_id}: {user_stats['total']} tokens{models_str}")
-                else:
-                    lines.append(f"User {user_id}: {user_stats} tokens")
+                lines.append(f"User {user_id}: {user_stats['total']} tokens{models_str}")
+            else:
+                lines.append(f"User {user_id}: {user_stats} tokens")
 
-            await message.reply("\n".join(lines))
-        except Exception as e:
-            logger.error(f"Error handling llm_usage command: {e}")
-            await message.reply(f"Error retrieving LLM usage statistics: {e}")
+        await message.reply("\n".join(lines))
 
     dp.include_router(router)
     return dp
@@ -1030,22 +993,18 @@ async def get_llm_usage_stats(user: Optional[UserLike] = None) -> dict:
 
     # Check if MongoDB is available
     if deps.botspot_settings.mongo_database.enabled and deps.mongo_database is not None:
-        try:
-            query = {}
-            if user is not None:
-                query["user"] = str(user)
+        query = {}
+        if user is not None:
+            query["user"] = str(user)
 
-            cursor = deps.mongo_database.llm_usage.find(query)
-            stats = {}
-            async for doc in cursor:
-                stats[doc["user"]] = {
-                    "models": doc.get("models", {}),
-                    "total": doc.get("total", 0),
-                }
-            return stats
-        except Exception as e:
-            logger.error(f"Error retrieving LLM usage stats from MongoDB: {e}")
-            # Fall back to in-memory stats
+        cursor = deps.mongo_database.llm_usage.find(query)
+        stats = {}
+        async for doc in cursor:
+            stats[doc["user"]] = {
+                "models": doc.get("models", {}),
+                "total": doc.get("total", 0),
+            }
+        return stats
 
     # Use in-memory stats
     if user is not None:

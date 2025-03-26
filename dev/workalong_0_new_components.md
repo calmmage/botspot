@@ -44,6 +44,19 @@ Here are the new components - main things I want to have asap
     - get chat messages
 
 
+- 11 - For telethon manager
+  - Features for sending messages - utils. Send message to contacts, queue members.
+    - this is implemented in
+  - Features for working with reactions
+  - features for working with polls
+    - make sure ... to vote
+    - use ef rc notifier aas example
+- 12 - Settings menu
+  - for botspot settings
+  - as mini-app
+  - as inline buttons - e.g. ask_user_choice (inline keyboard) - maybe use
+    aiogram-dialog
+  -
 - [ ] populate this from telegram tech ideas:
 
 ## Bot ideas
@@ -571,3 +584,16 @@ from convo. Binding sets up the archive chat once, then it’s fully automatic.
   messages (or forwarded ones) into contacts, stores them, and asks for missing
   details—all hands-off after `/bind`.
 
+
+- 11 - For telethon manager
+  - Features for sending messages - utils. Send message to contacts, queue members.
+    - this is implemented in
+  - Features for working with reactions
+  - features for working with polls
+    - make sure ... to vote
+    - use ef rc notifier aas example
+- 12 - Settings menu
+  - for botspot settings
+  - as mini-app
+  - as inline buttons - e.g. ask_user_choice (inline keyboard) - maybe use
+    aiogram-dialog

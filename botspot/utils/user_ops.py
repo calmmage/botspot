@@ -152,31 +152,27 @@ async def get_user_record_enriched(user_key: Union[str, int]) -> UserRecord:
         if not (deps.botspot_settings.user_data.enabled and deps.user_manager is not None):
             return record
 
-        try:
-            # Try to find user in database
-            if record.user_id:
-                user = await deps.user_manager.get_user(record.user_id)
-            elif record.username:
-                user = await deps.user_manager.find_user(username=record.username)
-            elif record.phone:
-                user = await deps.user_manager.find_user(phone=record.phone)
-            else:
-                return record
-
-            # If found, enrich record
-            if user:
-                if not record.user_id:
-                    record.user_id = user.user_id
-                if not record.username and user.username:
-                    record.username = user.username
-                # Add phone if we implement it in User model
-                # if not record.phone and user.phone:
-                #     record.phone = user.phone
-
+        # Try to find user in database
+        if record.user_id:
+            user = await deps.user_manager.get_user(record.user_id)
+        elif record.username:
+            user = await deps.user_manager.find_user(username=record.username)
+        elif record.phone:
+            user = await deps.user_manager.find_user(phone=record.phone)
+        else:
             return record
-        except Exception as e:
-            logger.error(f"Error enriching user record: {e}")
-            return record
+
+        # If found, enrich record
+        if user:
+            if not record.user_id:
+                record.user_id = user.user_id
+            if not record.username and user.username:
+                record.username = user.username
+            # Add phone if we implement it in User model
+            # if not record.phone and user.phone:
+            #     record.phone = user.phone
+
+        return record
 
     return await _user_record_cache.get_or_set(user_key, _get_record)
 

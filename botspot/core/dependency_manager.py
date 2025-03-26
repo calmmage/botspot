@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
+    from botspot.components.new.queue_manager import QueueManager
 
 
 class DependencyManager(metaclass=Singleton):
@@ -41,6 +42,7 @@ class DependencyManager(metaclass=Singleton):
         self._chat_binder = None
         self._llm_provider = None
         self._chat_fetcher = None
+        self._queue_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -150,6 +152,16 @@ class DependencyManager(metaclass=Singleton):
     @chat_fetcher.setter
     def chat_fetcher(self, value):
         self._chat_fetcher = value
+
+    @property
+    def queue_manager(self) -> "QueueManager":
+        if self._queue_manager is None:
+            raise RuntimeError("Queue Manager is not initialized")
+        return self._queue_manager
+
+    @queue_manager.setter
+    def queue_manager(self, value):
+        self._queue_manager = value
 
     @classmethod
     def is_initialized(cls) -> bool:
