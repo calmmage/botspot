@@ -15,6 +15,7 @@ from botspot.components.middlewares.error_handler import ErrorHandlerSettings
 from botspot.components.new.auto_archive import AutoArchiveSettings
 from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
+from botspot.components.new.queue_manager import QueueManagerSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
@@ -61,6 +62,7 @@ class BotspotSettings(BaseSettings):
     auto_archive: AutoArchiveSettings = AutoArchiveSettings()
     chat_binder: ChatBinderSettings = ChatBinderSettings()
     llm_provider: LLMProviderSettings = LLMProviderSettings()
+    queue_manager: QueueManagerSettings = QueueManagerSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
