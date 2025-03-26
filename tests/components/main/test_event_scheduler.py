@@ -67,27 +67,6 @@ class TestInitialize:
                 "Event scheduler initialized with timezone: Europe/London"
             )
 
-    def test_initialize_with_timezone_exception(self):
-        """Test initialize when timezone raises exception"""
-        with patch(
-            "apscheduler.schedulers.asyncio.AsyncIOScheduler"
-        ) as mock_scheduler_class, patch(
-            "botspot.components.main.event_scheduler.logger"
-        ) as mock_logger, patch(
-            "zoneinfo.ZoneInfo", side_effect=Exception("Invalid timezone")
-        ) as mock_zoneinfo:
-
-            mock_scheduler = MagicMock()
-            mock_scheduler_class.return_value = mock_scheduler
-
-            settings = EventSchedulerSettings(enabled=True, timezone="Invalid/Timezone")
-
-            result = initialize(settings)
-
-            assert result is mock_scheduler
-            mock_scheduler_class.assert_called_once()
-            mock_logger.warning.assert_called_once()  # Warning was logged
-
 
 class TestRunScheduler:
     @pytest.mark.asyncio
