@@ -4,6 +4,8 @@
 - **Demo Bot**: Send any message; it's auto-added to the queue. Reply with "next" to pull the next item.
 - **Useful Bot**: **Task Queue Bot** - Auto-queues messages or tasks, processes them in order or randomly, and integrates with other components (e.g., LLM parsing).
 
+Important: for example bot, look how other bots are implemented. Use botspot features by enabling them with env vars. Use base_bot as foundation. 
+
 ## Developer Notes
 
 1) there is already an implementation - will do a second iteration now
