@@ -1,15 +1,19 @@
-# Queue Manager Demo
+# Queue Manager Demo with Chat Binder
 
-This example demonstrates the usage of the QueueManager component, which provides functionality for managing queues of items stored in MongoDB.
+This example demonstrates the integration of QueueManager and ChatBinder components, allowing users to:
+
+1. Bind chats to their user ID
+2. Automatically add messages to a queue when sent in a bound chat
+3. Retrieve random items from their queue
+4. Check admin status and list chat members
 
 ## Features
 
-- Store items in a queue with a uniform internal interface
-- Support for priority queues
-- Mark items as done/not done
-- Get next item by priority and insertion order
-- Get random item from the queue
-- Easily create multiple queues for different purposes
+- Uses chat_binder component to associate chats with users
+- Automatically adds messages to user-specific queues
+- Demonstrates the Queue Manager's basic functionality
+- Shows how to check if a bot is an admin in a chat
+- Shows how to retrieve chat member information
 
 ## How to Run
 
@@ -17,47 +21,27 @@ This example demonstrates the usage of the QueueManager component, which provide
 2. Make sure MongoDB is running locally or update connection string
 3. Run the bot with `python bot.py`
 
-## Example Usage
+## Bot Commands
 
-This demo bot showcases the following functionality:
+- `/start` - Get welcome message and instructions
+- `/bind_chat` - Bind the current chat to your user
+- `/unbind_chat` - Unbind the current chat
+- `/bind_status` - Check if the current chat is bound
+- `/get_random_item` - Get a random item from your queue
+- `/check_admin` - Check if the bot is an admin in this chat
+- `/list_members` - List members in the chat (requires bot to be an admin)
 
-- Send any message to add it to your personal queue
-- Reply to your message with "next" to get the next item from the queue
-- Reply to your message with "random" to get a random item from the queue
-- Use `/queue_show` to see all items in your queue
-- Use `/queue_clear` to clear your queue
-- Use `/test_queue` to add 5 test items with different priorities
+## How it Works
 
-## Custom Queue Types
-
-You can extend the basic `QueueItem` class to create custom queue types:
-
-```python
-from pydantic import BaseModel, Field
-from botspot.components.new.queue_manager import QueueItem, get_queue_manager
-
-class TaskItem(QueueItem):
-    task_type: str
-    assigned_to: Optional[int] = None
-    due_date: Optional[datetime] = None
-
-# Later in your code
-queue_manager = get_queue_manager()
-task_queue = queue_manager.get_queue("tasks", TaskItem)
-
-# Add a task
-await task_queue.add_item(TaskItem(
-    value="Complete the project report",
-    task_type="work",
-    due_date=datetime.now() + timedelta(days=7),
-    priority=3
-))
-```
+1. When a user binds a chat using `/bind_chat`, the bot establishes a connection between the user ID and chat ID
+2. Any text messages sent in that chat are automatically added to the user's queue
+3. The `/get_random_item` command retrieves and displays a random item from the queue
+4. The bot only processes messages from bound chats
 
 ## Integration with Other Components
 
-The QueueManager works well with other Botspot components:
+This example demonstrates how QueueManager can work with other Botspot components like ChatBinder. This pattern can be extended to:
 
-- Use with LLMProvider to process queued messages with AI
-- Use with ChatBinder to associate queues with specific chats
-- Use with EventScheduler for time-based queue processing
+- Use with LLMProvider to process queued messages
+- Use with EventScheduler for timed queue processing
+- Integrate with TelethonManager for channel/chat interaction

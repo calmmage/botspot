@@ -158,3 +158,21 @@ def create_queue(key: str = "default", item_model: Type[BaseModel] = QueueItem) 
 def get_queue(key: str = "default") -> Queue:
     qm = get_queue_manager()
     return qm.get_queue(key)
+
+
+def setup_dispatcher(dp):
+    """Setup dispatcher with queue management commands."""
+    return dp
+
+
+def initialize(settings: QueueManagerSettings) -> QueueManager:
+    """Initialize the queue manager component."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    # Check that MongoDB is available
+    deps = get_dependency_manager()
+    if not deps.botspot_settings.mongo_database.enabled:
+        raise RuntimeError("MongoDB is required for queue_manager component")
+
+    single_user_mode = deps.botspot_settings.single_user_mode.enabled
+    return QueueManager(settings, single_user_mode=single_user_mode)
