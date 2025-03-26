@@ -1,6 +1,6 @@
 
 - [ ] Update all examples to a new template (import base bot)
-- [ ] update mini-botspot template and botspot template to new format	
+- [ ] update mini-botspot template and botspot template to new format (using base bot)
 
 Chat binder:
 - [x] /bind_status - know if this chat is bound and with which keys 

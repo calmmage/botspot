@@ -43,20 +43,14 @@ def initialize(settings: EventSchedulerSettings) -> Optional["AsyncIOScheduler"]
         logger.info("Event scheduler is disabled.")
         return None
 
-    try:
-        # Create scheduler with configured timezone
-        if settings.timezone:
-            timezone = ZoneInfo(settings.timezone)
-        else:
-            timezone = None
-        scheduler = AsyncIOScheduler(timezone=timezone)
-        logger.info(f"Event scheduler initialized with timezone: {settings.timezone}")
-        return scheduler
-    except Exception as e:
-        logger.warning(
-            f"Failed to set timezone {settings.timezone}, falling back to local timezone: {e}"
-        )
-        return AsyncIOScheduler()
+    # Create scheduler with configured timezone
+    if settings.timezone:
+        timezone = ZoneInfo(settings.timezone)
+    else:
+        timezone = None
+    scheduler = AsyncIOScheduler(timezone=timezone)
+    logger.info(f"Event scheduler initialized with timezone: {settings.timezone}")
+    return scheduler
 
 
 async def run_scheduler():

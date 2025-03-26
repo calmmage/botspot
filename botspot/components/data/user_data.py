@@ -72,37 +72,28 @@ class UserManager:
     # todo: add functionality for searching users - by name etc.
     async def add_user(self, user: User) -> bool:
         """Add or update user"""
-        try:
-            # Set user type based on settings
-            if any([compare_users(user, friend) for friend in self.settings.admins]):
-                user.user_type = UserType.ADMIN
-            elif any([compare_users(user, friend) for friend in self.settings.friends]):
-                user.user_type = UserType.FRIEND
-            else:
-                user.user_type = UserType.REGULAR
+        # Set user type based on settings
+        if any([compare_users(user, friend) for friend in self.settings.admins]):
+            user.user_type = UserType.ADMIN
+        elif any([compare_users(user, friend) for friend in self.settings.friends]):
+            user.user_type = UserType.FRIEND
+        else:
+            user.user_type = UserType.REGULAR
 
-            existing = await self.get_user(user.user_id)
-            if existing:
-                raise ValueError("User already exists - cannot add")
+        existing = await self.get_user(user.user_id)
+        if existing:
+            raise ValueError("User already exists - cannot add")
 
-            await self.users_collection.update_one(
-                {"user_id": user.user_id}, {"$set": user.model_dump()}, upsert=True
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Failed to add user {user.user_id}: {e}")
-            logger.debug(traceback.format_exc())
-            return False
+        await self.users_collection.update_one(
+            {"user_id": user.user_id}, {"$set": user.model_dump()}, upsert=True
+        )
+        return True
 
     async def update_user(self, user_id: int, field: str, value: Any) -> bool:
         """Update a user's field"""
-        try:
-            await self.users_collection.update_one({"user_id": user_id}, {"$set": {field: value}})
-            logger.debug(f"Updated user {user_id} field {field} to {value}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to update user {user_id} field {field}: {e}")
-            return False
+        await self.users_collection.update_one({"user_id": user_id}, {"$set": {field: value}})
+        logger.debug(f"Updated user {user_id} field {field} to {value}")
+        return True
 
     # todo: make sure this works with username as well
     async def get_user(self, user_id: int) -> Optional[User]:
@@ -169,18 +160,15 @@ class UserManager:
     # todo: make sure this works with username as well
     async def make_friend(self, user_id: int) -> bool:
         """Make user a friend (admin only operation)"""
-        try:
-            user = await self.get_user(user_id)
-            if not user:
-                return False
-
-            user.user_type = UserType.FRIEND
-            await self.users_collection.update_one(
-                {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
-            )
-            return True
-        except Exception:
+        user = await self.get_user(user_id)
+        if not user:
             return False
+
+        user.user_type = UserType.FRIEND
+        await self.users_collection.update_one(
+            {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
+        )
+        return True
 
     async def sync_user_types(self) -> None:
         """
@@ -189,34 +177,30 @@ class UserManager:
         - Admins: promote/demote based on settings
         - Friends: promote only (no automatic demotion)
         """
-        try:
-            # Update admins
-            if self.settings.admins:
-                # Promote current admins
-                result = await self.users_collection.update_many(
-                    {"user_id": {"$in": list(self.settings.admins)}},
-                    {"$set": {"user_type": UserType.ADMIN}},
-                )
-                if result.modified_count:
-                    logger.info(f"Promoted {result.modified_count} users to admin")
+        # Update admins
+        if self.settings.admins:
+            # Promote current admins
+            result = await self.users_collection.update_many(
+                {"user_id": {"$in": list(self.settings.admins)}},
+                {"$set": {"user_type": UserType.ADMIN}},
+            )
+            if result.modified_count:
+                logger.info(f"Promoted {result.modified_count} users to admin")
 
-                # Demote former admins
-                result = await self.users_collection.update_many(
-                    {
-                        "user_id": {"$nin": list(self.settings.admins)},
-                        "user_type": UserType.ADMIN,
-                    },
-                    {"$set": {"user_type": UserType.REGULAR}},
-                )
-                if result.modified_count:
-                    logger.info(f"Demoted {result.modified_count} admins to regular users")
+            # Demote former admins
+            result = await self.users_collection.update_many(
+                {
+                    "user_id": {"$nin": list(self.settings.admins)},
+                    "user_type": UserType.ADMIN,
+                },
+                {"$set": {"user_type": UserType.REGULAR}},
+            )
+            if result.modified_count:
+                logger.info(f"Demoted {result.modified_count} admins to regular users")
 
-            # Update friends (only promote, don't demote)
-            if self.settings.friends:
-                await self._promote_friends()
-        except Exception as e:
-            logger.error(f"Failed to sync user types: {e}")
-            raise  # Re-raise to handle in startup
+        # Update friends (only promote, don't demote)
+        if self.settings.friends:
+            await self._promote_friends()
 
     async def _promote_friends(self):
         # handle int and str cases

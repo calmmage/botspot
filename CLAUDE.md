@@ -14,7 +14,7 @@
 - **Formatting**: Black with 100 character line length
 - **Types**: Use type hints and Pydantic for data models
 - **Naming**: snake_case for variables/functions, PascalCase for classes, UPPER_CASE for constants
-- **Error Handling**: Use try/except with specific exceptions; logging with loguru
+- **SYSTEM-LEVEL ERROR HANDLING**: DO NOT ADD LOCAL EXCEPTION HANDLERS. THE SYSTEM HAS PROPER ERROR HANDLING WITH LOGGING AND REPORTING
 - **Component Usage**: Access components via `deps` object or dedicated getters
 - **Documentation**: Docstrings for classes and functions in flake8-docstrings format
 - **Dependencies**: Managed with Poetry in pyproject.toml
