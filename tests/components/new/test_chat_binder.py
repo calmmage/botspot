@@ -90,7 +90,14 @@ class TestChatBinder:
 
     @pytest.fixture
     def chat_binder(self, settings, mock_collection):
-        return ChatBinder(settings, mock_collection)
+        # Mock the dependency manager
+        with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
+            # Create a mock dependency manager
+            mock_deps = MagicMock()
+            mock_deps.queue_manager = None
+            mock_get_deps.return_value = mock_deps
+
+            return ChatBinder(settings, mock_collection)
 
     @pytest.mark.asyncio
     async def test_bind_chat_new(self, chat_binder, mock_collection):
@@ -533,6 +540,7 @@ class TestInitialization:
             # Set up mock dependencies with MongoDB disabled
             mock_deps = MagicMock()
             mock_deps.botspot_settings.mongo_database.enabled = False
+            mock_deps.queue_manager = None
             mock_get_deps.return_value = mock_deps
 
             # Call initialize and expect RuntimeError
@@ -552,6 +560,9 @@ class TestInitialization:
             # Set up mock dependencies with MongoDB enabled
             mock_deps = MagicMock()
             mock_deps.botspot_settings.mongo_database.enabled = True
+            mock_deps.queue_manager = None
+            mock_deps.mongo_db = MagicMock()
+            mock_deps.mongo_db.get_collection.return_value = AsyncMock()
             mock_get_deps.return_value = mock_deps
 
             # Set up mock add_command to return the decorated function
