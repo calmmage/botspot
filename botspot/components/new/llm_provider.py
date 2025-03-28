@@ -514,7 +514,7 @@ class LLMProvider:
             max_tokens=max_tokens,
             request_timeout=timeout,
             num_retries=max_retries,
-            response_format={"type": "json_object"},
+            response_format=output_schema,
             **extra_kwargs,
         )
 
@@ -807,7 +807,7 @@ class LLMProvider:
             max_tokens=max_tokens,
             request_timeout=timeout,
             num_retries=max_retries,
-            response_format={"type": "json_object"},
+            response_format=output_schema,
             **extra_kwargs,
         )
 
