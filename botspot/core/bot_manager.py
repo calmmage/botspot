@@ -13,7 +13,7 @@ from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
 from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
 from botspot.components.middlewares import error_handler
-from botspot.components.new import chat_binder, llm_provider, queue_manager
+from botspot.components.new import auto_archive, chat_binder, llm_provider, queue_manager
 from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
@@ -55,12 +55,15 @@ class BotManager(metaclass=Singleton):
         if self.settings.single_user_mode.enabled:
             single_user_mode.initialize(self.settings.single_user_mode)
 
+        if self.settings.auto_archive.enabled:
+            self.deps.auto_archive = auto_archive.initialize(self.settings.auto_archive)
+
         if self.settings.chat_binder.enabled:
             self.deps.chat_binder = chat_binder.initialize(self.settings.chat_binder)
 
         if self.settings.llm_provider.enabled:
             self.deps.llm_provider = llm_provider.initialize(self.settings.llm_provider)
-            
+
         if self.settings.queue_manager.enabled:
             self.deps.queue_manager = queue_manager.initialize(self.settings.queue_manager)
 
@@ -103,11 +106,14 @@ class BotManager(metaclass=Singleton):
         if self.settings.telethon_manager.enabled:
             telethon_manager.setup_dispatcher(dp)
 
+        if self.settings.auto_archive.enabled:
+            auto_archive.setup_dispatcher(dp)
+
         if self.settings.chat_binder.enabled:
             chat_binder.setup_dispatcher(dp)
 
         if self.settings.llm_provider.enabled:
             llm_provider.setup_dispatcher(dp)
-            
+
         if self.settings.queue_manager.enabled:
             queue_manager.setup_dispatcher(dp)
