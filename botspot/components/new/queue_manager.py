@@ -82,7 +82,8 @@ class Queue(Generic[T]):
 
     async def add_item(self, item: T, user_id: Optional[int] = None):
         if not self.single_user_mode and user_id is None:
-            raise ValueError("user_id is required unless single_user_mode is enabled")
+            from botspot.core.errors import QueuePermissionError
+            raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         doc = self.enrich_item(item, user_id)
         await self.collection.insert_one(doc)
 
@@ -93,7 +94,8 @@ class Queue(Generic[T]):
         provide_all_fields: bool = False,
     ) -> List[T]:
         if not self.single_user_mode and user_id is None:
-            raise ValueError("user_id is required unless single_user_mode is enabled")
+            from botspot.core.errors import QueuePermissionError
+            raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         query = {}
         if user_id:
             query["user_id"] = user_id
@@ -108,7 +110,8 @@ class Queue(Generic[T]):
         self, user_id: Optional[int] = None, limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         if not self.single_user_mode and user_id is None:
-            raise ValueError("user_id is required unless single_user_mode is enabled")
+            from botspot.core.errors import QueuePermissionError
+            raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         query = {}
         if user_id:
             query["user_id"] = user_id
@@ -158,7 +161,8 @@ class QueueManager:
 
     def get_queue(self, key: str = "default") -> Queue:
         if key not in self.queues:
-            raise KeyError(f"Queue with key '{key}' does not exist")
+            from botspot.core.errors import QueueNotFoundError
+            raise QueueNotFoundError(f"Queue with key '{key}' does not exist")
         return self.queues[key]
 
 
@@ -197,7 +201,39 @@ def initialize(settings: QueueManagerSettings) -> QueueManager:
     # Check that MongoDB is available
     deps = get_dependency_manager()
     if not deps.botspot_settings.mongo_database.enabled:
-        raise RuntimeError("MongoDB is required for queue_manager component")
+        from botspot.core.errors import ConfigurationError
+        raise ConfigurationError("MongoDB is required for queue_manager component")
 
     single_user_mode = deps.botspot_settings.single_user_mode.enabled
     return QueueManager(settings, single_user_mode=single_user_mode)
+
+
+if __name__ == "__main__":
+    # idea: add a simplest showcast of how to use the queue manager
+
+    qm = get_queue_manager()
+    q = qm.create_queue()
+    # example 1 - just a default queue - for the app
+
+    async def add_item_to_queue():
+        await q.add_item(QueueItem(data="test"))
+        print(q.get_items())
+
+    # example 2 - custom queue, custom item model
+    # some realistic case of what I want to store in the queue? 
+    # e.g. Ideas of movies to watch
+    from enum import Enum
+    class MovieIdeaType(str, Enum):
+        specific_movie = "specific_movie"
+        cue = "cue" # podcast episode, youtube video, clip, just general direction etc.
+        person = "person" # actor, director, writer, etc.
+
+    class MovieIdea(BaseModel):
+        idea: str # 
+        type: MovieIdeaType
+
+    q2 = qm.create_queue(item_model=MovieIdea)
+    async def add_movie_idea_to_queue():
+        await q2.add_item(MovieIdea(idea="Inception", type=MovieIdeaType.specific_movie))
+        print(q2.get_items())
+

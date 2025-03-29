@@ -267,7 +267,8 @@ class LLMProvider:
             user = deps.botspot_settings.single_user_mode.user
         elif not deps.botspot_settings.single_user_mode.enabled and user is None:
             # If not in single_user_mode and no user provided, raise exception
-            raise ValueError("user is required when not in single_user_mode")
+            from botspot.core.errors import LLMProviderError
+            raise LLMProviderError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
@@ -280,7 +281,8 @@ class LLMProvider:
                         "you can ask them to add you as a friend for unlimited usage.",
                     )
                 )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
+            from botspot.core.errors import LLMPermissionError
+            raise LLMPermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
         model = model or self.settings.default_model

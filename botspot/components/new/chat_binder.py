@@ -110,7 +110,8 @@ class ChatBinder:
 
         if existing:
             if self.settings.rebind_mode == RebindMode.ERROR:
-                raise ValueError(f"Chat key '{key}' is already bound to chat {existing['chat_id']}")
+                from botspot.core.errors import ChatBindingExistsError
+                raise ChatBindingExistsError(f"Chat key '{key}' is already bound to chat {existing['chat_id']}")
             elif self.settings.rebind_mode == RebindMode.IGNORE:
                 return BoundChatRecord(**existing)
             elif self.settings.rebind_mode == RebindMode.REPLACE:
@@ -181,7 +182,8 @@ class ChatBinder:
                     )
                     return result.deleted_count > 0, any_binding["key"]
             # For non-default keys or when no alternative is found
-            raise ValueError(f"No binding found with key '{key}'")
+            from botspot.core.errors import ChatBindingNotFoundError
+            raise ChatBindingNotFoundError(f"No binding found with key '{key}'")
 
         # Normal case - delete the specific binding
         result = await self.collection.delete_one({"user_id": user_id, "key": key})
@@ -191,7 +193,8 @@ class ChatBinder:
         """Get the chat ID for a user's bound chat with the given key."""
         record = await self.collection.find_one({"user_id": user_id, "key": key})
         if record is None:
-            raise ValueError(f"No bound chat found for user {user_id} and key {key}")
+            from botspot.core.errors import ChatBindingNotFoundError
+            raise ChatBindingNotFoundError(f"No bound chat found for user {user_id} and key {key}")
         return record["chat_id"]
 
     async def get_user_bound_chats(self, user_id: int) -> List[BoundChatRecord]:
@@ -462,7 +465,8 @@ def initialize(settings: ChatBinderSettings) -> ChatBinder:
     # Check that MongoDB is available
     deps = get_dependency_manager()
     if not deps.botspot_settings.mongo_database.enabled:
-        raise RuntimeError("MongoDB is required for chat_binder component")
+        from botspot.core.errors import ConfigurationError
+        raise ConfigurationError("MongoDB is required for chat_binder component")
 
     # Register commands
     from botspot.components.qol.bot_commands_menu import Visibility, add_command

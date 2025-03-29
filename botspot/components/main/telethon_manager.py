@@ -111,7 +111,8 @@ class TelethonManager:
                 logger.warning("State is required for auto-authentication")
 
         # No client could be initialized or created
-        raise RuntimeError(f"Client for {user_id} not found")
+        from botspot.core.errors import TelethonClientNotConnectedError
+        raise TelethonClientNotConnectedError(f"Client for user {user_id} not found. Please run the /setup_telethon command to authenticate.")
 
     async def disconnect_all(self):
         """Disconnect all clients"""
@@ -150,7 +151,7 @@ class TelethonManager:
                     "Use /setup_telethon_force to create a new one.",
                 )
                 return existing_client
-            except RuntimeError:
+            except Exception:
                 # No existing client, continue with setup
                 pass
 
@@ -267,7 +268,8 @@ def get_telethon_manager() -> "TelethonManager":
 
     deps = get_dependency_manager()
     if not deps.telethon_manager:
-        raise RuntimeError(
+        from botspot.core.errors import ConfigurationError
+        raise ConfigurationError(
             "TelethonManager is not initialized. Make sure it's enabled in settings."
         )
     return deps.telethon_manager
@@ -305,6 +307,7 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     async def check_telethon_handler(message: Message) -> None:
         """Check if user has an active Telethon client"""
         assert message.from_user
+        # The error handler will take care of TelethonClientNotConnectedError
         client = await telethon_manager.get_client(message.from_user.id)
         if client and await client.is_user_authorized():
             me = await client.get_me()
