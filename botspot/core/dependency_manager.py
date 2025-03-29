@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.auto_archive import AutoArchive
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
@@ -38,6 +39,7 @@ class DependencyManager(metaclass=Singleton):
         self._scheduler = None
         self._telethon_manager = None
         self._user_manager = None
+        self._auto_archive = None
         self._chat_binder = None
         self._llm_provider = None
         self._queue_manager = None
@@ -122,6 +124,16 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = value
 
     @property
+    def auto_archive(self) -> "AutoArchive":
+        if self._auto_archive is None:
+            raise RuntimeError("Auto Archive is not initialized")
+        return self._auto_archive
+
+    @auto_archive.setter
+    def auto_archive(self, value):
+        self._auto_archive = value
+
+    @property
     def chat_binder(self) -> "ChatBinder":
         if self._chat_binder is None:
             raise RuntimeError("Bind chat is not initialized")
@@ -140,16 +152,6 @@ class DependencyManager(metaclass=Singleton):
     @llm_provider.setter
     def llm_provider(self, value):
         self._llm_provider = value
-
-    @property
-    def queue_manager(self) -> "QueueManager":
-        if self._queue_manager is None:
-            raise RuntimeError("Queue Manager is not initialized")
-        return self._queue_manager
-
-    @queue_manager.setter
-    def queue_manager(self, value):
-        self._queue_manager = value
 
     @property
     def queue_manager(self) -> "QueueManager":
