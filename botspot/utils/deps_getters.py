@@ -56,7 +56,9 @@ async def get_telethon_client(
     telethon_manager = get_telethon_manager()
     client = await telethon_manager.get_client(user_id, state)
     if not client:
-        raise RuntimeError(
+        from botspot.core.errors import TelethonClientNotConnectedError
+
+        raise TelethonClientNotConnectedError(
             f"No active Telethon client found for user {user_id}. Use /setup_telethon to create one."
         )
     return client
