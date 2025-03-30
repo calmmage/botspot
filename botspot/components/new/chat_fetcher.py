@@ -112,7 +112,7 @@ class ChatFetcher:
     # endregion
 
     async def get_chat_messages(
-        self, chat_id: int, user_id: Optional[int] = None, limit: int = 100
+        self, chat_id: int, user_id: Optional[int] = None, limit: Optional[int] = 1000
     ) -> List[Message]:
         """
         Get the most recent messages from a chat, using an in-memory cache when possible.
@@ -120,7 +120,7 @@ class ChatFetcher:
         Args:
             chat_id: The ID of the chat.
             user_id: The ID of the user (required unless in single-user mode).
-            limit: Number of messages to return (default 100).
+            limit: Number of messages to return (default 1000).
 
         Returns:
             List of Message objects, most recent first.
