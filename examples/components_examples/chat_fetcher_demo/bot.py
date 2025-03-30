@@ -7,7 +7,9 @@ from aiogram.types import Message
 
 from botspot import send_safe
 from botspot.commands_menu import botspot_command
+from botspot.components.new.chat_binder import get_bind_chat_id
 from botspot.components.new.chat_fetcher import get_chat_fetcher
+from botspot.core.errors import ChatBindingNotFoundError
 from examples.base_bot import App, main, router
 
 
@@ -168,21 +170,24 @@ async def get_messages_handler(message: Message, state: FSMContext):
             await send_safe(message.chat.id, f"No chats found matching '{search_query}'")
             return
 
-        choices = {
-            str(i): f"{getattr(chat, 'title', getattr(chat, 'name', 'Unknown'))} ({chat.id})"
-            for i, chat in enumerate(chats)
-        }
-        selected = await ask_user_choice(
-            message.from_user.id,
-            "Select a chat:",
-            choices,
-            state=state,
-        )
-        if selected is None:
-            await send_safe(message.chat.id, "Operation cancelled")
-            return
+        if len(chats) == 1:
+            chat_id = chats[0].id
+        else:
+            choices = {
+                str(i): f"{getattr(chat, 'title', getattr(chat, 'name', 'Unknown'))} ({chat.id})"
+                for i, chat in enumerate(chats)
+            }
+            selected = await ask_user_choice(
+                message.from_user.id,
+                "Select a chat:",
+                choices,
+                state=state,
+            )
+            if selected is None:
+                await send_safe(message.chat.id, "Operation cancelled")
+                return
 
-        chat_id = chats[int(selected)].id
+            chat_id = chats[int(selected)].id
 
     messages = await chat_fetcher.get_chat_messages(chat_id, user_id=message.from_user.id)
 
@@ -206,6 +211,49 @@ async def get_messages_handler(message: Message, state: FSMContext):
 
     await send_safe(
         message.chat.id, f"Messages from chat '{chat_id}':\n{display_info}\n\n{message_list}"
+    )
+
+
+@botspot_command("ingest", "Load messages from a bound chat")
+@router.message(Command("ingest"))
+async def ingest_handler(message: Message):
+    if message.from_user is None:
+        await send_safe(message.chat.id, "Error: User not found")
+        return
+
+    user_id = message.from_user.id
+
+    # Get bound chat ID from anywhere
+    try:
+        bound_chat_id = await get_bind_chat_id(user_id)
+    except ChatBindingNotFoundError:
+        await send_safe(
+            message.chat.id,
+            "No chat is bound. Add this bot to a chat and call '/bind' command there.",
+        )
+        return
+
+    chat_fetcher = get_chat_fetcher()
+
+    # Get chat info
+    chat_info = await chat_fetcher.get_chat(bound_chat_id, user_id=user_id)
+    chat_name = getattr(chat_info, "title", getattr(chat_info, "name", "Unknown"))
+    chat_type = getattr(chat_info, "type", "Unknown")
+
+    # Use the bound chat ID to fetch messages
+    messages = await chat_fetcher.get_chat_messages(bound_chat_id, user_id=user_id)
+
+    if not messages:
+        await send_safe(
+            message.chat.id, f"No messages found in the bound chat: {chat_name} ({chat_type})"
+        )
+        return
+
+    # Display message summary
+    message_count = len(messages)
+    await send_safe(
+        message.chat.id,
+        f"Successfully ingested {message_count} messages from the bound chat: {chat_name} ({chat_type})",
     )
 
 

@@ -59,9 +59,15 @@ class ChatFetcher:
             self.clients[user_id] = await get_telethon_client(user_id)
         return self.clients[user_id]
 
-    async def get_dialogs(self, user_id: int) -> List[Dialog]:
+    async def get_dialogs(
+        self, user_id: int
+    ) -> List[
+        Dialog
+    ]:  # , skip_deactivated: bool = True, skip_migrated: bool = True) -> List[Dialog]:
         if user_id not in self._dialogs:
-            self._dialogs[user_id] = await self._get_dialogs(user_id)
+            self._dialogs[user_id] = await self._get_dialogs(
+                user_id
+            )  # , skip_deactivated, skip_migrated)
         return self._dialogs[user_id]
 
     async def _get_dialogs(self, user_id: int) -> List[Dialog]:
@@ -105,12 +111,6 @@ class ChatFetcher:
         else:
             return list(messages) if messages is not None else []
 
-    # endregion
-
-    # region 2: cached methods
-
-    # endregion
-
     async def get_chat_messages(
         self, chat_id: int, user_id: Optional[int] = None, limit: Optional[int] = 1000
     ) -> List[Message]:
@@ -127,6 +127,18 @@ class ChatFetcher:
         """
         client = await self._get_client(user_id)
         cache_key = (user_id, chat_id)
+
+        if user_id is None:
+            if self.single_user_mode:
+                assert self.single_user is not None
+                user_id = int(self.single_user)
+            else:
+                from botspot.core.errors import BotspotError
+
+                raise BotspotError(
+                    "user_id is required",
+                    user_message="Chat Fetcher requires user_id unless single_user_mode is enabled",
+                )
 
         # Check if cache exists
         if cache_key in self._message_cache and self._message_cache[cache_key]:
@@ -184,11 +196,33 @@ class ChatFetcher:
         # Return the requested number of messages
         return messages_list[:limit]
 
-    async def get_chats(self, user_id: int, limit: Optional[int] = None) -> GetChatsResponse:
-        client = await self._get_client(user_id)
-        dialogs = await client.get_dialogs(limit=limit)
+    # todo: cache with sorted in groups
+    async def get_chats(
+        self,
+        user_id: int,
+        skip_deactivated: bool = True,
+        skip_migrated: bool = True,
+    ) -> GetChatsResponse:
+        dialogs = await self.get_dialogs(
+            user_id
+        )  # , skip_deactivated=skip_deactivated, skip_migrated=skip_migrated)
         response = GetChatsResponse()
         for dialog in dialogs:
+            # Skip deactivated or migrated chats
+            if (
+                skip_deactivated
+                and hasattr(dialog.entity, "deactivated")
+                and dialog.entity.deactivated
+            ):
+                continue
+            if (
+                skip_migrated
+                and hasattr(dialog.entity, "migrated_to")
+                and dialog.entity.migrated_to is not None
+            ):
+                continue
+
+            # Process remaining dialogs
             if isinstance(dialog.entity, User):
                 response.users.append(dialog.entity)
             elif isinstance(dialog.entity, Chat):
@@ -201,13 +235,41 @@ class ChatFetcher:
         return response
 
     # todo: add embeddings search
-    async def search_chat(self, query: str, user_id: int) -> List[Chat]:
-        client = await self._get_client(user_id)
-        dialogs = await client.get_dialogs()
+    async def search_chat(
+        self,
+        query: str,
+        user_id: int,
+        skip_deactivated: bool = True,
+        skip_migrated: bool = True,
+        search_groups: bool = True,
+        search_channels: bool = True,
+        search_users: bool = True,
+    ) -> List[Chat]:
+
+        chats = await self.get_chats(
+            user_id, skip_deactivated=skip_deactivated, skip_migrated=skip_migrated
+        )
         results = []
-        for dialog in dialogs:
-            if query.lower() in dialog.name.lower():
-                results.append(dialog.entity)
+
+        if search_groups:
+            for group in chats.groups:
+                if query.lower() in group.title.lower():
+                    results.append(group)
+        if search_channels:
+            for channel in chats.channels:
+                if query.lower() in channel.title.lower():
+                    results.append(channel)
+        if search_users:
+            for user in chats.users:
+                search = []
+                if user.username is not None:
+                    search.append(user.username)
+                if user.last_name is not None:
+                    search.append(user.last_name)
+                if user.first_name is not None:
+                    search.append(user.first_name)
+                if query.lower() in " ".join(search).lower():
+                    results.append(user)
         return results
 
     # todo: rework to a better, embedding-based search with llm features
