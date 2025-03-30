@@ -33,7 +33,9 @@ class TestBotManager:
             "botspot.core.bot_manager.queue_manager"
         ) as mock_queue_manager, patch(
             "botspot.core.bot_manager.logger"
-        ):
+        ), patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher:
 
             # Configure mock settings with all components disabled
             mock_settings = MagicMock()
@@ -45,6 +47,7 @@ class TestBotManager:
                 "single_user_mode",
                 "chat_binder",
                 "queue_manager",
+                "chat_fetcher",
             ]:
                 component_settings = MagicMock()
                 component_settings.enabled = False
@@ -57,6 +60,7 @@ class TestBotManager:
             mock_user_data.initialize.return_value = None
             mock_chat_binder.initialize.return_value = None
             mock_queue_manager.initialize.return_value = None
+            mock_chat_fetcher.initialize.return_value = None
 
             bm1 = BotManager()
             bm2 = BotManager()
@@ -76,7 +80,9 @@ class TestBotManager:
             "botspot.core.bot_manager.logger"
         ), patch(
             "botspot.core.bot_manager.DependencyManager"
-        ) as mock_deps_class:
+        ) as mock_deps_class, patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher:
 
             mock_settings = MagicMock()
             # Configure mock settings with all components disabled
@@ -88,6 +94,7 @@ class TestBotManager:
                 "single_user_mode",
                 "chat_binder",
                 "queue_manager",
+                "chat_fetcher",
             ]:
                 component_settings = MagicMock()
                 component_settings.enabled = False
@@ -102,6 +109,7 @@ class TestBotManager:
             mock_user_data.initialize.return_value = None
             mock_chat_binder.initialize.return_value = None
             mock_queue_manager.initialize.return_value = None
+            mock_chat_fetcher.initialize.return_value = None
 
             bm = BotManager()
 
@@ -124,7 +132,9 @@ class TestBotManager:
             "botspot.core.bot_manager.queue_manager"
         ) as mock_queue_manager, patch(
             "botspot.core.bot_manager.logger"
-        ):
+        ), patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher:
 
             mock_settings = MagicMock()
             # Configure mock settings with all components disabled
@@ -136,6 +146,7 @@ class TestBotManager:
                 "single_user_mode",
                 "chat_binder",
                 "queue_manager",
+                "chat_fetcher",
             ]:
                 component_settings = MagicMock()
                 component_settings.enabled = False
@@ -150,6 +161,7 @@ class TestBotManager:
             mock_user_data.initialize.return_value = None
             mock_chat_binder.initialize.return_value = None
             mock_queue_manager.initialize.return_value = None
+            mock_chat_fetcher.initialize.return_value = None
 
             # Create mock bot, dispatcher, and user_class
             mock_bot = MagicMock(spec=Bot)
@@ -183,6 +195,8 @@ class TestBotManager:
             ("single_user_mode", False, False, False),
             ("queue_manager", True, True, True),
             ("queue_manager", False, False, False),
+            ("chat_fetcher", True, True, True),
+            ("chat_fetcher", False, False, False),
         ],
     )
     def test_component_initialization(
@@ -199,6 +213,7 @@ class TestBotManager:
             "single_user_mode",
             "chat_binder",
             "queue_manager",
+            "chat_fetcher",
         ]:
             if comp != component_name:
                 patches[comp] = patch(f"botspot.core.bot_manager.{comp}")
@@ -254,6 +269,7 @@ class TestBotManager:
                 "ask_user",
                 "bot_info",
                 "queue_manager",
+                "chat_fetcher",
             ]:
                 comp_settings = MagicMock()
                 comp_settings.enabled = False
@@ -326,7 +342,9 @@ class TestBotManager:
             "botspot.core.bot_manager.queue_manager"
         ) as mock_queue_manager, patch(
             "botspot.core.bot_manager.logger"
-        ):
+        ), patch(
+            "botspot.core.bot_manager.chat_fetcher"
+        ) as mock_chat_fetcher:
 
             # Configure mock settings
             mock_settings = MagicMock()
@@ -345,6 +363,7 @@ class TestBotManager:
                 "bot_commands_menu",
                 "bot_info",
                 "queue_manager",
+                "chat_fetcher",
             ]:
                 comp_settings = MagicMock()
                 comp_settings.enabled = False
