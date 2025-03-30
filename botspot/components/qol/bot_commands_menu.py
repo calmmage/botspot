@@ -104,6 +104,7 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
     dp.startup.register(set_aiogram_bot_commands)
 
     if settings.botspot_help:
+        from aiogram.types import Message
 
         @add_command("help_botspot", "Show available bot commands")
         @dp.message(Command("help_botspot"))

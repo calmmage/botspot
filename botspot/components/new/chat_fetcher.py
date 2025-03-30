@@ -4,8 +4,6 @@ from pydantic_settings import BaseSettings
 from telethon import TelegramClient
 from telethon.types import Channel, Chat, Dialog, Message, User
 
-from botspot.core.errors import BotspotError
-
 
 class ChatFetcherSettings(BaseSettings):
     enabled: bool = False
@@ -39,6 +37,8 @@ class ChatFetcher:
         self.single_user = deps.botspot_settings.single_user_mode.user
 
         if settings.db_cache_enabled:
+            from botspot.core.errors import BotspotError
+
             raise BotspotError(
                 "DB caching is not implemented yet.",
                 user_message="Please disable db caching in chat_fetcher - it's not implemented",
@@ -128,14 +128,49 @@ class ChatFetcher:
         client = await self._get_client(user_id)
         cache_key = (user_id, chat_id)
 
-        # Check if cache exists and has enough messages
-        if cache_key in self._message_cache:
+        # Check if cache exists
+        if cache_key in self._message_cache and self._message_cache[cache_key]:
             cached_messages = self._message_cache[cache_key]
-            if len(cached_messages) >= limit:
-                # Return the most recent 'limit' messages from cache
-                return cached_messages[:limit]
 
-        # Cache miss or insufficient messages: fetch from Telegram
+            # Get timestamp of oldest and newest messages in cache
+            oldest_timestamp = int(min(msg.date.timestamp() for msg in cached_messages))
+            newest_timestamp = int(max(msg.date.timestamp() for msg in cached_messages))
+
+            # Get newer messages than those in cache
+            new_messages = await self._get_new_messages(
+                chat_id, user_id, newest_timestamp, limit=limit
+            )
+
+            # Get older messages if needed
+            old_messages = []
+            if len(cached_messages) + len(new_messages) < limit:
+                old_messages = await self._get_old_messages(
+                    chat_id,
+                    user_id,
+                    oldest_timestamp,
+                    limit=limit - len(cached_messages) - len(new_messages),
+                )
+
+            # Combine all messages and sort by date (newest first)
+            all_messages = new_messages + cached_messages + old_messages
+            # Remove duplicates by message_id
+            seen_ids = set()
+            unique_messages = []
+            for msg in all_messages:
+                if msg.id not in seen_ids:
+                    seen_ids.add(msg.id)
+                    unique_messages.append(msg)
+
+            # Sort by date, newest first
+            unique_messages.sort(key=lambda x: x.date, reverse=True)
+
+            # Update cache with combined messages
+            self._message_cache[cache_key] = unique_messages
+
+            # Return the requested number of messages
+            return unique_messages[:limit]
+
+        # Cache miss: fetch from Telegram
         messages = await client.get_messages(chat_id, limit=limit)
         if isinstance(messages, Message):
             messages_list = [messages]
@@ -143,7 +178,8 @@ class ChatFetcher:
             messages_list = list(messages) if messages is not None else []
 
         # Update the cache with the fetched messages
-        self._message_cache[cache_key] = messages_list
+        if user_id is not None:  # Ensure user_id is not None for cache key
+            self._message_cache[cache_key] = messages_list
 
         # Return the requested number of messages
         return messages_list[:limit]
@@ -164,6 +200,7 @@ class ChatFetcher:
                     response.channels.append(dialog.entity)
         return response
 
+    # todo: add embeddings search
     async def search_chat(self, query: str, user_id: int) -> List[Chat]:
         client = await self._get_client(user_id)
         dialogs = await client.get_dialogs()
@@ -174,19 +211,25 @@ class ChatFetcher:
         return results
 
     # todo: rework to a better, embedding-based search with llm features
+    # todo: add a feature to only search my messages
+    # todo: rework this completely, seems garbage, doesn't work
     async def search_message(
-        self, query: str, user_id: int, chat_id: Optional[int] = None
+        self, query: str, user_id: int, chat_id: Optional[int] = None, limit: int = 10
     ) -> List[Message]:
         client = await self._get_client(user_id)
         if chat_id:
-            return [msg async for msg in client.iter_messages(chat_id, search=query)]
+            return [msg async for msg in client.iter_messages(chat_id, search=query, limit=limit)]
         else:
             results = []
             dialogs = await client.get_dialogs()
             for dialog in dialogs:
-                messages = [msg async for msg in client.iter_messages(dialog.id, search=query)]
+                messages = [
+                    msg async for msg in client.iter_messages(dialog.id, search=query, limit=limit)
+                ]
                 results.extend(messages)
-            return results
+            if len(results) > limit:
+                return results[:limit]
+        return results[:limit]
 
 
 def setup_dispatcher(dp):
