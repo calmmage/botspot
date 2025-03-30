@@ -76,12 +76,13 @@ class ChatBinder:
             collection = db.get_collection(settings.mongo_collection)
         self.collection = collection
 
+    @property
+    def chat_fetcher_available(self) -> bool:
+        """Check if chat_fetcher component is available."""
         from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
-        self.chat_fetcher_available = (
-            hasattr(deps, "chat_fetcher") and deps.chat_fetcher is not None
-        )
+        return hasattr(deps, "chat_fetcher") and deps.chat_fetcher is not None
 
     async def bind_chat(self, user_id: int, chat_id: int, key: str = "default"):
         """Bind a chat to a user with the given key.
@@ -111,7 +112,10 @@ class ChatBinder:
         if existing:
             if self.settings.rebind_mode == RebindMode.ERROR:
                 from botspot.core.errors import ChatBindingExistsError
-                raise ChatBindingExistsError(f"Chat key '{key}' is already bound to chat {existing['chat_id']}")
+
+                raise ChatBindingExistsError(
+                    f"Chat key '{key}' is already bound to chat {existing['chat_id']}"
+                )
             elif self.settings.rebind_mode == RebindMode.IGNORE:
                 return BoundChatRecord(**existing)
             elif self.settings.rebind_mode == RebindMode.REPLACE:
@@ -183,6 +187,7 @@ class ChatBinder:
                     return result.deleted_count > 0, any_binding["key"]
             # For non-default keys or when no alternative is found
             from botspot.core.errors import ChatBindingNotFoundError
+
             raise ChatBindingNotFoundError(f"No binding found with key '{key}'")
 
         # Normal case - delete the specific binding
@@ -194,6 +199,7 @@ class ChatBinder:
         record = await self.collection.find_one({"user_id": user_id, "key": key})
         if record is None:
             from botspot.core.errors import ChatBindingNotFoundError
+
             raise ChatBindingNotFoundError(f"No bound chat found for user {user_id} and key {key}")
         return record["chat_id"]
 
@@ -466,6 +472,7 @@ def initialize(settings: ChatBinderSettings) -> ChatBinder:
     deps = get_dependency_manager()
     if not deps.botspot_settings.mongo_database.enabled:
         from botspot.core.errors import ConfigurationError
+
         raise ConfigurationError("MongoDB is required for chat_binder component")
 
     # Register commands

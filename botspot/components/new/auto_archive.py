@@ -17,6 +17,9 @@ class AutoArchiveSettings(BaseSettings):
 
 
 class AutoArchive:
+    def __init__(self, settings: AutoArchiveSettings):
+        self.settings = settings
+
     pass
 
 
@@ -25,11 +28,12 @@ def setup_dispatcher(dp):
 
 
 def initialize(settings: AutoArchiveSettings) -> AutoArchive:
-    pass
+    aa = AutoArchive(settings)
+    return aa
 
 
-def get_name() -> AutoArchive:
+def get_auto_archive() -> AutoArchive:
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    return deps.name
+    return deps.auto_archive
