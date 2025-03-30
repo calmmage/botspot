@@ -4,7 +4,7 @@ from typing import Dict, List, NamedTuple, Tuple
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import BotCommand, Message
+from aiogram.types import BotCommand
 from deprecated import deprecated
 from pydantic_settings import BaseSettings
 
@@ -165,3 +165,32 @@ def add_hidden_command(names=None, description=None):
 def add_admin_command(names=None, description=None):
     """Add an admin-only command to the bot's command list"""
     return add_command(names, description, visibility=Visibility.ADMIN_ONLY)
+
+
+if __name__ == "__main__":
+    from aiogram import Router
+    from aiogram.types import Message
+
+    # Create a router for commands
+    router = Router()
+
+    # Register command handlers with decorators
+    @botspot_command("start", "Start the bot")
+    @router.message(Command("start"))
+    async def cmd_start(message: Message):
+        await message.answer("Welcome to the bot!")
+
+    @botspot_command("help", "Show available commands")
+    @router.message(Command("help"))
+    async def cmd_help(message: Message):
+        await message.answer("Help message here")
+
+    # Add a hidden command
+    @add_hidden_command("secret", "Secret command")
+    @router.message(Command("secret"))
+    async def cmd_secret(message: Message):
+        await message.answer("This is a hidden command")
+
+    # Print all registered commands
+    print("Registered commands:")
+    print(get_commands_by_visibility(include_admin=True))

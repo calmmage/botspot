@@ -51,3 +51,17 @@ def split_long_message(text: str, max_length: int = MAX_TELEGRAM_MESSAGE_LENGTH)
         text = text[split_pos:].lstrip()
 
     return chunks
+
+
+if __name__ == "__main__":
+    # Example of escaping markdown text
+    original_text = "This has *bold* and _italic_ formatting with [links](example.com)"
+    escaped_text = escape_md(original_text)
+    print(f"Escaped markdown: {escaped_text}")
+
+    # Example of splitting a long message
+    long_text = "This is a very long message. " * 300
+    chunks = split_long_message(long_text)
+    print(f"Split into {len(chunks)} chunks")
+    print(f"First chunk length: {len(chunks[0])}")
+    print(f"Last chunk length: {len(chunks[-1])}")

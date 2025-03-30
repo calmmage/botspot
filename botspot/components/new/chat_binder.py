@@ -82,7 +82,7 @@ class ChatBinder:
         from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
-        return hasattr(deps, "chat_fetcher") and deps.chat_fetcher is not None
+        return deps.botspot_settings.chat_fetcher.enabled
 
     async def bind_chat(self, user_id: int, chat_id: int, key: str = "default"):
         """Bind a chat to a user with the given key.
@@ -506,3 +506,23 @@ def initialize(settings: ChatBinderSettings) -> ChatBinder:
     )
 
     return ChatBinder(settings)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import Message
+
+    async def bind_chat_handler(message: Message):
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+
+        # Bind the current chat to the user
+        record = await bind_chat(user_id, chat_id)
+
+        # Get all bound chats for this user
+        chats = await get_user_bound_chats(user_id)
+        print(f"User {user_id} has {len(chats)} bound chats")
+
+    # Run with mock message
+    asyncio.run(bind_chat_handler(Message(chat={"id": 123456}, from_user={"id": 12345})))

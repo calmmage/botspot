@@ -2,10 +2,7 @@ from typing import Dict, List, Optional, Union
 
 from pydantic_settings import BaseSettings
 from telethon import TelegramClient
-from telethon.types import Channel
-from telethon.types import Chat
-from telethon.types import Chat as GroupChat
-from telethon.types import Dialog, Message, User
+from telethon.types import Channel, Chat, Dialog, Message, User
 
 
 class ChatFetcherSettings(BaseSettings):
@@ -28,6 +25,7 @@ class GetChatsResponse:
 
 class ChatFetcher:
     def __init__(self, settings: ChatFetcherSettings):
+        self.settings = settings
         self.clients: Dict[int, TelegramClient] = {}
         self._dialogs: Dict[int, List[Dialog]] = {}
         from botspot.core.dependency_manager import get_dependency_manager
@@ -170,3 +168,24 @@ def get_chat_fetcher() -> ChatFetcher:
 
     deps = get_dependency_manager()
     return deps.chat_fetcher
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import Message
+
+    async def fetch_messages(message: Message):
+        user_id = message.from_user.id
+        chat_id = -100123456789  # Replace with a real group chat ID
+
+        # Get chat fetcher and retrieve messages
+        fetcher = get_chat_fetcher()
+        messages = await fetcher.get_chat_messages(chat_id, user_id, limit=10)
+
+        # Print message text from retrieved messages
+        for msg in messages:
+            print(f"Message from {msg.sender_id}: {msg.text}")
+
+    # Mock message for example
+    asyncio.run(fetch_messages(Message(from_user={"id": 12345})))

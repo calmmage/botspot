@@ -1,4 +1,3 @@
-import traceback
 from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
@@ -371,3 +370,36 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
         await manager.sync_user_types()
 
     dp.startup.register(sync_types)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import User as AiogramUser
+
+    async def main():
+        # Create a sample user
+        telegram_user = AiogramUser(
+            id=12345, first_name="John", last_name="Doe", username="johndoe", is_bot=False
+        )
+
+        # Get user manager
+        user_manager = get_user_manager()
+
+        # Create a User object from Telegram user data
+        user = User(
+            user_id=telegram_user.id,
+            username=telegram_user.username,
+            first_name=telegram_user.first_name,
+            last_name=telegram_user.last_name,
+        )
+
+        # Add user to database
+        await user_manager.add_user(user)
+
+        # Retrieve user from database
+        retrieved_user = await user_manager.get_user(user.user_id)
+        print(f"Retrieved user: {retrieved_user.full_name} (ID: {retrieved_user.user_id})")
+        print(f"User type: {retrieved_user.user_type}")
+
+    asyncio.run(main())

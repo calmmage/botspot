@@ -83,6 +83,7 @@ class Queue(Generic[T]):
     async def add_item(self, item: T, user_id: Optional[int] = None):
         if not self.single_user_mode and user_id is None:
             from botspot.core.errors import QueuePermissionError
+
             raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         doc = self.enrich_item(item, user_id)
         await self.collection.insert_one(doc)
@@ -95,6 +96,7 @@ class Queue(Generic[T]):
     ) -> List[T]:
         if not self.single_user_mode and user_id is None:
             from botspot.core.errors import QueuePermissionError
+
             raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         query = {}
         if user_id:
@@ -111,6 +113,7 @@ class Queue(Generic[T]):
     ) -> List[Dict[str, Any]]:
         if not self.single_user_mode and user_id is None:
             from botspot.core.errors import QueuePermissionError
+
             raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         query = {}
         if user_id:
@@ -162,6 +165,7 @@ class QueueManager:
     def get_queue(self, key: str = "default") -> Queue:
         if key not in self.queues:
             from botspot.core.errors import QueueNotFoundError
+
             raise QueueNotFoundError(f"Queue with key '{key}' does not exist")
         return self.queues[key]
 
@@ -202,6 +206,7 @@ def initialize(settings: QueueManagerSettings) -> QueueManager:
     deps = get_dependency_manager()
     if not deps.botspot_settings.mongo_database.enabled:
         from botspot.core.errors import ConfigurationError
+
         raise ConfigurationError("MongoDB is required for queue_manager component")
 
     single_user_mode = deps.botspot_settings.single_user_mode.enabled
@@ -209,31 +214,38 @@ def initialize(settings: QueueManagerSettings) -> QueueManager:
 
 
 if __name__ == "__main__":
-    # idea: add a simplest showcast of how to use the queue manager
-
-    qm = get_queue_manager()
-    q = qm.create_queue()
-    # example 1 - just a default queue - for the app
-
-    async def add_item_to_queue():
-        await q.add_item(QueueItem(data="test"))
-        print(q.get_items())
-
-    # example 2 - custom queue, custom item model
-    # some realistic case of what I want to store in the queue? 
-    # e.g. Ideas of movies to watch
+    import asyncio
     from enum import Enum
+
+    from aiogram.types import Message
+
+    from botspot.utils.send_safe import send_safe
+
+    # Example 1: Basic message handler adding text to queue
+    async def message_handler(message: Message):
+        queue = create_queue()
+        item = QueueItem(data=message.text)
+        await queue.add_item(item, user_id=message.from_user.id)
+
+        items = await queue.get_items(user_id=message.from_user.id)
+        await send_safe(message.chat.id, f"Added to queue! Total items: {len(items)}")
+
+    # Example 2: Custom queue with specialized item model
     class MovieIdeaType(str, Enum):
         specific_movie = "specific_movie"
-        cue = "cue" # podcast episode, youtube video, clip, just general direction etc.
-        person = "person" # actor, director, writer, etc.
+        cue = "cue"
+        person = "person"
 
     class MovieIdea(BaseModel):
-        idea: str # 
+        idea: str
         type: MovieIdeaType
 
-    q2 = qm.create_queue(item_model=MovieIdea)
-    async def add_movie_idea_to_queue():
-        await q2.add_item(MovieIdea(idea="Inception", type=MovieIdeaType.specific_movie))
-        print(q2.get_items())
+    async def movie_idea_handler(message: Message):
+        movie_queue = create_queue("movies", MovieIdea)
+        item = MovieIdea(idea="Inception", type=MovieIdeaType.specific_movie)
+        await movie_queue.add_item(item, user_id=message.from_user.id)
 
+    # Run examples with mock message
+    asyncio.run(
+        message_handler(Message(chat={"id": 123456}, text="Sample item", from_user={"id": 12345}))
+    )

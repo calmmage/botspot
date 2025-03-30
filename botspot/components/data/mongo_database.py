@@ -61,3 +61,21 @@ def initialize(
     db = client[settings.database]
     logger.info("MongoDB client initialized.")
     return client, db
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def simple_db_operation():
+        # Get the database instance
+        db = get_database()
+
+        # Create a test collection and insert a document
+        collection = db["test_collection"]
+        await collection.insert_one({"name": "Test User", "created_at": "now"})
+
+        # Find the document
+        doc = await collection.find_one({"name": "Test User"})
+        print(f"Found document: {doc}")
+
+    asyncio.run(simple_db_operation())

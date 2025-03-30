@@ -82,3 +82,21 @@ def setup_dispatcher(dp: Dispatcher):
             add_command(
                 "bot_info", "Show bot information and status", visibility=Visibility.ADMIN_ONLY
             )(bot_info_handler)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram import Dispatcher
+    from aiogram.types import Message
+
+    async def main():
+        # Create dispatcher and register handler manually
+        dp = Dispatcher()
+        dp.message.register(bot_info_handler, Command("bot_info"))
+
+        # Simulate bot_info command with mock message
+        message = Message(text="/bot_info", chat={"id": 123456})
+        await bot_info_handler(message)
+
+    asyncio.run(main())

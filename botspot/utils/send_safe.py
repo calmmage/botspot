@@ -187,3 +187,15 @@ async def reply_safe(message: Message, text: str, **kwargs):
 async def answer_safe(message: Message, text: str, **kwargs):
     """Answer to a message with safe sending"""
     await send_safe(message.chat.id, text, **kwargs)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import Message
+
+    async def message_handler(message: Message):
+        super_long_text = "This is a very long message. " * 100
+        await send_safe(message.chat.id, super_long_text)
+
+    asyncio.run(message_handler(Message(chat={"id": 123456789})))

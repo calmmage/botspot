@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from aiogram import Dispatcher
-from aiogram.types import Message, TelegramObject, Update
+from aiogram.types import TelegramObject, Update
 from loguru import logger
 from pydantic_settings import BaseSettings
 
@@ -90,3 +90,29 @@ def initialize(settings: SingleUserModeSettings):
 def setup_dispatcher(dp: Dispatcher) -> None:
     logger.debug("Adding single user mode middleware")
     dp.update.middleware(single_user_mode_middleware)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import Message, User
+
+    async def message_handler(message: Message):
+        await message.answer("Hello! This message is only seen by the authorized user.")
+
+    async def example():
+        # Set up single user mode
+        settings = SingleUserModeSettings(enabled=True, user="12345")
+        initialize(settings)
+        setup_dispatcher(dp)
+
+        # Register a simple handler
+        dp.message.register(message_handler)
+
+        # Simulate a message from an unauthorized user
+        msg = Message(
+            chat={"id": 67890}, from_user=User(id=67890, is_bot=False, first_name="Unauthorized")
+        )
+        # This handler won't be called due to single_user_mode_middleware
+
+    asyncio.run(example())

@@ -268,6 +268,7 @@ class LLMProvider:
         elif not deps.botspot_settings.single_user_mode.enabled and user is None:
             # If not in single_user_mode and no user provided, raise exception
             from botspot.core.errors import LLMProviderError
+
             raise LLMProviderError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
@@ -282,6 +283,7 @@ class LLMProvider:
                     )
                 )
             from botspot.core.errors import LLMPermissionError
+
             raise LLMPermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
@@ -1021,3 +1023,48 @@ async def get_llm_usage_stats(user: Optional[UserLike] = None) -> dict:
 # ---------------------------------------------
 # endregion Utils
 # ---------------------------------------------
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import Message
+    from pydantic import BaseModel
+
+    class MovieRecommendation(BaseModel):
+        title: str
+        year: int
+        reasons: list[str]
+
+    async def llm_message_handler(message: Message):
+        prompt = message.text
+        user_id = message.from_user.id
+        provider = get_llm_provider()
+
+        # 1. Basic text query
+        response = await aquery_llm(
+            prompt=prompt, user=user_id, model="claude-3.5", temperature=0.7
+        )
+        print(f"Basic text response: {response}")
+
+        # 2. Streaming response (to show output token by token)
+        print("\nStreaming response:")
+        async for chunk in astream_llm(prompt="Tell me a short story", user=user_id):
+            print(chunk, end="", flush=True)
+
+        # 3. Structured output with Pydantic
+        structured_result = await provider.aquery_llm_structured(
+            prompt="Recommend a sci-fi movie", output_schema=MovieRecommendation, user=user_id
+        )
+        print(f"\n\nMovie: {structured_result.title} ({structured_result.year})")
+
+        # 4. Raw response with full details
+        raw_response = await provider.aquery_llm_raw(
+            prompt="What's the weather like?", user=user_id
+        )
+        print(f"\nToken usage: {raw_response.usage}")
+
+    # Run the example with a mock message
+    asyncio.run(
+        llm_message_handler(Message(text="What is the meaning of life?", from_user={"id": 12345}))
+    )
