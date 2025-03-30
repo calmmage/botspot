@@ -103,6 +103,9 @@ class TestChatBinder:
     @pytest.mark.asyncio
     async def test_bind_chat_new(self, chat_binder, mock_collection):
         """Test binding a new chat."""
+        # Mock chat_fetcher_available property
+        type(chat_binder).chat_fetcher_available = property(lambda x: False)
+
         # Setup mock to return None (no existing binding)
         mock_collection.find_one.return_value = None
 
