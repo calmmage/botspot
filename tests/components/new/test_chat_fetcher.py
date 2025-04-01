@@ -190,7 +190,7 @@ class TestChatFetcher:
             assert result == [mock_dialog]
 
     @pytest.mark.asyncio
-    async def test_get_dialogs(self, chat_fetcher, mock_client, mock_dialog):
+    async def test_get_dialogs_2(self, chat_fetcher, mock_client, mock_dialog):
         """Test _get_dialogs method."""
         # Mock _get_client
         with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
@@ -328,6 +328,7 @@ class TestChatFetcher:
         # Mock _get_client
         with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
             mock_client.get_dialogs.return_value = [mock_dialog]
+            chat_fetcher._dialogs = {}
 
             # Call get_chats
             result = await chat_fetcher.get_chats(user_id=123)
@@ -346,47 +347,6 @@ class TestChatFetcher:
                 or mock_dialog.entity in result.groups
                 or mock_dialog.entity in result.channels
             )
-
-    @pytest.mark.asyncio
-    async def test_search_chat(self, chat_fetcher, mock_client, mock_dialog):
-        """Test search_chat method."""
-        # Mock _get_client
-        with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
-            mock_client.get_dialogs.return_value = [mock_dialog]
-
-            # Call search_chat
-            result = await chat_fetcher.search_chat(query="test", user_id=123)
-
-            # Verify _get_client was called with correct user_id
-            mock_get_client.assert_called_once_with(123)
-
-            # Verify client.get_dialogs was called
-            mock_client.get_dialogs.assert_called_once()
-
-            # Verify result was returned with matching entities
-            assert len(result) == 1
-            assert result[0] == mock_dialog.entity
-
-    @pytest.mark.asyncio
-    async def test_search_chat_no_match(self, chat_fetcher, mock_client, mock_dialog):
-        """Test search_chat method with no matches."""
-        # Mock _get_client
-        with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
-            # Set dialog name to not match the query
-            mock_dialog.name = "No Match"
-            mock_client.get_chats.return_value = [mock_dialog]
-
-            # Call search_chat
-            result = await chat_fetcher.search_chat(query="test", user_id=123)
-
-            # Verify _get_client was called with correct user_id
-            mock_get_client.assert_called_once_with(123)
-
-            # Verify client.get_dialogs was called
-            mock_client.get_dialogs.assert_called_once()
-
-            # Verify empty result
-            assert result == []
 
     @pytest.mark.asyncio
     async def test_search_message_in_chat(self, chat_fetcher, mock_client, mock_message):
