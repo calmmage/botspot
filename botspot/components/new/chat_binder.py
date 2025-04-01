@@ -135,7 +135,7 @@ class ChatBinder:
             await self.collection.insert_one(record.model_dump())
             return record
 
-    async def get_chat_binding_status(self, user_id: int, chat_id: int) -> List[BoundChatRecord]:
+    async def get_binding_records(self, user_id: int, chat_id: int) -> List[BoundChatRecord]:
         """Get all bindings for a specific user and chat combination.
 
         Args:
@@ -194,7 +194,7 @@ class ChatBinder:
         result = await self.collection.delete_one({"user_id": user_id, "key": key})
         return result.deleted_count > 0, key
 
-    async def get_bind_chat_id(self, user_id: int, key: str = "default") -> int:
+    async def get_bound_chat(self, user_id: int, key: str = "default") -> int:
         """Get the chat ID for a user's bound chat with the given key."""
         record = await self.collection.find_one({"user_id": user_id, "key": key})
         if record is None:
@@ -203,7 +203,7 @@ class ChatBinder:
             raise ChatBindingNotFoundError(f"No bound chat found for user {user_id} and key {key}")
         return record["chat_id"]
 
-    async def get_user_bound_chats(self, user_id: int) -> List[BoundChatRecord]:
+    async def list_user_bindings(self, user_id: int) -> List[BoundChatRecord]:
         """Get all chats bound to a user."""
         records = await self.collection.find({"user_id": user_id}).to_list(length=100)
         return [BoundChatRecord(**record) for record in records]
@@ -227,7 +227,7 @@ class ChatBinder:
             logger.error(f"Error checking admin status: {e}")
             return False
 
-    async def get_users_by_chat_id(self, chat_id: int) -> List[Dict[str, Union[int, str]]]:
+    async def list_users_by_bound_id(self, chat_id: int) -> List[Dict[str, Union[int, str]]]:
         """Get all users who have bound this chat.
 
         Args:
@@ -273,22 +273,23 @@ async def unbind_chat(user_id: int, key: str = "default", chat_id: Optional[int]
     return await chat_binder.unbind_chat(user_id, key, chat_id)
 
 
-async def get_bind_chat_id(user_id: int, key: str = "default") -> int:
+# Todo: rename the methods better
+async def get_bound_chat(user_id: int, key: str = "default") -> int:
     """Get the chat ID for a user's bound chat with the given key."""
     chat_binder = get_chat_binder()
-    return await chat_binder.get_bind_chat_id(user_id, key)
+    return await chat_binder.get_bound_chat(user_id, key)
 
 
-async def get_user_bound_chats(user_id: int) -> List[BoundChatRecord]:
+async def list_user_bindings(user_id: int) -> List[BoundChatRecord]:
     """Get all chats bound to a user."""
     chat_binder = get_chat_binder()
-    return await chat_binder.get_user_bound_chats(user_id)
+    return await chat_binder.list_user_bindings(user_id)
 
 
-async def get_chat_binding_status(user_id: int, chat_id: int) -> List[BoundChatRecord]:
+async def get_binding_records(user_id: int, chat_id: int) -> List[BoundChatRecord]:
     """Get all bindings for a specific user and chat combination."""
     chat_binder = get_chat_binder()
-    return await chat_binder.get_chat_binding_status(user_id, chat_id)
+    return await chat_binder.get_binding_records(user_id, chat_id)
 
 
 # async def is_bot_admin(chat_id: int) -> bool:
@@ -303,10 +304,10 @@ async def get_chat_binding_status(user_id: int, chat_id: int) -> List[BoundChatR
 #     return await chat_binder.get_chat_members(chat_id, limit)
 
 
-async def get_users_by_chat_id(chat_id: int) -> List[Dict[str, Union[int, str]]]:
+async def list_users_by_bound_id(chat_id: int) -> List[Dict[str, Union[int, str]]]:
     """Get all users who have bound this chat."""
     chat_binder = get_chat_binder()
-    return await chat_binder.get_users_by_chat_id(chat_id)
+    return await chat_binder.list_users_by_bound_id(chat_id)
 
 
 async def bind_chat_command_handler(message: Message):
@@ -372,7 +373,7 @@ async def bind_status_command_handler(message: Message):
 
     try:
         # Get bindings for this specific chat
-        bindings = await get_chat_binding_status(user_id, chat_id)
+        bindings = await get_binding_records(user_id, chat_id)
 
         if not bindings:
             await message.reply("This chat is not bound to you.")
@@ -413,7 +414,7 @@ async def async_list_chats_handler(message: Message):
         return
 
     try:
-        bound_chats = await get_user_bound_chats(message.from_user.id)
+        bound_chats = await list_user_bindings(message.from_user.id)
         if not bound_chats:
             await message.reply("You don't have any bound chats.")
             return
@@ -439,7 +440,7 @@ async def async_get_chat_handler(message: Message):
 
     key = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else "default"
 
-    chat_id = await get_bind_chat_id(message.from_user.id, key)
+    chat_id = await get_bound_chat(message.from_user.id, key)
     await message.reply(f"Bound chat for key '{key}': {chat_id}")
 
 
@@ -521,7 +522,7 @@ if __name__ == "__main__":
         record = await bind_chat(user_id, chat_id)
 
         # Get all bound chats for this user
-        chats = await get_user_bound_chats(user_id)
+        chats = await list_user_bindings(user_id)
         print(f"User {user_id} has {len(chats)} bound chats")
 
     # Run with mock message

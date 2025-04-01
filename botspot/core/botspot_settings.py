@@ -12,6 +12,7 @@ from botspot.components.main.single_user_mode import SingleUserModeSettings
 from botspot.components.main.telethon_manager import TelethonManagerSettings
 from botspot.components.main.trial_mode import TrialModeSettings
 from botspot.components.middlewares.error_handler import ErrorHandlerSettings
+from botspot.components.new.auto_archive import AutoArchiveSettings
 from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.new.chat_fetcher import ChatFetcherSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
@@ -63,6 +64,7 @@ class BotspotSettings(BaseSettings):
     chat_fetcher: ChatFetcherSettings = ChatFetcherSettings()
     llm_provider: LLMProviderSettings = LLMProviderSettings()
     queue_manager: QueueManagerSettings = QueueManagerSettings()
+    auto_archive: AutoArchiveSettings = AutoArchiveSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"

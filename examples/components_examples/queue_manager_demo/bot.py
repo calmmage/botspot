@@ -9,7 +9,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from botspot.commands_menu import botspot_command
-from botspot.components.new.chat_binder import get_chat_binding_status
+from botspot.components.new.chat_binder import get_binding_records
 from botspot.components.new.queue_manager import QueueItem, create_queue, get_queue
 from botspot.utils import send_safe
 from examples.base_bot import App, main, router
@@ -53,7 +53,7 @@ async def message_handler(message: Message):
     user_id = message.from_user.id
 
     # Only process messages in bound chats
-    bindings = await get_chat_binding_status(user_id, message.chat.id)
+    bindings = await get_binding_records(user_id, message.chat.id)
     if not bindings:
         return
 

@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from botspot import send_safe
 from botspot.commands_menu import botspot_command
-from botspot.components.new.chat_binder import get_bind_chat_id
+from botspot.components.new.chat_binder import get_bound_chat
 from botspot.components.new.chat_fetcher import get_chat_fetcher
 from botspot.core.errors import ChatBindingNotFoundError
 from examples.base_bot import App, main, router
@@ -225,7 +225,7 @@ async def ingest_handler(message: Message):
 
     # Get bound chat ID from anywhere
     try:
-        bound_chat_id = await get_bind_chat_id(user_id)
+        bound_chat_id = await get_bound_chat(user_id)
     except ChatBindingNotFoundError:
         await send_safe(
             message.chat.id,
@@ -238,7 +238,7 @@ async def ingest_handler(message: Message):
     # Get chat info
     chat_info = await chat_fetcher.get_chat(bound_chat_id, user_id=user_id)
     chat_name = getattr(chat_info, "title", getattr(chat_info, "name", "Unknown"))
-    chat_type = getattr(chat_info, "type", "Unknown")
+    chat_type = chat_fetcher.get_entity_category(chat_info)
 
     # Use the bound chat ID to fetch messages
     messages = await chat_fetcher.get_chat_messages(bound_chat_id, user_id=user_id)

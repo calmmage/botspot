@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.auto_archive import AutoArchive
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
@@ -40,6 +41,7 @@ class DependencyManager(metaclass=Singleton):
         self._llm_provider = None
         self._queue_manager = None
         self._chat_fetcher = None
+        self._auto_archive = None
         self.__dict__.update(kwargs)
 
     @property
@@ -159,6 +161,16 @@ class DependencyManager(metaclass=Singleton):
     @chat_fetcher.setter
     def chat_fetcher(self, value):
         self._chat_fetcher = value
+
+    @property
+    def auto_archive(self) -> "AutoArchive":
+        if self._auto_archive is None:
+            raise BotspotError("Auto Archive is not initialized")
+        return self._auto_archive
+
+    @auto_archive.setter
+    def auto_archive(self, value):
+        self._auto_archive = value
 
     @classmethod
     def is_initialized(cls) -> bool:

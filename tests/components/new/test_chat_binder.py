@@ -13,10 +13,10 @@ from botspot.components.new.chat_binder import (
     bind_chat,
     bind_chat_command_handler,
     bind_status_command_handler,
-    get_bind_chat_id,
-    get_chat_binding_status,
-    get_user_bound_chats,
+    get_binding_records,
+    get_bound_chat,
     initialize,
+    list_user_bindings,
     setup_dispatcher,
     unbind_chat,
     unbind_chat_command_handler,
@@ -305,7 +305,7 @@ class TestChatBinder:
         mock_collection.find_one.return_value = {"user_id": 123, "chat_id": 456, "key": "test"}
 
         # Call get_bind_chat_id
-        result = await chat_binder.get_bind_chat_id(user_id=123, key="test")
+        result = await chat_binder.get_bound_chat(user_id=123, key="test")
 
         # Verify find_one was called with correct filter
         mock_collection.find_one.assert_called_once_with({"user_id": 123, "key": "test"})
@@ -321,7 +321,7 @@ class TestChatBinder:
 
         # Just check if the right error type is raised
         with pytest.raises(ChatBindingNotFoundError):
-            await chat_binder.get_bind_chat_id(user_id=123, key="missing")
+            await chat_binder.get_bound_chat(user_id=123, key="missing")
 
     @pytest.mark.asyncio
     async def test_get_user_bound_chats(self, chat_binder, mock_collection):
@@ -639,7 +639,7 @@ class TestWrapperFunctions:
             mock_get_binder.return_value = mock_binder
 
             # Call the wrapper function
-            result = await get_bind_chat_id(user_id=123, key="test")
+            result = await get_bound_chat(user_id=123, key="test")
 
             # Verify the binder method was called with correct args and result was returned
             mock_binder.get_bind_chat_id.assert_called_once_with(123, "test")
@@ -656,7 +656,7 @@ class TestWrapperFunctions:
             mock_get_binder.return_value = mock_binder
 
             # Call the wrapper function
-            result = await get_user_bound_chats(user_id=123)
+            result = await list_user_bindings(user_id=123)
 
             # Verify the binder method was called with correct args and result was returned
             mock_binder.get_user_bound_chats.assert_called_once_with(123)
@@ -673,7 +673,7 @@ class TestWrapperFunctions:
             mock_get_binder.return_value = mock_binder
 
             # Call the wrapper function
-            result = await get_chat_binding_status(user_id=123, chat_id=456)
+            result = await get_binding_records(user_id=123, chat_id=456)
 
             # Verify the binder method was called with correct args and result was returned
             mock_binder.get_chat_binding_status.assert_called_once_with(123, 456)
