@@ -95,6 +95,4 @@ def setup_dispatcher(dp: Dispatcher):  # settings: ErrorHandlerSettings = None
             "Dependency manager is missing botspot_settings - required for error handling"
         )
 
-    # if not deps.botspot_settings.error_handling.enabled:
-    #     logger.info("Error handling is disabled - skipping setup")
     dp.errors.register(error_handler)

@@ -192,10 +192,10 @@ class TestChatBinder:
         assert result.key == "test"
 
     @pytest.mark.asyncio
-    async def test_get_chat_binding_status(self, chat_binder, mock_collection):
+    async def test_get_binding_records(self, chat_binder, mock_collection):
         """Test getting chat binding status."""
         # We need to patch the to_list call because AsyncMock doesn't handle chained calls correctly
-        with patch.object(ChatBinder, "get_chat_binding_status", AsyncMock()) as mock_method:
+        with patch.object(ChatBinder, "get_binding_records", AsyncMock()) as mock_method:
             # Setup mock to return a list of bindings
             expected_records = [
                 BoundChatRecord(user_id=123, chat_id=456, key="key1"),
@@ -203,7 +203,7 @@ class TestChatBinder:
             ]
             mock_method.return_value = expected_records
 
-            # Call get_chat_binding_status directly from the mocked method
+            # Call get_binding_records directly from the mocked method
             result = await mock_method(user_id=123, chat_id=456)
 
             # Verify the method was called with correct args
@@ -299,12 +299,12 @@ class TestChatBinder:
         mock_collection.delete_one.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_get_bind_chat_id_success(self, chat_binder, mock_collection):
+    async def test_get_bound_chat_success(self, chat_binder, mock_collection):
         """Test successfully getting a bound chat ID."""
         # Setup mock to return an existing binding
         mock_collection.find_one.return_value = {"user_id": 123, "chat_id": 456, "key": "test"}
 
-        # Call get_bind_chat_id
+        # Call get_bound_chat
         result = await chat_binder.get_bound_chat(user_id=123, key="test")
 
         # Verify find_one was called with correct filter
@@ -314,7 +314,7 @@ class TestChatBinder:
         assert result == 456
 
     @pytest.mark.asyncio
-    async def test_get_bind_chat_id_no_binding(self, chat_binder, mock_collection):
+    async def test_get_bound_chat_no_binding(self, chat_binder, mock_collection):
         """Test getting a bound chat ID when no binding exists."""
         # Setup mock to return no binding
         mock_collection.find_one.return_value = None
@@ -324,10 +324,10 @@ class TestChatBinder:
             await chat_binder.get_bound_chat(user_id=123, key="missing")
 
     @pytest.mark.asyncio
-    async def test_get_user_bound_chats(self, chat_binder, mock_collection):
+    async def test_list_user_bindings(self, chat_binder, mock_collection):
         """Test getting all chats bound to a user."""
         # We need to patch the method because AsyncMock doesn't handle chained calls correctly
-        with patch.object(ChatBinder, "get_user_bound_chats", AsyncMock()) as mock_method:
+        with patch.object(ChatBinder, "list_user_bindings", AsyncMock()) as mock_method:
             # Setup mock to return a list of bindings
             expected_records = [
                 BoundChatRecord(user_id=123, chat_id=456, key="key1"),
@@ -335,7 +335,7 @@ class TestChatBinder:
             ]
             mock_method.return_value = expected_records
 
-            # Call get_user_bound_chats directly from the mocked method
+            # Call list_user_bindings directly from the mocked method
             result = await mock_method(user_id=123)
 
             # Verify the method was called with correct args
@@ -467,14 +467,14 @@ class TestCommandHandlers:
     @pytest.mark.asyncio
     async def test_bind_status_command_handler_single_binding(self, mock_message):
         """Test the bind_status command handler with a single binding."""
-        with patch("botspot.components.new.chat_binder.get_chat_binding_status") as mock_get_status:
+        with patch("botspot.components.new.chat_binder.get_binding_records") as mock_get_status:
             # Set up the mock to return a single binding
             mock_get_status.return_value = [BoundChatRecord(user_id=123, chat_id=456, key="test")]
 
             # Call the handler
             await bind_status_command_handler(mock_message)
 
-            # Verify get_chat_binding_status was called with correct args
+            # Verify get_binding_records was called with correct args
             mock_get_status.assert_called_once_with(123, 456)
 
             # Verify message was sent indicating a single binding
@@ -486,7 +486,7 @@ class TestCommandHandlers:
     @pytest.mark.asyncio
     async def test_bind_status_command_handler_multiple_bindings(self, mock_message):
         """Test the bind_status command handler with multiple bindings."""
-        with patch("botspot.components.new.chat_binder.get_chat_binding_status") as mock_get_status:
+        with patch("botspot.components.new.chat_binder.get_binding_records") as mock_get_status:
             # Set up the mock to return multiple bindings
             mock_get_status.return_value = [
                 BoundChatRecord(user_id=123, chat_id=456, key="key1"),
@@ -496,7 +496,7 @@ class TestCommandHandlers:
             # Call the handler
             await bind_status_command_handler(mock_message)
 
-            # Verify get_chat_binding_status was called with correct args
+            # Verify get_binding_records was called with correct args
             mock_get_status.assert_called_once_with(123, 456)
 
             # Verify message was sent indicating multiple bindings
@@ -509,14 +509,14 @@ class TestCommandHandlers:
     @pytest.mark.asyncio
     async def test_bind_status_command_handler_no_bindings(self, mock_message):
         """Test the bind_status command handler with no bindings."""
-        with patch("botspot.components.new.chat_binder.get_chat_binding_status") as mock_get_status:
+        with patch("botspot.components.new.chat_binder.get_binding_records") as mock_get_status:
             # Set up the mock to return no bindings
             mock_get_status.return_value = []
 
             # Call the handler
             await bind_status_command_handler(mock_message)
 
-            # Verify get_chat_binding_status was called with correct args
+            # Verify get_binding_records was called with correct args
             mock_get_status.assert_called_once_with(123, 456)
 
             # Verify message was sent indicating no bindings
@@ -630,51 +630,51 @@ class TestWrapperFunctions:
             assert result == (True, "test")
 
     @pytest.mark.asyncio
-    async def test_get_bind_chat_id_wrapper(self):
-        """Test that the get_bind_chat_id wrapper function calls the ChatBinder instance."""
+    async def test_get_bound_chat_wrapper(self):
+        """Test that the get_bound_chat wrapper function calls the ChatBinder instance."""
         with patch("botspot.components.new.chat_binder.get_chat_binder") as mock_get_binder:
             # Set up the mock binder
             mock_binder = MagicMock()
-            mock_binder.get_bind_chat_id = AsyncMock(return_value=456)
+            mock_binder.get_bound_chat = AsyncMock(return_value=456)
             mock_get_binder.return_value = mock_binder
 
             # Call the wrapper function
             result = await get_bound_chat(user_id=123, key="test")
 
             # Verify the binder method was called with correct args and result was returned
-            mock_binder.get_bind_chat_id.assert_called_once_with(123, "test")
+            mock_binder.get_bound_chat.assert_called_once_with(123, "test")
             assert result == 456
 
     @pytest.mark.asyncio
-    async def test_get_user_bound_chats_wrapper(self):
-        """Test that the get_user_bound_chats wrapper function calls the ChatBinder instance."""
+    async def test_list_user_bindings_wrapper(self):
+        """Test that the list_user_bindings wrapper function calls the ChatBinder instance."""
         with patch("botspot.components.new.chat_binder.get_chat_binder") as mock_get_binder:
             # Set up the mock binder
             mock_binder = MagicMock()
             mock_records = [BoundChatRecord(user_id=123, chat_id=456, key="test")]
-            mock_binder.get_user_bound_chats = AsyncMock(return_value=mock_records)
+            mock_binder.list_user_bindings = AsyncMock(return_value=mock_records)
             mock_get_binder.return_value = mock_binder
 
             # Call the wrapper function
             result = await list_user_bindings(user_id=123)
 
             # Verify the binder method was called with correct args and result was returned
-            mock_binder.get_user_bound_chats.assert_called_once_with(123)
+            mock_binder.list_user_bindings.assert_called_once_with(123)
             assert result == mock_records
 
     @pytest.mark.asyncio
-    async def test_get_chat_binding_status_wrapper(self):
-        """Test that the get_chat_binding_status wrapper function calls the ChatBinder instance."""
+    async def test_get_binding_records_wrapper(self):
+        """Test that the get_binding_records wrapper function calls the ChatBinder instance."""
         with patch("botspot.components.new.chat_binder.get_chat_binder") as mock_get_binder:
             # Set up the mock binder
             mock_binder = MagicMock()
             mock_records = [BoundChatRecord(user_id=123, chat_id=456, key="test")]
-            mock_binder.get_chat_binding_status = AsyncMock(return_value=mock_records)
+            mock_binder.get_binding_records = AsyncMock(return_value=mock_records)
             mock_get_binder.return_value = mock_binder
 
             # Call the wrapper function
             result = await get_binding_records(user_id=123, chat_id=456)
 
             # Verify the binder method was called with correct args and result was returned
-            mock_binder.get_chat_binding_status.assert_called_once_with(123, 456)
+            mock_binder.get_binding_records.assert_called_once_with(123, 456)
             assert result == mock_records

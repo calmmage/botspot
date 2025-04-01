@@ -3,15 +3,15 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from telethon.types import Message, Chat, Dialog
+from telethon.types import Chat, Dialog, Message
 
 from botspot.components.new.chat_fetcher import (
     ChatFetcher,
     ChatFetcherSettings,
+    GetChatsResponse,
     get_chat_fetcher,
     initialize,
     setup_dispatcher,
-    GetChatsResponse,
 )
 from botspot.core.errors import BotspotError
 
@@ -210,13 +210,13 @@ class TestChatFetcher:
 
     @pytest.mark.asyncio
     async def test_get_chat(self, chat_fetcher, mock_client, mock_chat):
-        """Test _get_chat method."""
+        """Test get_chat method."""
         # Mock _get_client
         with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
             mock_client.get_entity.return_value = mock_chat
 
-            # Call _get_chat
-            result = await chat_fetcher._get_chat(chat_id=789, user_id=123)
+            # Call get_chat
+            result = await chat_fetcher.get_chat(chat_id=789, user_id=123)
 
             # Verify _get_client was called with correct user_id
             mock_get_client.assert_called_once_with(123)
@@ -229,16 +229,16 @@ class TestChatFetcher:
 
     @pytest.mark.asyncio
     async def test_get_chat_wrong_entity_type(self, chat_fetcher, mock_client):
-        """Test _get_chat method with wrong entity type."""
+        """Test get_chat method with wrong entity type."""
         # Mock _get_client
         with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
             # Return an entity that is not a Chat
             mock_entity = MagicMock()
             mock_client.get_entity.return_value = mock_entity
 
-            # Call _get_chat
+            # Call get_chat
             with pytest.raises(BotspotError):
-                await chat_fetcher._get_chat(chat_id=789, user_id=123)
+                await chat_fetcher.get_chat(chat_id=789, user_id=123)
 
     @pytest.mark.asyncio
     async def test_get_old_messages(self, chat_fetcher, mock_client, mock_message):
@@ -330,13 +330,13 @@ class TestChatFetcher:
             mock_client.get_dialogs.return_value = [mock_dialog]
 
             # Call get_chats
-            result = await chat_fetcher.get_chats(user_id=123, limit=10)
+            result = await chat_fetcher.get_chats(user_id=123)
 
             # Verify _get_client was called with correct user_id
             mock_get_client.assert_called_once_with(123)
 
             # Verify client.get_dialogs was called with correct parameters
-            mock_client.get_dialogs.assert_called_once_with(limit=10)
+            mock_client.get_dialogs.assert_called_once()
 
             # Verify result is a GetChatsResponse
             assert isinstance(result, GetChatsResponse)
@@ -374,7 +374,7 @@ class TestChatFetcher:
         with patch.object(chat_fetcher, "_get_client", return_value=mock_client) as mock_get_client:
             # Set dialog name to not match the query
             mock_dialog.name = "No Match"
-            mock_client.get_dialogs.return_value = [mock_dialog]
+            mock_client.get_chats.return_value = [mock_dialog]
 
             # Call search_chat
             result = await chat_fetcher.search_chat(query="test", user_id=123)

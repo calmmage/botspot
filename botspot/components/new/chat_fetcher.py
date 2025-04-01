@@ -4,6 +4,36 @@ from pydantic_settings import BaseSettings
 from telethon import TelegramClient
 from telethon.types import Channel, Chat, Dialog, Message, User
 
+# Entity type mapping for easy reference
+ENTITY_TYPE_MAP = {
+    "Channel": Channel,
+    "User": User,
+    "Chat": Chat,
+}
+
+
+def get_entity_category(entity: Union[Chat, Channel, User]) -> str:
+    """Get the category of a chat entity.
+
+    Args:
+        entity: The chat entity to categorize
+
+    Returns:
+        A string describing the entity category:
+        - "bot" for bot accounts
+        - "private chat" for user chats
+        - "group" for groups and supergroups
+        - "channel" for channels
+        - "unknown" for unrecognized types
+    """
+    if isinstance(entity, User):
+        return "bot" if getattr(entity, "bot", False) else "private chat"
+    elif isinstance(entity, Chat):
+        return "group"
+    elif isinstance(entity, Channel):
+        return "channel" if not entity.megagroup else "group"
+    return "unknown"
+
 
 class ChatFetcherSettings(BaseSettings):
     enabled: bool = False
@@ -24,6 +54,29 @@ class GetChatsResponse:
 
 
 class ChatFetcher:
+    @classmethod
+    def get_entity_category(cls, entity: Union[Chat, Channel, User]) -> str:
+        """Get the category of a chat entity.
+
+        Args:
+            entity: The chat entity to categorize
+
+        Returns:
+            A string describing the entity category:
+            - "bot" for bot accounts
+            - "private chat" for user chats
+            - "group" for groups and supergroups
+            - "channel" for channels
+            - "unknown" for unrecognized types
+        """
+        if isinstance(entity, User):
+            return "bot" if getattr(entity, "bot", False) else "private chat"
+        elif isinstance(entity, Chat):
+            return "group"
+        elif isinstance(entity, Channel):
+            return "channel" if not entity.megagroup else "group"
+        return "unknown"
+
     def __init__(self, settings: ChatFetcherSettings):
         self.settings = settings
         self.clients: Dict[int, TelegramClient] = {}
@@ -74,16 +127,29 @@ class ChatFetcher:
         client = await self._get_client(user_id)
         return await client.get_dialogs()
 
-    async def _get_chat(self, chat_id: int, user_id: int) -> Chat:
+    async def get_chat(self, chat_id: int, user_id: int) -> Union[Chat, Channel, User]:
+        """Get a chat entity by its ID.
+
+        Args:
+            chat_id: The ID of the chat to get
+            user_id: The ID of the user requesting the chat
+
+        Returns:
+            The chat entity (Chat, Channel, or User for private messages)
+
+        Raises:
+            BotspotError: If the entity is not a chat, channel, or user
+        """
         client = await self._get_client(user_id)
         entity = await client.get_entity(chat_id)
-        if isinstance(entity, Chat):
+
+        if isinstance(entity, (Chat, Channel, User)):
             return entity
         else:
             from botspot.core.errors import BotspotError
 
             raise BotspotError(
-                f"Entity {entity} is not a Chat",
+                f"Entity {entity} is not a Chat, Channel, or User",
                 user_message="Chat Fetcher is still experimental, please contact the botspot team about this issue",
             )
 
