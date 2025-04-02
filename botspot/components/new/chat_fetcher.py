@@ -1,18 +1,13 @@
-from typing import Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from pydantic_settings import BaseSettings
-from telethon import TelegramClient
-from telethon.types import Channel, Chat, Dialog, Message, User
 
-# Entity type mapping for easy reference
-ENTITY_TYPE_MAP = {
-    "Channel": Channel,
-    "User": User,
-    "Chat": Chat,
-}
+if TYPE_CHECKING:
+    from telethon import TelegramClient
+    from telethon.types import Channel, Chat, Dialog, Message, User
 
 
-def get_entity_category(entity: Union[Chat, Channel, User]) -> str:
+def get_entity_category(entity: Union["Chat", "Channel", "User"]) -> str:
     """Get the category of a chat entity.
 
     Args:
@@ -26,6 +21,8 @@ def get_entity_category(entity: Union[Chat, Channel, User]) -> str:
         - "channel" for channels
         - "unknown" for unrecognized types
     """
+    from telethon.types import Channel, Chat, User
+
     if isinstance(entity, User):
         return "bot" if getattr(entity, "bot", False) else "private chat"
     elif isinstance(entity, Chat):
@@ -48,36 +45,16 @@ class ChatFetcherSettings(BaseSettings):
 
 
 class GetChatsResponse:
-    users: List[User] = []
-    channels: List[Channel] = []
-    groups: List[Union[Chat, Channel]] = []
+    users: List["User"] = []
+    channels: List["Channel"] = []
+    groups: List[Union["Chat", "Channel"]] = []
 
 
 class ChatFetcher:
-    @classmethod
-    def get_entity_category(cls, entity: Union[Chat, Channel, User]) -> str:
-        """Get the category of a chat entity.
-
-        Args:
-            entity: The chat entity to categorize
-
-        Returns:
-            A string describing the entity category:
-            - "bot" for bot accounts
-            - "private chat" for user chats
-            - "group" for groups and supergroups
-            - "channel" for channels
-            - "unknown" for unrecognized types
-        """
-        if isinstance(entity, User):
-            return "bot" if getattr(entity, "bot", False) else "private chat"
-        elif isinstance(entity, Chat):
-            return "group"
-        elif isinstance(entity, Channel):
-            return "channel" if not entity.megagroup else "group"
-        return "unknown"
-
     def __init__(self, settings: ChatFetcherSettings):
+        from telethon import TelegramClient
+        from telethon.types import Dialog, Message
+
         self.settings = settings
         self.clients: Dict[int, TelegramClient] = {}
         self._dialogs: Dict[int, List[Dialog]] = {}
@@ -97,7 +74,7 @@ class ChatFetcher:
                 user_message="Please disable db caching in chat_fetcher - it's not implemented",
             )
 
-    async def _get_client(self, user_id: Optional[int] = None) -> TelegramClient:
+    async def _get_client(self, user_id: Optional[int] = None) -> "TelegramClient":
         if self.single_user_mode:
             if user_id is not None and str(user_id) != self.single_user:
                 raise ValueError("Single user mode is enabled. Cannot use different user_id.")
@@ -115,7 +92,7 @@ class ChatFetcher:
     async def get_dialogs(
         self, user_id: int
     ) -> List[
-        Dialog
+        "Dialog"
     ]:  # , skip_deactivated: bool = True, skip_migrated: bool = True) -> List[Dialog]:
         if user_id not in self._dialogs:
             self._dialogs[user_id] = await self._get_dialogs(
@@ -123,11 +100,11 @@ class ChatFetcher:
             )  # , skip_deactivated, skip_migrated)
         return self._dialogs[user_id]
 
-    async def _get_dialogs(self, user_id: int) -> List[Dialog]:
+    async def _get_dialogs(self, user_id: int) -> List["Dialog"]:
         client = await self._get_client(user_id)
         return await client.get_dialogs()
 
-    async def get_chat(self, chat_id: int, user_id: int) -> Union[Chat, Channel, User]:
+    async def get_chat(self, chat_id: int, user_id: int) -> Union["Chat", "Channel", "User"]:
         """Get a chat entity by its ID.
 
         Args:
@@ -140,6 +117,8 @@ class ChatFetcher:
         Raises:
             BotspotError: If the entity is not a chat, channel, or user
         """
+        from telethon.types import Channel, Chat, User
+
         client = await self._get_client(user_id)
         entity = await client.get_entity(chat_id)
 
@@ -155,8 +134,10 @@ class ChatFetcher:
 
     async def _get_old_messages(
         self, chat_id: int, user_id: int, timestamp: int, limit: Optional[int] = None
-    ) -> List[Message]:
+    ) -> List["Message"]:
         """Get chat messages older than timestamp."""
+        from telethon.types import Message
+
         client = await self._get_client(user_id)
         messages = await client.get_messages(chat_id, offset_date=timestamp, limit=limit)
         if isinstance(messages, Message):
@@ -166,8 +147,10 @@ class ChatFetcher:
 
     async def _get_new_messages(
         self, chat_id: int, user_id: int, timestamp: int, limit: Optional[int] = None
-    ) -> List[Message]:
+    ) -> List["Message"]:
         """Get chat messages newer than timestamp."""
+        from telethon.types import Message
+
         client = await self._get_client(user_id)
         messages = await client.get_messages(
             chat_id, offset_date=timestamp, limit=limit, reverse=True
@@ -179,7 +162,7 @@ class ChatFetcher:
 
     async def get_chat_messages(
         self, chat_id: int, user_id: Optional[int] = None, limit: Optional[int] = 1000
-    ) -> List[Message]:
+    ) -> List["Message"]:
         """
         Get the most recent messages from a chat, using an in-memory cache when possible.
 
@@ -191,6 +174,9 @@ class ChatFetcher:
         Returns:
             List of Message objects, most recent first.
         """
+
+        from telethon.types import Message
+
         client = await self._get_client(user_id)
         cache_key = (user_id, chat_id)
 
@@ -269,6 +255,8 @@ class ChatFetcher:
         skip_deactivated: bool = True,
         skip_migrated: bool = True,
     ) -> GetChatsResponse:
+        from telethon.types import Channel, Chat, User
+
         dialogs = await self.get_dialogs(
             user_id
         )  # , skip_deactivated=skip_deactivated, skip_migrated=skip_migrated)
@@ -310,7 +298,7 @@ class ChatFetcher:
         search_groups: bool = True,
         search_channels: bool = True,
         search_users: bool = True,
-    ) -> List[Chat]:
+    ) -> List["Chat"]:
 
         chats = await self.get_chats(
             user_id, skip_deactivated=skip_deactivated, skip_migrated=skip_migrated
@@ -343,7 +331,7 @@ class ChatFetcher:
     # todo: rework this completely, seems garbage, doesn't work
     async def search_message(
         self, query: str, user_id: int, chat_id: Optional[int] = None, limit: int = 10
-    ) -> List[Message]:
+    ) -> List["Message"]:
         client = await self._get_client(user_id)
         if chat_id:
             return [msg async for msg in client.iter_messages(chat_id, search=query, limit=limit)]
@@ -365,6 +353,23 @@ def setup_dispatcher(dp):
 
 
 def initialize(settings: ChatFetcherSettings) -> ChatFetcher:
+    # check necessary import - telethon
+    try:
+        from telethon import TelegramClient
+    except ImportError:
+        raise ImportError(
+            "Telethon is not installed. Please install it to use ChatFetcher botspot component."
+        )
+
+    # check telethon manager enabled
+    from botspot import get_dependency_manager
+
+    deps = get_dependency_manager()
+    if not deps.botspot_settings.telethon_manager.enabled:
+        raise RuntimeError(
+            "Telegram Manager is not enabled. Please enable it to use ChatFetcher botspot component."
+        )
+
     cf = ChatFetcher(settings)
     return cf
 

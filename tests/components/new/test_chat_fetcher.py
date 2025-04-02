@@ -394,6 +394,16 @@ class TestChatFetcher:
 class TestInitialization:
     def test_initialize(self):
         """Test successful initialization."""
+        from botspot.core.bot_manager import BotManager
+
+        BotManager(
+            telethon_manager={
+                "enabled": True,
+                "api_id": 1,
+                "api_hash": "api_hash",
+            }
+        )
+
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
             # Set up mock dependencies
             mock_deps = MagicMock()
