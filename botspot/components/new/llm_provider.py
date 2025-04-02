@@ -1,10 +1,5 @@
-"""LLM Provider Component for Botspot
-
-This module provides a LLM (Large Language Model) interface for Botspot,
-using litellm as the backend client to support multiple LLM providers.
-"""
-
 import json
+import os
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union
@@ -38,6 +33,8 @@ class LLMProviderSettings(BaseSettings):
     default_timeout: int = 30
     allow_everyone: bool = False  # If False, only friends and admins can use LLM features
 
+    skip_import_check: bool = False  # Skip import check for dependencies
+
     class Config:
         env_prefix = "BOTSPOT_LLM_PROVIDER_"
         env_file = ".env"
@@ -48,25 +45,48 @@ class LLMProviderSettings(BaseSettings):
 # Model name mapping for shortcuts
 # This maps simple names to the provider-specific model names
 MODEL_NAME_SHORTCUTS = {
-    # Claude models
-    "claude-3.7": "anthropic/claude-3-5-sonnet-20240620",
-    "claude-3.5": "anthropic/claude-3-5-sonnet-20240620",
-    "claude-3-haiku": "anthropic/claude-3-haiku-20240307",
-    "claude-3-sonnet": "anthropic/claude-3-sonnet-20240229",
-    "claude-3-opus": "anthropic/claude-3-opus-20240229",
-    "claude-2": "anthropic/claude-2",
+    # Anthropic (Claude models)
+    "claude-3.5": "anthropic/claude-3-5-sonnet-20241022",
+    "claude-3.7-max": "anthropic/claude-3-7-sonnet-max",
     # OpenAI models
     "gpt-4o": "openai/gpt-4o",
-    "gpt-4-turbo": "openai/gpt-4-turbo",
-    "gpt-4.5": "openai/gpt-4-turbo",  # Alias for gpt-4-turbo
-    "gpt-4": "openai/gpt-4",
+    "o1": "openai/o1",
+    # Google models
+    "gemini-2.5": "google/gemini-2.5-pro-max",
+    "gemini-2.5-max": "google/gemini-2.5-pro-max",
+    "gemini-2.0-pro": "google/gemini-2.0-pro-exp",
+    "gemini-2.0": "google/gemini-2.0-pro-exp",
+    # xAI models
+    "grok-2": "grok/grok-2",
+    "gpt-4.5": "openai/gpt-4.5-preview",
+    # Remaining models
+    # Claude models (continued)
+    "claude-3-opus": "anthropic/claude-3-opus",
+    "claude-3.5-haiku": "anthropic/claude-3-5-haiku",
+    "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet",
+    "claude-3.7": "anthropic/claude-3-7-sonnet",
+    # OpenAI models (continued)
     "gpt-3.5": "openai/gpt-3.5-turbo",
-    # Other models
-    "gemini-pro": "google/gemini-pro",
-    "gemini-1.5": "google/gemini-1.5-pro",
-    "gemini-2": "google/gemini-2",
-    "grok": "grok/grok",
-    "grok3": "grok/grok-3",
+    "gpt-4": "openai/gpt-4",
+    "gpt-4-turbo": "openai/gpt-4-turbo-2024-04-09",
+    "gpt-4.5-preview": "openai/gpt-4.5-preview",
+    "gpt-4o-mini": "openai/gpt-4o-mini",
+    "o1-mini": "openai/o1-mini",
+    "o1-preview": "openai/o1-preview",
+    "o3-mini": "openai/o3-mini",
+    # Google models (continued)
+    "gemini-2.0-flash": "google/gemini-2.0-flash",
+    "gemini-2.0-flash-exp": "google/gemini-2.0-flash-thinking-exp",
+    "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",
+    "gemini-exp-1206": "google/gemini-exp-1206",
+    # Cursor models
+    "cursor-fast": "cursor/cursor-fast",
+    "cursor-small": "cursor/cursor-small",
+    # Deepseek models
+    "deepseek-r1": "deepseek/deepseek-r1",
+    "deepseek-v3": "deepseek/deepseek-v3",
+    # Meta models
+    "llama": "meta/llama",
 }
 
 
@@ -885,6 +905,71 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
     if not settings.enabled:
         logger.info("LLM Provider component is disabled")
         return None
+
+    # Check if litellm is installed
+    try:
+        import litellm
+
+        logger.debug("litellm version: %s", litellm.api_version)
+    except ImportError:
+        logger.error(
+            "litellm is not installed. Please install it to use the LLM Provider component."
+        )
+        raise
+    if not settings.skip_import_check:
+        ai_libraries = {
+            "openai": "openai",  # poetry add openai -> import openai
+            "anthropic": "anthropic",  # poetry add anthropic -> import anthropic
+            "google-generativeai": "google.generativeai",  # poetry add google-generativeai -> import google.generativeai
+            "xai_sdk": "xai",  # poetry add xai_sdk -> import xai
+            # "huggingface": "transformers",  # poetry add huggingface -> import transformers
+            # "cohere": "cohere",  # poetry add cohere -> import cohere
+            # "mistralai": "mistralai",  # poetry add mistralai -> import mistralai
+            # "deepseek": "deepseek",  # poetry add deepseek -> import deepseek
+            # "fireworks-ai": "fireworks",  # poetry add fireworks-ai -> import fireworks
+        }
+        api_keys_env_names = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "google-generativeai": "GEMINI_API_KEY",
+            "xai_sdk": "XAI_API_KEY",
+            "huggingface": "HUGGINGFACE_TOKEN",
+            "cohere": "COHERE_API_KEY",
+            "mistralai": "MISTRAL_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+            "fireworks-ai": "FIREWORKS_API_KEY",
+        }
+        # Check for specific libraries and report to the user
+        installed_libraries = []
+        for lib_name, lib in ai_libraries.items():
+            try:
+                __import__(lib)
+                installed_libraries.append(lib_name)
+                msg = f"✅ {lib_name} is available."
+                # todo: check api key, if not -> print warning
+                env_key = api_keys_env_names.get(lib_name)
+                api_key = os.getenv(env_key)
+
+                if api_key:
+                    msg += f" (✅ {env_key})"
+                else:
+                    msg += f" (⚠️ No {env_key})"
+                logger.info(msg)
+            except ImportError:
+                logger.info(
+                    f"❌ {lib_name} is not installed. `poetry add {lib_name}` to install it."
+                )
+
+        if not installed_libraries:
+            keys = list(ai_libraries.keys())
+            logger.error(
+                "At least one of the required libraries (openai, anthropic, gemini) must be installed.\n"
+                f"None of the required libraries {keys} are installed."
+            )
+            raise ImportError(
+                f"At least one of the required libraries {keys} must be installed.\n"
+                "set BOTSPOT_LLM_PROVIDER_SKIP_IMPORT_CHECK=1 to skip this check or install the required libraries."
+            )
 
     logger.info("Initializing LLM Provider component")
     provider = LLMProvider(settings)
