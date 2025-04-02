@@ -1,9 +1,11 @@
-import yaml
 import random
 from pathlib import Path
 
+import yaml
+
 file_path = Path(__file__).parent / "easter_eggs.yaml"
-easter_eggs = yaml.safe_load(open(file_path))["items"]
+
+easter_eggs = yaml.safe_load(open(file_path, encoding="utf-8"))["items"]
 
 
 def get_easter_egg() -> str:
