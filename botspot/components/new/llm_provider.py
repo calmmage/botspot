@@ -996,7 +996,7 @@ def get_llm_provider() -> LLMProvider:
 
 
 # Convenience functions for direct use
-def query_llm(
+def query_llm_text(
     prompt: str,
     *,
     user: Optional[Union[int, str]] = None,
@@ -1015,7 +1015,72 @@ def query_llm(
     )
 
 
-async def aquery_llm(
+def query_llm_raw(
+    prompt: str,
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    **kwargs,
+) -> "ModelResponse":
+    """
+    Raw query to the LLM - returns the complete response object.
+
+    This is a convenience function that uses the global LLM provider.
+
+    Args:
+        prompt: The text prompt to send to the LLM
+        user: User identifier for tracking usage and permissions
+        system_message: Optional system message to prepend
+        model: Optional model to use (defaults to provider default)
+        **kwargs: Additional arguments to pass to the LLM provider
+
+    Returns:
+        Raw response from the LLM with full metadata and usage stats
+    """
+    provider = get_llm_provider()
+    return provider.query_llm_raw(
+        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+    )
+
+
+def query_llm_structured(
+    prompt: str,
+    output_schema: Type[BaseModel],
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    **kwargs,
+) -> BaseModel:
+    """
+    Query LLM with structured output.
+
+    This is a convenience function that uses the global LLM provider.
+
+    Args:
+        prompt: The text prompt to send to the LLM
+        output_schema: A Pydantic model class defining the structure
+        user: User identifier for tracking usage and permissions
+        system_message: Optional system message to prepend
+        model: Optional model to use (defaults to provider default)
+        **kwargs: Additional arguments to pass to the LLM provider
+
+    Returns:
+        An instance of the provided Pydantic model
+    """
+    provider = get_llm_provider()
+    return provider.query_llm_structured(
+        prompt=prompt,
+        output_schema=output_schema,
+        user=user,
+        system_message=system_message,
+        model=model,
+        **kwargs,
+    )
+
+
+async def aquery_llm_text(
     prompt: str,
     *,
     user: Optional[Union[int, str]] = None,
@@ -1062,6 +1127,71 @@ async def astream_llm(
         prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
     ):
         yield chunk
+
+
+async def aquery_llm_structured(
+    prompt: str,
+    output_schema: Type[BaseModel],
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    **kwargs,
+) -> BaseModel:
+    """
+    Async query LLM with structured output.
+
+    This is a convenience function that uses the global LLM provider.
+
+    Args:
+        prompt: The text prompt to send to the LLM
+        output_schema: A Pydantic model class defining the structure
+        user: User identifier for tracking usage and permissions
+        system_message: Optional system message to prepend
+        model: Optional model to use (defaults to provider default)
+        **kwargs: Additional arguments to pass to the LLM provider
+
+    Returns:
+        An instance of the provided Pydantic model
+    """
+    provider = get_llm_provider()
+    return await provider.aquery_llm_structured(
+        prompt=prompt,
+        output_schema=output_schema,
+        user=user,
+        system_message=system_message,
+        model=model,
+        **kwargs,
+    )
+
+
+async def aquery_llm_raw(
+    prompt: str,
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    **kwargs,
+) -> "ModelResponse":
+    """
+    Async raw query to the LLM - returns the complete response object.
+
+    This is a convenience function that uses the global LLM provider.
+
+    Args:
+        prompt: The text prompt to send to the LLM
+        user: User identifier for tracking usage and permissions
+        system_message: Optional system message to prepend
+        model: Optional model to use (defaults to provider default)
+        **kwargs: Additional arguments to pass to the LLM provider
+
+    Returns:
+        Raw response from the LLM with full metadata and usage stats
+    """
+    provider = get_llm_provider()
+    return await provider.aquery_llm_raw(
+        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+    )
 
 
 # todo: adapt this to user not user_id
@@ -1127,7 +1257,7 @@ if __name__ == "__main__":
         provider = get_llm_provider()
 
         # 1. Basic text query
-        response = await aquery_llm(
+        response = await aquery_llm_text(
             prompt=prompt, user=user_id, model="claude-3.5", temperature=0.7
         )
         print(f"Basic text response: {response}")

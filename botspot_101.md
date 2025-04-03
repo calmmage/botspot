@@ -36,39 +36,85 @@ Purpose: Access message history from chats using Telethon client.
 
 ### llm_provider.py
 ```python
+from typing import Optional
 from aiogram.types import Message
 from pydantic import BaseModel
-from botspot.components.llm_provider import aquery_llm, astream_llm, get_llm_provider
+from botspot.components.new.llm_provider import (
+    # Async utilities
+    aquery_llm, astream_llm, aquery_llm_structured, aquery_llm_raw,
+    # Sync utilities
+    query_llm, query_llm_structured, query_llm_raw,
+    # Other utilities
+    get_llm_provider, get_llm_usage_stats
+)
 
-async def llm_example(message: Message) -> None:
+# Async example (for normal bot handlers)
+async def llm_async_example(message: Message) -> None:
     user_id: int = message.from_user.id
-    provider = get_llm_provider()
     
-    # Text query
+    # Basic text query (async)
     response: str = await aquery_llm(
         prompt=message.text,
         user=user_id,
         model="claude-3.5"
     )
     
-    # Streaming response
+    # Streaming response (async)
     async for chunk in astream_llm(prompt="Tell me a story", user=user_id):
         print(chunk, end="")
     
-    # Structured output
+    # Structured output (async)
     class MovieRecommendation(BaseModel):
         title: str
         year: int
         reasons: list[str]
     
-    movie: MovieRecommendation = await provider.aquery_llm_structured(
+    movie: MovieRecommendation = await aquery_llm_structured(
         prompt="Recommend a sci-fi movie",
         output_schema=MovieRecommendation,
         user=user_id
     )
+    
+    # Raw response with full metadata (async)
+    raw_response = await aquery_llm_raw(
+        prompt="What's the weather like?",
+        user=user_id,
+        model="gpt-4o",
+        temperature=0.2
+    )
+
+# Synchronous example (for scripts)
+def llm_sync_example() -> None:
+    user_id: int = 12345
+    
+    # Basic text query (sync)
+    response: str = query_llm(
+        prompt="What is the capital of France?",
+        user=user_id,
+        model="gpt-3.5"
+    )
+    
+    # Structured output (sync)
+    class WeatherForecast(BaseModel):
+        temperature: float
+        conditions: str
+        precipitation_chance: float
+    
+    forecast: WeatherForecast = query_llm_structured(
+        prompt="Give me a weather forecast for Paris",
+        output_schema=WeatherForecast,
+        user=user_id
+    )
+    
+    # Raw response with full metadata (sync)
+    raw_response = query_llm_raw(
+        prompt="Explain quantum physics",
+        user=user_id,
+        model="claude-3.7"
+    )
 ```
 
-Purpose: Interface to query LLMs with support for text, streaming, and structured responses.
+Purpose: Interface to query LLMs with support for text, streaming, structured responses and usage tracking.
 
 ### chat_binder.py
 ```python
@@ -84,6 +130,110 @@ async def bind_example(message: Message) -> None:
 ```
 
 Purpose: Binds a chat to a user for different interaction contexts.
+
+### auto_archive.py
+```python
+from aiogram import Dispatcher
+from botspot.components.new.auto_archive import (
+    AutoArchiveSettings, initialize, setup_dispatcher
+)
+
+async def setup_auto_archive(dp: Dispatcher) -> None:
+    # Configure auto-archive to forward messages and delete the original
+    settings = AutoArchiveSettings(
+        enabled=True,
+        delay=10  # seconds before deleting original message
+    )
+    
+    # Initialize and add to dispatcher
+    auto_archive = initialize(settings)
+    dp.message.middleware(auto_archive)
+```
+
+Purpose: Automatically forwards messages to a bound chat and deletes the original after a delay.
+
+### subscription_manager.py
+```python
+from aiogram import Dispatcher
+from botspot.components.new.subscription_manager import (
+    SubscriptionManagerSettings, initialize, get_subscription_manager
+)
+
+async def setup_subscriptions(dp: Dispatcher) -> None:
+    # Configure subscription manager
+    settings = SubscriptionManagerSettings(enabled=True)
+    
+    # Initialize
+    subscription_manager = initialize(settings)
+    
+    # Example usage
+    async def check_subscription(user_id: int) -> bool:
+        sm = get_subscription_manager()
+        # Check if user has active subscription
+        return True  # Placeholder for actual implementation
+```
+
+Purpose: Manages user subscriptions, payment status, and access levels.
+
+### contact_manager.py
+```python
+from aiogram import Dispatcher
+from botspot.components.new.contact_manager import (
+    ContactManagerSettings, initialize, get_contact_manager
+)
+from botspot.components.data.contact_data import Contact
+
+async def manage_contacts_example() -> None:
+    # Configure contact manager
+    settings = ContactManagerSettings(enabled=True)
+    
+    # Initialize
+    contact_manager = initialize(settings)
+    
+    # Example usage
+    cm = get_contact_manager()
+    
+    # Create new contact
+    new_contact = Contact(
+        name="John Doe",
+        phones=["+1234567890"],
+        emails=["john@example.com"],
+        telegram={"id": 123456789, "username": "johndoe"}
+    )
+    
+    # Add to database (placeholder for actual implementation)
+    # await cm.add_contact(new_contact)
+```
+
+Purpose: Manages contact information with support for various contact methods.
+
+### context_builder.py
+```python
+from aiogram.types import Message
+from botspot.components.new.context_builder import (
+    ContextBuilderSettings, initialize, get_context_builder
+)
+
+async def context_builder_example(message: Message) -> None:
+    # Configure context builder
+    settings = ContextBuilderSettings(enabled=True)
+    
+    # Initialize
+    context_builder = initialize(settings)
+    
+    # Example usage
+    cb = get_context_builder()
+    
+    # Build context for LLM from message
+    # This is a placeholder for actual implementation
+    context = {
+        "user": message.from_user.full_name,
+        "message_history": ["Previous messages would be here"],
+        "user_preferences": {"language": "en", "expertise": "beginner"}
+    }
+```
+
+Purpose: Creates context objects for LLM interactions from user messages and history.
 
 ## Data Components
 
@@ -152,6 +302,26 @@ async def setup_info(dp: Dispatcher) -> None:
 ```
 
 Purpose: Provides bot version, uptime, and enabled components.
+
+### print_bot_url.py
+```python
+from aiogram import Dispatcher
+from botspot.components.qol.print_bot_url import (
+    PrintBotUrlSettings, setup_dispatcher
+)
+
+async def enable_bot_url_logging(dp: Dispatcher) -> None:
+    # Configure settings
+    settings = PrintBotUrlSettings(enabled=True)
+    
+    # Register the startup handler
+    setup_dispatcher(dp)
+    
+    # When the bot starts, it will log:
+    # INFO: Bot url: https://t.me/your_bot_username
+```
+
+Purpose: Logs the bot's t.me URL during startup for easy access.
 
 ## Main Components
 
@@ -257,3 +427,149 @@ chunks: list[str] = split_long_message(long_text)
 ```
 
 Purpose: Text manipulation, markdown escaping, splitting long messages.
+
+### event_scheduler.py
+```python
+from datetime import datetime
+from aiogram import Dispatcher
+from botspot.components.main.event_scheduler import (
+    EventSchedulerSettings, initialize, setup_dispatcher, get_scheduler
+)
+
+async def setup_scheduled_tasks(dp: Dispatcher) -> None:
+    # Configure scheduler with timezone
+    settings = EventSchedulerSettings(
+        enabled=True,
+        timezone="Europe/London"
+    )
+    
+    # Initialize scheduler and add to dispatcher
+    scheduler = initialize(settings)
+    setup_dispatcher(dp)
+    
+    # Add scheduled tasks
+    async def daily_report() -> None:
+        print(f"Running daily report at {datetime.now()}")
+    
+    # Example usage
+    scheduler = get_scheduler()
+    scheduler.add_job(
+        daily_report,
+        trigger="cron",
+        hour=9,
+        minute=0,
+        id="daily_report"
+    )
+```
+
+Purpose: Schedules and manages periodic or timed tasks using APScheduler.
+
+### trial_mode.py
+```python
+from aiogram import Dispatcher, Router
+from aiogram.types import Message
+from aiogram.filters import Command
+from botspot.components.main.trial_mode import (
+    TrialModeSettings, setup_dispatcher, add_user_limit, add_global_limit
+)
+
+# 1. Setup with middleware for all messages
+async def setup_trial_mode(dp: Dispatcher) -> None:
+    settings = TrialModeSettings(
+        enabled=True,
+        allowed_users=["admin1", "admin2"],
+        limit_per_user=5,  # 5 uses per user
+        global_limit=100,  # 100 uses across all users
+        period_per_user=86400,  # 24 hours
+        global_period=86400  # 24 hours
+    )
+    
+    setup_dispatcher(dp)
+
+# 2. Decorator approach for specific commands
+router = Router()
+
+@add_user_limit(limit=3, period=86400)  # 3 uses per day
+@add_global_limit(limit=30, period=86400)  # 30 uses per day across all users
+@router.message(Command("analyze"))
+async def analyze_command(message: Message) -> None:
+    await message.answer("Running expensive analysis...")
+```
+
+Purpose: Limits bot usage with per-user and global quotas for trial or freemium bots.
+
+## Features Components
+
+### multi_forward_handler.py
+```python
+from typing import List
+from aiogram.types import Message
+from botspot.components.features.multi_forward_handler import setup_dispatcher
+
+async def handle_multiple_messages(messages: List[Message]) -> None:
+    # Composing multiple messages into one response
+    composed_text = ""
+    for msg in messages:
+        user_name = msg.from_user.full_name
+        timestamp = msg.date.strftime("[%H:%M]")
+        composed_text += f"{timestamp} {user_name}:\n{msg.text}\n\n"
+    
+    # Send as single message or file
+    if len(composed_text) > 4000:
+        await messages[0].answer_document(
+            document=composed_text.encode(),
+            caption="Combined messages",
+            filename="messages.txt"
+        )
+    else:
+        await messages[0].answer(composed_text)
+
+# Register with dispatcher
+def register_multi_forward(dp: Dispatcher) -> None:
+    setup_dispatcher(dp)
+```
+
+Purpose: Collects multiple sequential messages and processes them as a batch.
+
+## Middlewares Components
+
+### error_handler.py
+```python
+from aiogram import Dispatcher
+from botspot.components.middlewares.error_handler import (
+    ErrorHandlerSettings, setup_dispatcher
+)
+from botspot.core.errors import BotspotError
+
+# Custom error with user-friendly message
+class PaymentError(BotspotError):
+    def __init__(self, message: str = "Payment processing failed"):
+        super().__init__(
+            user_message=message,
+            easter_eggs=True,  # Show easter egg in response
+            report_to_dev=True,  # Send report to developer
+            include_traceback=True  # Include traceback in developer report
+        )
+
+# Set up error handling
+async def setup_error_handling(dp: Dispatcher) -> None:
+    settings = ErrorHandlerSettings(
+        enabled=True,
+        easter_eggs=True,
+        developer_chat_id=12345678  # Your developer chat ID
+    )
+    
+    # Register error handler with dispatcher
+    setup_dispatcher(dp)
+    
+    # Usage example
+    async def risky_function():
+        try:
+            # Some code that might fail
+            result = 1 / 0
+        except Exception as e:
+            # Raise custom BotspotError
+            raise PaymentError("Sorry, we couldn't process your payment") from e
+```
+
+Purpose: Handles exceptions with user-friendly messages and developer notifications.
