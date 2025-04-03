@@ -243,6 +243,88 @@ async def movie_idea_handler(message: Message):
 
 Purpose: Manages queues of items with user-specific access, supporting both simple and complex item models.
 
+### user_interactions.py
+```python
+# Basic text question with timeout
+async def basic_question_example(message: Message, state: FSMContext):
+    chat_id = message.chat.id
+    
+    # Ask user a simple question with 60 seconds timeout
+    response = await ask_user(
+        chat_id=chat_id,
+        question="What's your favorite color?",
+        state=state,
+        timeout=60.0
+    )
+    
+    if response:
+        await send_safe(chat_id, f"You said your favorite color is: {response}")
+    else:
+        await send_safe(chat_id, "You didn't answer in time")
+
+# Multiple choice selection
+async def choice_example(message: Message, state: FSMContext):
+    chat_id = message.chat.id
+    
+    # Simple list of choices
+    choice = await ask_user_choice(
+        chat_id=chat_id,
+        question="Select your preferred language:",
+        choices=["Python", "JavaScript", "Go", "Rust"],
+        state=state,
+        default_choice="Python"  # Auto-selected if user doesn't respond
+    )
+    
+    await send_safe(chat_id, f"You selected: {choice}")
+    
+    # Dictionary with different display text and callback values
+    fruit = await ask_user_choice(
+        chat_id=chat_id,
+        question="Choose a fruit:",
+        choices={"apple": "🍎 Apple", "banana": "🍌 Banana", "orange": "🍊 Orange"},
+        state=state
+    )
+    
+    await send_safe(chat_id, f"You chose: {fruit}")
+
+# Yes/No confirmation
+async def confirmation_example(message: Message, state: FSMContext):
+    chat_id = message.chat.id
+    
+    confirmed = await ask_user_confirmation(
+        chat_id=chat_id,
+        question="Are you sure you want to proceed?",
+        state=state,
+        default_choice=False
+    )
+    
+    if confirmed:
+        await send_safe(chat_id, "Proceeding with operation...")
+    else:
+        await send_safe(chat_id, "Operation cancelled")
+
+# Raw response (returns full Message object)
+async def raw_response_example(message: Message, state: FSMContext):
+    chat_id = message.chat.id
+    
+    # Get the full Message object
+    response_msg = await ask_user_raw(
+        chat_id=chat_id,
+        question="Send me a photo or document:",
+        state=state,
+        timeout=120.0
+    )
+    
+    if response_msg and response_msg.photo:
+        await send_safe(chat_id, "Thanks for the photo!")
+    elif response_msg and response_msg.document:
+        await send_safe(chat_id, f"Thanks for the document: {response_msg.document.file_name}")
+    else:
+        await send_safe(chat_id, "No file received or timeout occurred")
+```
+
+Purpose: Provides utilities for interactive conversations with users, including asking questions, providing multiple choice options, and capturing responses in various formats.
+
 ## More components will be added as they are implemented
 
 Each example demonstrates the core functionality of a component in just a few lines of code.
