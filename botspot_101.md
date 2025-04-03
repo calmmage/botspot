@@ -1,330 +1,259 @@
 # Botspot 101: Component Examples
 
-This file contains minimal examples of how to use each Botspot component.
-
 ## Utils Components
-
-### text_utils.py
-```python
-# Example of escaping markdown text
-original_text = "This has *bold* and _italic_ formatting with [links](example.com)"
-escaped_text = escape_md(original_text)
-print(f"Escaped markdown: {escaped_text}")
-
-# Example of splitting a long message
-long_text = "This is a very long message. " * 300
-chunks = split_long_message(long_text)
-print(f"Split into {len(chunks)} chunks")
-```
-
-Purpose: Provides utilities for text manipulation, including markdown escaping and splitting long messages.
 
 ### send_safe.py
 ```python
-async def message_handler(message: Message):
-    super_long_text = "This is a very long message. " * 100
-    await send_safe(message.chat.id, super_long_text)
+from aiogram.types import Message
+from botspot.utils.send_safe import send_safe
+
+async def message_handler(message: Message) -> None:
+    long_text: str = "This is a very long message. " * 100
+    await send_safe(message.chat.id, long_text)
 ```
 
-Purpose: Safely sends messages that might exceed Telegram's message length limits by splitting them or sending as files.
+Purpose: Safely sends messages that exceed Telegram's length limits.
 
 ## New Components
 
 ### chat_fetcher.py
 ```python
-async def fetch_messages(message: Message):
-    user_id = message.from_user.id
-    chat_id = -100123456789  # Replace with a real group chat ID
+from aiogram.types import Message
+from botspot.components.chat_fetcher import get_chat_fetcher
+
+async def fetch_messages(message: Message) -> None:
+    user_id: int = message.from_user.id
+    chat_id: int = -100123456789
     
-    # Get chat fetcher and retrieve messages
     fetcher = get_chat_fetcher()
     messages = await fetcher.get_chat_messages(chat_id, user_id, limit=10)
     
-    # Print message text from retrieved messages
     for msg in messages:
         print(f"Message from {msg.sender_id}: {msg.text}")
 ```
 
-Purpose: Allows bots to access message history and content from chats using the Telethon client.
+Purpose: Access message history from chats using Telethon client.
 
 ### llm_provider.py
 ```python
-async def llm_message_handler(message: Message):
-    prompt = message.text
-    user_id = message.from_user.id
+from aiogram.types import Message
+from pydantic import BaseModel
+from botspot.components.llm_provider import aquery_llm, astream_llm, get_llm_provider
+
+async def llm_example(message: Message) -> None:
+    user_id: int = message.from_user.id
+    provider = get_llm_provider()
     
-    # 1. Basic text query
-    response = await aquery_llm(
-        prompt=prompt,
+    # Text query
+    response: str = await aquery_llm(
+        prompt=message.text,
         user=user_id,
-        model="claude-3.5",
-        temperature=0.7
+        model="claude-3.5"
     )
     
-    # 2. Streaming response (to show output token by token)
-    print("Streaming response:")
-    async for chunk in astream_llm(
-        prompt="Tell me a short story",
-        user=user_id
-    ):
-        print(chunk, end="", flush=True)
+    # Streaming response
+    async for chunk in astream_llm(prompt="Tell me a story", user=user_id):
+        print(chunk, end="")
     
-    # 3. Structured output with Pydantic
-    from pydantic import BaseModel
-    
+    # Structured output
     class MovieRecommendation(BaseModel):
         title: str
         year: int
         reasons: list[str]
     
-    structured_result = await provider.aquery_llm_structured(
+    movie: MovieRecommendation = await provider.aquery_llm_structured(
         prompt="Recommend a sci-fi movie",
         output_schema=MovieRecommendation,
         user=user_id
     )
-    print(f"Movie: {structured_result.title} ({structured_result.year})")
-    
-    # 4. Raw response with full details
-    raw_response = await provider.aquery_llm_raw(
-        prompt="What's the weather like?",
-        user=user_id
-    )
-    print(f"Token usage: {raw_response.usage}")
 ```
 
-Purpose: Provides an interface to query large language models (LLMs) from different providers (Claude, GPT, etc.) with support for text, streaming, structured, and raw responses.
+Purpose: Interface to query LLMs with support for text, streaming, and structured responses.
 
 ### chat_binder.py
 ```python
-async def bind_chat_handler(message: Message):
-    user_id = message.from_user.id
-    chat_id = message.chat.id
+from aiogram.types import Message
+from botspot.components.chat_binder import bind_chat, get_user_bound_chats
+
+async def bind_example(message: Message) -> None:
+    user_id: int = message.from_user.id
+    chat_id: int = message.chat.id
     
-    # Bind the current chat to the user
     record = await bind_chat(user_id, chat_id)
-    
-    # Get all bound chats for this user
     chats = await get_user_bound_chats(user_id)
-    print(f"User {user_id} has {len(chats)} bound chats")
 ```
 
-Purpose: Binds a chat to a user, allowing the user to interact with the bot in different contexts.
+Purpose: Binds a chat to a user for different interaction contexts.
 
 ## Data Components
 
 ### mongo_database.py
 ```python
-async def simple_db_operation():
-    # Get the database instance
+from botspot.components.data.mongo_database import get_database
+
+async def db_example() -> None:
     db = get_database()
-    
-    # Create a test collection and insert a document
     collection = db["test_collection"]
     await collection.insert_one({"name": "Test User", "created_at": "now"})
-    
-    # Find the document
     doc = await collection.find_one({"name": "Test User"})
-    print(f"Found document: {doc}")
 ```
 
-Purpose: Provides MongoDB database connectivity for other components that need persistent storage.
+Purpose: MongoDB database connectivity for persistent storage.
 
 ### user_data.py
 ```python
-async def main():
-    # Create a sample user from Telegram user data
-    telegram_user = AiogramUser(
-        id=12345,
-        first_name="John",
-        last_name="Doe",
-        username="johndoe",
-        is_bot=False
-    )
+from aiogram.types.user import User as AiogramUser
+from botspot.components.data.user_data import User, get_user_manager
+
+async def user_example() -> None:
+    telegram_user = AiogramUser(id=12345, first_name="John")
     
-    # Get user manager
     user_manager = get_user_manager()
+    user = User(user_id=telegram_user.id, first_name=telegram_user.first_name)
     
-    # Create a User object from Telegram user data
-    user = User(
-        user_id=telegram_user.id,
-        username=telegram_user.username,
-        first_name=telegram_user.first_name,
-        last_name=telegram_user.last_name
-    )
-    
-    # Add user to database and retrieve later
     await user_manager.add_user(user)
     retrieved_user = await user_manager.get_user(user.user_id)
 ```
 
-Purpose: Manages user data storage and tracking, including user types (admin, friend, regular).
+Purpose: User data storage and tracking.
 
 ## QOL Components
 
 ### bot_commands_menu.py
 ```python
-# Register command handlers with decorators
+from aiogram import Router
+from aiogram.types import Message
+from aiogram.filters import Command
+from botspot.utils.bot_commands import botspot_command, add_hidden_command
+
+router = Router()
+
 @botspot_command("start", "Start the bot")
 @router.message(Command("start"))
-async def cmd_start(message: Message):
+async def cmd_start(message: Message) -> None:
     await message.answer("Welcome to the bot!")
 
-# Add a hidden command
 @add_hidden_command("secret", "Secret command")
 @router.message(Command("secret"))
-async def cmd_secret(message: Message):
+async def cmd_secret(message: Message) -> None:
     await message.answer("This is a hidden command")
 ```
 
-Purpose: Manages bot command registration and display in the Telegram command menu.
+Purpose: Command registration and display in Telegram command menu.
 
 ### bot_info.py
 ```python
-async def main():
-    # Create dispatcher and register handler
-    dp = Dispatcher()
+from aiogram import Dispatcher
+from aiogram.filters import Command
+from botspot.components.bot_info import bot_info_handler
+
+async def setup_info(dp: Dispatcher) -> None:
     dp.message.register(bot_info_handler, Command("bot_info"))
-    
-    # Simulate bot_info command
-    message = Message(text="/bot_info", chat={"id": 123456})
-    await bot_info_handler(message)
 ```
 
-Purpose: Provides information about the bot, including version, uptime, and enabled components.
+Purpose: Provides bot version, uptime, and enabled components.
 
 ## Main Components
 
 ### single_user_mode.py
 ```python
-async def setup_single_user_bot():
-    # Create a bot with single user mode
+from aiogram import Bot, Dispatcher
+from botspot.components.single_user_mode import (
+    SingleUserModeSettings, initialize, setup_dispatcher
+)
+
+async def setup_single_user() -> None:
     bot = Bot("YOUR_BOT_TOKEN")
     dp = Dispatcher()
     
-    # Set up single user mode
     settings = SingleUserModeSettings(enabled=True, user="12345")
     initialize(settings)
     setup_dispatcher(dp)
-    
-    # Register a simple handler
-    dp.message.register(message_handler)
 ```
 
-Purpose: Restricts bot access to a single specified user, ignoring messages from all other users.
+Purpose: Restricts bot access to a single specified user.
 
 ### queue_manager.py
 ```python
-# Basic usage
-async def message_handler(message: Message):
+from aiogram.types import Message
+from pydantic import BaseModel
+from botspot.components.queue_manager import create_queue, QueueItem
+
+async def queue_example(message: Message) -> None:
     queue = create_queue()
-    item = QueueItem(data=message.text)
-    await queue.add_item(item, user_id=message.from_user.id)
+    await queue.add_item(QueueItem(data=message.text), user_id=message.from_user.id)
     
-    items = await queue.get_items(user_id=message.from_user.id)
-    await send_safe(message.chat.id, f"Added to queue! Total items: {len(items)}")
-```
-
-```python
-# Advanced usage with custom item model
-class MovieIdeaType(str, Enum):
-    specific_movie = "specific_movie"
-    cue = "cue"
-    person = "person"
-
-class MovieIdea(BaseModel):
-    idea: str
-    type: MovieIdeaType
+    # With custom model
+    class MovieIdea(BaseModel):
+        idea: str
+        type: str
     
-async def movie_idea_handler(message: Message):
     movie_queue = create_queue("movies", MovieIdea)
-    item = MovieIdea(idea="Inception", type=MovieIdeaType.specific_movie)
-    await movie_queue.add_item(item, user_id=message.from_user.id)
+    await movie_queue.add_item(
+        MovieIdea(idea="Inception", type="specific_movie"), 
+        message.from_user.id
+    )
 ```
 
-Purpose: Manages queues of items with user-specific access, supporting both simple and complex item models.
+Purpose: Manages user-specific queues of items.
 
 ### user_interactions.py
 ```python
-# Basic text question with timeout
-async def basic_question_example(message: Message, state: FSMContext):
-    chat_id = message.chat.id
+from typing import Optional
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from botspot.components.features.user_interactions import (
+    ask_user, ask_user_choice, ask_user_confirmation, ask_user_raw
+)
+
+async def interactions_example(message: Message, state: FSMContext) -> None:
+    chat_id: int = message.chat.id
     
-    # Ask user a simple question with 60 seconds timeout
-    response = await ask_user(
+    # Basic question
+    color: Optional[str] = await ask_user(
         chat_id=chat_id,
         question="What's your favorite color?",
         state=state,
         timeout=60.0
     )
     
-    if response:
-        await send_safe(chat_id, f"You said your favorite color is: {response}")
-    else:
-        await send_safe(chat_id, "You didn't answer in time")
-
-# Multiple choice selection
-async def choice_example(message: Message, state: FSMContext):
-    chat_id = message.chat.id
-    
-    # Simple list of choices
-    choice = await ask_user_choice(
+    # Multiple choice
+    language: Optional[str] = await ask_user_choice(
         chat_id=chat_id,
-        question="Select your preferred language:",
+        question="Select language:",
         choices=["Python", "JavaScript", "Go", "Rust"],
         state=state,
-        default_choice="Python"  # Auto-selected if user doesn't respond
+        default_choice="Python"
     )
     
-    await send_safe(chat_id, f"You selected: {choice}")
-    
-    # Dictionary with different display text and callback values
-    fruit = await ask_user_choice(
+    # Yes/No confirmation
+    confirmed: Optional[bool] = await ask_user_confirmation(
         chat_id=chat_id,
-        question="Choose a fruit:",
-        choices={"apple": "🍎 Apple", "banana": "🍌 Banana", "orange": "🍊 Orange"},
-        state=state
-    )
-    
-    await send_safe(chat_id, f"You chose: {fruit}")
-
-# Yes/No confirmation
-async def confirmation_example(message: Message, state: FSMContext):
-    chat_id = message.chat.id
-    
-    confirmed = await ask_user_confirmation(
-        chat_id=chat_id,
-        question="Are you sure you want to proceed?",
+        question="Proceed?",
         state=state,
         default_choice=False
     )
     
-    if confirmed:
-        await send_safe(chat_id, "Proceeding with operation...")
-    else:
-        await send_safe(chat_id, "Operation cancelled")
-
-# Raw response (returns full Message object)
-async def raw_response_example(message: Message, state: FSMContext):
-    chat_id = message.chat.id
-    
-    # Get the full Message object
-    response_msg = await ask_user_raw(
+    # Raw response
+    response_msg: Optional[Message] = await ask_user_raw(
         chat_id=chat_id,
-        question="Send me a photo or document:",
-        state=state,
-        timeout=120.0
+        question="Send a photo:",
+        state=state
     )
-    
-    if response_msg and response_msg.photo:
-        await send_safe(chat_id, "Thanks for the photo!")
-    elif response_msg and response_msg.document:
-        await send_safe(chat_id, f"Thanks for the document: {response_msg.document.file_name}")
-    else:
-        await send_safe(chat_id, "No file received or timeout occurred")
 ```
 
-Purpose: Provides utilities for interactive conversations with users, including asking questions, providing multiple choice options, and capturing responses in various formats.
+Purpose: Interactive conversations with users through questions and choices.
 
-## More components will be added as they are implemented
+### text_utils.py
+```python
+from botspot.utils.text_utils import escape_md, split_long_message
 
-Each example demonstrates the core functionality of a component in just a few lines of code.
+original_text: str = "This has *bold* and _italic_ formatting"
+escaped_text: str = escape_md(original_text)
+print(f"Escaped markdown: {escaped_text}")
+
+long_text: str = "This is a very long message. " * 300
+chunks: list[str] = split_long_message(long_text)
+```
+
+Purpose: Text manipulation, markdown escaping, splitting long messages.
