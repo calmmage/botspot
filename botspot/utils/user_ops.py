@@ -1,11 +1,14 @@
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 
-from aiogram.types import User
-from loguru import logger
+from aiogram.types import User as AiogramUser
 from pydantic import BaseModel
 
 from botspot.utils.cache_utils import AsyncLRUCache
 from botspot.utils.internal import get_logger
+
+if TYPE_CHECKING:
+
+    from botspot.components.data.user_data import User
 
 logger = get_logger()
 
@@ -19,18 +22,25 @@ class UserRecord(BaseModel):
     phone: Optional[str] = None
 
 
-UserLike = Union[str, int, UserRecord, User]
+UserLike = Union[str, int, UserRecord, AiogramUser, "User"]
 
 
 def to_user_record(user: UserLike) -> UserRecord:
+    from botspot.components.data.user_data import User
+
     if isinstance(user, UserRecord):
         return user
-    if isinstance(user, User):
+    if isinstance(user, AiogramUser):
         return UserRecord(
             user_id=user.id,
             username=user.username,
             # first_name=user.first_name,
             # last_name=user.last_name,
+        )
+    if isinstance(user, User):
+        return UserRecord(
+            user_id=user.user_id,
+            username=user.username,
         )
     if isinstance(user, str):
         return get_user_record(user)
