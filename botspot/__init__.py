@@ -29,8 +29,11 @@ from .utils import (
     get_chat_fetcher,
     get_database,
     get_dispatcher,
+    get_easter_egg,
+    get_llm_provider,
     get_message_text,
     get_name,
+    get_pong,
     get_scheduler,
     get_telethon_client,
     get_telethon_manager,
@@ -68,9 +71,10 @@ __all__ = [
     ## utils
     # "print_bot_url",
     # has getters
-    # "telethon_manager",
+    "telethon_manager",
     "get_telethon_manager",
     # LLM Provider
+    "get_llm_provider",
     "llm_provider",
     # Chat Fetcher
     "chat_fetcher",
@@ -93,4 +97,6 @@ __all__ = [
     "is_admin",
     "is_friend",
     "to_user_record",
+    "get_easter_egg",
+    "get_pong",
 ]

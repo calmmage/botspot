@@ -14,6 +14,7 @@ from botspot.components.main.event_scheduler import get_scheduler
 from botspot.components.main.telethon_manager import get_telethon_manager
 from botspot.components.new.chat_binder import get_chat_binder
 from botspot.components.new.chat_fetcher import get_chat_fetcher
+from botspot.components.new.llm_provider import get_llm_provider
 from botspot.components.new.queue_manager import get_queue_manager
 
 if TYPE_CHECKING:
@@ -78,4 +79,5 @@ __all__ = [
     "get_chat_binder",
     "get_chat_fetcher",
     "get_queue_manager",
+    "get_llm_provider",
 ]

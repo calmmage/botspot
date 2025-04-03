@@ -4,7 +4,7 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from pydantic_settings import BaseSettings
 
-from botspot.utils.easter_eggs.main import get_easter_egg
+from botspot.utils.easter_eggs import get_easter_egg
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
