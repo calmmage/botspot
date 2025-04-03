@@ -16,7 +16,7 @@ logger = get_logger()
 
 class AskUserSettings(BaseSettings):
     enabled: bool = True
-    default_timeout: int = 60
+    default_timeout: int = 1200
 
     class Config:
         env_prefix = "BOTSPOT_ASK_USER_"
@@ -119,6 +119,9 @@ async def _ask_user_base(
 
     if timeout is None:
         timeout = deps.botspot_settings.ask_user.default_timeout
+    if timeout == 0:
+        # a way to specify no timeout
+        timeout = None
 
     try:
         await asyncio.wait_for(request.event.wait(), timeout=timeout)
@@ -178,7 +181,7 @@ async def ask_user_raw(
     **kwargs,
 ) -> Optional[Message]:
     return await _ask_user_base(
-        chat_id, question, state, timeout, return_raw=True, cleanup=cleanup, **kwargs
+        chat_id, question, state, timeout=timeout, return_raw=True, cleanup=cleanup, **kwargs
     )
 
 
