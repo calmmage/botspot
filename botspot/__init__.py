@@ -14,10 +14,11 @@ except PackageNotFoundError:
     __version__ = toml.load(path)["tool"]["poetry"]["version"]
     del toml, Path, path
 
-from . import commands_menu, trial_mode, user_data, user_interactions
+from . import commands_menu, llm_provider, trial_mode, user_data, user_interactions
 from .components.data import mongo_database
 from .components.features import multi_forward_handler
 from .components.main import event_scheduler, single_user_mode, telethon_manager
+from .components.main.single_user_mode import get_single_user, is_single_user_mode_enabled
 from .components.middlewares import error_handler
 from .components.new import chat_fetcher, llm_provider
 from .components.qol import bot_commands_menu, bot_info, print_bot_url
@@ -99,4 +100,6 @@ __all__ = [
     "to_user_record",
     "get_easter_egg",
     "get_pong",
+    "is_single_user_mode_enabled",
+    "get_single_user",
 ]

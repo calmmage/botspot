@@ -20,6 +20,30 @@ class SingleUserModeSettings(BaseSettings):
         extra = "ignore"
 
 
+def is_single_user_mode_enabled() -> bool:
+    """Check if single user mode is enabled.
+
+    Returns:
+        bool: True if single user mode is enabled, False otherwise
+    """
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    return deps.botspot_settings.single_user_mode.enabled
+
+
+def get_single_user() -> Optional[str]:
+    """Get the configured single user.
+
+    Returns:
+        Optional[str]: The configured single user ID or None if not set
+    """
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    return deps.botspot_settings.single_user_mode.user
+
+
 async def single_user_mode_middleware(
     handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
     event: Update,
