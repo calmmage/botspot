@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
+from loguru import logger
 from pydantic_settings import BaseSettings
 
 if TYPE_CHECKING:
@@ -353,25 +354,46 @@ def setup_dispatcher(dp):
 
 
 def initialize(settings: ChatFetcherSettings) -> ChatFetcher:
-    # check necessary import - telethon
+    """Initialize ChatFetcher component.
+
+    Args:
+        settings: Configuration for the ChatFetcher component
+
+    Returns:
+        ChatFetcher instance
+
+    Raises:
+        ImportError: If Telethon is not installed
+        RuntimeError: If TelethonManager component is not enabled
+    """
+    # Skip initialization if component is disabled
+    if not settings.enabled:
+        logger.info("ChatFetcher component is disabled")
+        return ChatFetcher(settings)
+
+    # Check necessary import - telethon
     try:
         from telethon import TelegramClient
+
+        logger.debug("Telethon is installed")
     except ImportError:
+        logger.error("Telethon is not installed. Please install it to use ChatFetcher component.")
         raise ImportError(
-            "Telethon is not installed. Please install it to use ChatFetcher botspot component."
+            "Telethon is not installed. Please install it with 'poetry add telethon' or 'pip install telethon' to use ChatFetcher component."
         )
 
-    # check telethon manager enabled
+    # Check telethon manager enabled
     from botspot import get_dependency_manager
 
     deps = get_dependency_manager()
     if not deps.botspot_settings.telethon_manager.enabled:
+        logger.error("Telethon Manager is not enabled. ChatFetcher component requires it.")
         raise RuntimeError(
-            "Telegram Manager is not enabled. Please enable it to use ChatFetcher botspot component."
+            "Telethon Manager is not enabled. BOTSPOT_TELETHON_MANAGER_ENABLED=true in .env"
         )
 
-    cf = ChatFetcher(settings)
-    return cf
+    logger.info("ChatFetcher component initialized")
+    return ChatFetcher(settings)
 
 
 def get_chat_fetcher() -> ChatFetcher:

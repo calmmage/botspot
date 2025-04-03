@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.9.7"
+version = "0.9.8"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -24,6 +24,8 @@ pydantic = "^2.10"
 apscheduler = "^3.10.4"
 pymongo = ">=4.9"
 litellm = "^1.63"  # For LLM provider component
+motor = "^3.6.0"
+telethon = "^1.38.1"
 # dependencies for extra features
 
 # Main
@@ -79,8 +81,6 @@ litellm = "^1.63"  # For LLM provider component
 #paramiko = "*"              # SSH2 protocol library
 #scp = "*"                   # Secure copy
 #pymorphy2 = "*"             # Morphological analyzer
-motor = "^3.6.0"
-telethon = "^1.38.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.5"

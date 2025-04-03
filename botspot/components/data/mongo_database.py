@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
@@ -51,15 +51,36 @@ def get_mongo_client() -> "AsyncIOMotorClient":
 
 def initialize(
     settings: MongoDatabaseSettings,
-) -> Tuple["AsyncIOMotorClient", "AsyncIOMotorDatabase"]:
-    """Initialize MongoDB connection and return both client and database."""
-    from motor.motor_asyncio import AsyncIOMotorClient
+) -> Tuple[Optional["AsyncIOMotorClient"], Optional["AsyncIOMotorDatabase"]]:
+    """Initialize MongoDB connection and return both client and database.
 
-    assert AsyncIOMotorClient
+    Args:
+        settings: MongoDB settings
 
+    Returns:
+        Tuple of (AsyncIOMotorClient, AsyncIOMotorDatabase) or (None, None) if disabled
+
+    Raises:
+        ImportError: If motor is not installed
+    """
+    # Check if MongoDB is enabled
+    if not settings.enabled:
+        logger.info("MongoDB is disabled")
+        return None, None
+
+    # Check if motor is installed
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+    except ImportError:
+        logger.error("motor package is not installed. Please install it to use MongoDB.")
+        raise ImportError(
+            "motor package is not installed. Run 'poetry add motor' or 'pip install motor'"
+        )
+
+    # Initialize client and database
     client = AsyncIOMotorClient(settings.conn_str.get_secret_value())
     db = client[settings.database]
-    logger.info("MongoDB client initialized.")
+    logger.info(f"MongoDB client initialized. Database: {settings.database}")
     return client, db
 
 

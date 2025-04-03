@@ -299,8 +299,57 @@ class UserDataSettings(BaseSettings):
 
 
 def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
-    """Initialize the user data component"""
-    db = get_database()
+    """Initialize the user data component.
+
+    Args:
+        settings: Botspot settings
+        user_class: Optional custom User class to use
+
+    Returns:
+        UserManager instance
+
+    Raises:
+        RuntimeError: If MongoDB is not enabled or initialized
+        ImportError: If motor package is not installed
+    """
+    # Check that motor is installed
+    try:
+        from motor.motor_asyncio import AsyncIOMotorDatabase
+    except ImportError:
+        from botspot.utils.internal import get_logger
+
+        logger = get_logger()
+        logger.error(
+            "motor package is not installed. Please install it to use the user_data component."
+        )
+        raise ImportError(
+            "motor package is not installed. Please install it with 'poetry add motor' or 'pip install motor' to use the user_data component."
+        )
+
+    # Check that MongoDB component is enabled
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    if not deps.botspot_settings.mongo_database.enabled:
+        from botspot.utils.internal import get_logger
+
+        logger = get_logger()
+        logger.error("MongoDB is not enabled. User data component requires it.")
+        raise RuntimeError("MongoDB is not enabled. BOTSPOT_MONGO_DATABASE_ENABLED=true in .env")
+
+    # Get database and ensure we can access it
+    from botspot.components.data.mongo_database import get_database
+
+    try:
+        db = get_database()
+        # Simple existence check to verify database is accessible
+        _ = db.name
+    except Exception as e:
+        from botspot.utils.internal import get_logger
+
+        logger = get_logger()
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        raise RuntimeError(f"MongoDB connection failed: {str(e)}")
 
     if user_class is None:
         user_class = User

@@ -915,7 +915,9 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
         logger.error(
             "litellm is not installed. Please install it to use the LLM Provider component."
         )
-        raise
+        raise ImportError(
+            "litellm is not installed. Run 'poetry add litellm' or 'pip install litellm'"
+        )
     if not settings.skip_import_check:
         ai_libraries = {
             "openai": "openai",  # poetry add openai -> import openai

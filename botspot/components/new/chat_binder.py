@@ -474,7 +474,21 @@ def initialize(settings: ChatBinderSettings) -> ChatBinder:
     if not deps.botspot_settings.mongo_database.enabled:
         from botspot.core.errors import ConfigurationError
 
-        raise ConfigurationError("MongoDB is required for chat_binder component")
+        raise ConfigurationError(
+            "MongoDB is required for chat_binder component. BOTSPOT_MONGO_DATABASE_ENABLED=true in .env"
+        )
+
+    # Verify database access
+    try:
+        from botspot.components.data.mongo_database import get_database
+
+        db = get_database()
+        # Simple existence check to verify database is accessible
+        _ = db.name
+    except Exception as e:
+        logger = get_logger()
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        raise RuntimeError(f"MongoDB connection failed: {str(e)}")
 
     # Register commands
     from botspot.components.qol.bot_commands_menu import Visibility, add_command

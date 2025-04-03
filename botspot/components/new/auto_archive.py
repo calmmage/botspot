@@ -87,8 +87,32 @@ def setup_dispatcher(dp):
 
 
 def initialize(settings: AutoArchiveSettings) -> AutoArchive:
-    aa = AutoArchive(settings)
-    return aa
+    """Initialize the AutoArchive component.
+
+    Args:
+        settings: Configuration for the AutoArchive component
+
+    Returns:
+        AutoArchive instance
+
+    Raises:
+        RuntimeError: If chat_binder component is not enabled
+    """
+    if not settings.enabled:
+        logger.info("AutoArchive component is disabled")
+        return AutoArchive(settings)
+
+    # Check that chat_binder component is enabled
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+
+    if not deps.botspot_settings.chat_binder.enabled:
+        logger.error("Chat Binder is not enabled. AutoArchive component requires it.")
+        raise RuntimeError("Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env")
+
+    logger.info("AutoArchive component initialized")
+    return AutoArchive(settings)
 
 
 def get_auto_archive() -> AutoArchive:
