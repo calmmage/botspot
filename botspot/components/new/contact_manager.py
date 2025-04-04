@@ -1,6 +1,11 @@
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+if TYPE_CHECKING:
+    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from botspot.commands_menu import Visibility
+    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
+
 from aiogram import Dispatcher, Router
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -8,14 +13,11 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 from botspot import commands_menu
-from botspot.commands_menu import Visibility
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.deps_getters import get_database
 from botspot.utils.internal import get_logger
-from botspot.utils.user_ops import UserLike, get_chat_id
-
-if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
+from botspot.utils.user_ops import UserLike
+from botspot.components.new.queue_manager import create_queue, get_queue
 
 logger = get_logger()
 
@@ -38,7 +40,7 @@ class ContactManagerSettings(BaseSettings):
         extra = "ignore"
 
 
-class Contact(BaseModel):
+class ContactItem(BaseModel):
     """Contact information model."""
     
     name: str
@@ -84,22 +86,23 @@ class Contact(BaseModel):
 class ContactManager:
     """Manager for user contacts."""
     
-    def __init__(self, db: "AsyncIOMotorDatabase", collection: str):
-        """Initialize contact manager with database connection."""
-        self.db = db
-        self.collection = collection
-        
-    @property
-    def contacts_collection(self) -> "AsyncIOMotorCollection":
-        """Get the contacts collection."""
-        return self.db[self.collection]
+    def __init__(self, settings: ContactManagerSettings):
+        """Initialize contact manager with settings."""
+        self.settings = settings
+        self.queue = create_queue(
+            key="contacts",
+            item_model=ContactItem
+        )
     
-    async def add_contact(self, contact: Contact) -> bool:
+    async def add_contact(self, contact: ContactItem) -> bool:
         """Add a new contact to the database."""
         try:
             contact.updated_at = datetime.now(timezone.utc)
-            result = await self.contacts_collection.insert_one(contact.model_dump())
-            logger.info(f"Added contact: {contact.name} with ID {result.inserted_id}")
+            await self.queue.add_item(contact, user_id=contact.owner_id)
+            logger.info(f"Added contact: {contact.name}")
+            # used to be 
+            # logger.info(f"Added contact: {contact.name}, with ID {result.inserted_id}"), but QM does not provide ID, add_item returns void.
+            # may change QM iterface in the future
             return True
         except Exception as e:
             logger.error(f"Error adding contact {contact.name}: {e}")
@@ -108,13 +111,11 @@ class ContactManager:
     async def update_contact(self, contact_id: str, data: Dict[str, Any]) -> bool:
         """Update an existing contact."""
         try:
-            # Add updated timestamp
+            # Update the timestamp
             data["updated_at"] = datetime.now(timezone.utc)
-            result = await self.contacts_collection.update_one(
-                {"_id": contact_id}, 
-                {"$set": data}
-            )
-            return result.modified_count > 0
+            
+            # Use the queue's update_record method to directly update the contact
+            return await self.queue.update_record(contact_id, data)
         except Exception as e:
             logger.error(f"Error updating contact {contact_id}: {e}")
             return False
@@ -122,17 +123,16 @@ class ContactManager:
     async def delete_contact(self, contact_id: str) -> bool:
         """Delete a contact by ID."""
         try:
-            result = await self.contacts_collection.delete_one({"_id": contact_id})
-            return result.deleted_count > 0
+            return await self.queue.delete_record(contact_id)
         except Exception as e:
             logger.error(f"Error deleting contact {contact_id}: {e}")
             return False
             
-    async def get_contact_by_id(self, contact_id: str) -> Optional[Contact]:
+    async def get_contact_by_id(self, contact_id: str) -> Optional[ContactItem]:
         """Get a contact by ID."""
         try:
-            data = await self.contacts_collection.find_one({"_id": contact_id})
-            return Contact(**data) if data else None
+            contact_dict = await self.queue.find({"_id": contact_id})
+            return ContactItem(**contact_dict) if contact_dict else None
         except Exception as e:
             logger.error(f"Error getting contact {contact_id}: {e}")
             return None
@@ -142,20 +142,16 @@ class ContactManager:
         query: Dict[str, Any], 
         limit: int = 10,
         owner_id: Optional[int] = None
-    ) -> List[Contact]:
+    ) -> List[ContactItem]:
         """Find contacts matching the query."""
         try:
-            # If owner_id is provided, filter by owner
+            # If owner_id is provided, add it to the query
             if owner_id is not None:
                 query["owner_id"] = owner_id
-                
-            cursor = self.contacts_collection.find(query).limit(limit)
-            contacts = []
             
-            async for doc in cursor:
-                contacts.append(Contact(**doc))
-                
-            return contacts
+            # Use the queue's find_many method
+            contact_dicts = await self.queue.find_many(query, limit=limit)
+            return [ContactItem(**doc) for doc in contact_dicts]
         except Exception as e:
             logger.error(f"Error finding contacts: {e}")
             return []
@@ -165,37 +161,37 @@ class ContactManager:
         text: str, 
         owner_id: Optional[int] = None,
         limit: int = 10
-    ) -> List[Contact]:
+    ) -> List[ContactItem]:
         """Search for contacts by name, email, etc."""
-        query = {
-            "$or": [
-                {"name": {"$regex": text, "$options": "i"}},
-                {"email": {"$regex": text, "$options": "i"}},
-                {"phone": {"$regex": text, "$options": "i"}},
-                {"telegram": {"$regex": text, "$options": "i"}},
-                {"notes": {"$regex": text, "$options": "i"}}
-            ]
-        }
+        try:
+            # Create a query with $or for text matching across multiple fields
+            query = {
+                "$or": [
+                    {"name": {"$regex": text, "$options": "i"}},
+                    {"email": {"$regex": text, "$options": "i"}},
+                    {"phone": {"$regex": text, "$options": "i"}},
+                    {"telegram": {"$regex": text, "$options": "i"}},
+                    {"notes": {"$regex": text, "$options": "i"}}
+                ]
+            }
+            
+            # Add owner_id constraint if provided
+            if owner_id is not None:
+                query["owner_id"] = owner_id
+            
+            # Use find_many with the query
+            contact_dicts = await self.queue.find_many(query, limit=limit)
+            return [ContactItem(**doc) for doc in contact_dicts]
+        except Exception as e:
+            logger.error(f"Error searching contacts: {e}")
+            return []
         
-        return await self.find_contacts(query, limit, owner_id)
-        
-    async def get_random_contact(self, owner_id: Optional[int] = None) -> Optional[Contact]:
+    async def get_random_contact(self, owner_id: Optional[int] = None) -> Optional[ContactItem]:
         """Get a random contact."""
         try:
-            pipeline = []
-            
-            # If owner_id is provided, filter by owner
-            if owner_id is not None:
-                pipeline.append({"$match": {"owner_id": owner_id}})
-                
-            # Add sample stage to get random document
-            pipeline.append({"$sample": {"size": 1}})
-            
-            cursor = self.contacts_collection.aggregate(pipeline)
-            async for doc in cursor:
-                return Contact(**doc)
-                
-            return None
+            # Use the queue's get_random_record method
+            contact_dict = await self.queue.get_random_record(user_id=owner_id)
+            return ContactItem(**contact_dict) if contact_dict else None
         except Exception as e:
             logger.error(f"Error getting random contact: {e}")
             return None
@@ -204,7 +200,7 @@ class ContactManager:
         self, 
         text: str, 
         user_id: Optional[int] = None
-    ) -> Optional[Contact]:
+    ) -> Optional[ContactItem]:
         """
         Parse contact information from text using LLM.
         
@@ -242,7 +238,7 @@ class ContactManager:
             # Use structured output for better parsing
             result = await llm.aquery_llm_structured(
                 prompt=text,
-                output_schema=Contact,
+                output_schema=ContactItem,
                 user=user_id,
                 system_message=system_message,
                 temperature=0.2,  # Lower temperature for more deterministic output
@@ -267,6 +263,8 @@ class ContactManager:
 
 def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: ContactManagerSettings):
     """Set up command handlers for contact management."""
+    from botspot.commands_menu import Visibility
+    
     router = Router(name="contact_manager")
     
     # Add command to add contact
@@ -441,13 +439,7 @@ def initialize(settings: ContactManagerSettings) -> ContactManager:
         return None
     
     logger.info("Initializing Contact Manager component")
-    
-    # Get MongoDB database
-    db = get_database()
-    
-    # Create Contact Manager instance
-    manager = ContactManager(db, settings.collection)
-    
+    manager = ContactManager(settings)
     return manager
 
 
