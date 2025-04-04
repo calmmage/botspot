@@ -48,7 +48,7 @@ class TestErrorHandler:
         with patch(
             "botspot.core.dependency_manager.get_dependency_manager"
         ) as mock_get_deps, patch(
-            "botspot.utils.easter_eggs.main.get_easter_egg"
+            "botspot.utils.easter_eggs.get_easter_egg"
         ) as mock_get_easter_egg, patch(
             "botspot.components.middlewares.error_handler.logger"
         ) as mock_logger, patch(
@@ -225,7 +225,7 @@ class TestErrorHandler:
         with patch(
             "botspot.core.dependency_manager.get_dependency_manager"
         ) as mock_get_deps, patch(
-            "botspot.utils.easter_eggs.main.get_easter_egg"
+            "botspot.utils.easter_eggs.get_easter_egg"
         ) as mock_get_easter_egg, patch(
             "botspot.components.middlewares.error_handler.logger"
         ) as mock_logger, patch(

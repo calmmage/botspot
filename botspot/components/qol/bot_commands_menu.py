@@ -4,11 +4,10 @@ from typing import Dict, List, NamedTuple, Tuple
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import BotCommand, Message
+from aiogram.types import BotCommand
 from deprecated import deprecated
 from pydantic_settings import BaseSettings
 
-from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -105,13 +104,16 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
     dp.startup.register(set_aiogram_bot_commands)
 
     if settings.botspot_help:
+        from aiogram.types import Message
 
         @add_command("help_botspot", "Show available bot commands")
         @dp.message(Command("help_botspot"))
         async def help_botspot_cmd(message: Message):
             """Show available bot commands"""
-            is_admin = await AdminFilter()(message)
-            help_text = get_commands_by_visibility(include_admin=is_admin)
+            from botspot.utils.user_ops import is_admin
+
+            assert message.from_user is not None
+            help_text = get_commands_by_visibility(include_admin=is_admin(message.from_user))
             await message.answer(help_text)
 
 
@@ -164,3 +166,32 @@ def add_hidden_command(names=None, description=None):
 def add_admin_command(names=None, description=None):
     """Add an admin-only command to the bot's command list"""
     return add_command(names, description, visibility=Visibility.ADMIN_ONLY)
+
+
+if __name__ == "__main__":
+    from aiogram import Router
+    from aiogram.types import Message
+
+    # Create a router for commands
+    router = Router()
+
+    # Register command handlers with decorators
+    @botspot_command("start", "Start the bot")
+    @router.message(Command("start"))
+    async def cmd_start(message: Message):
+        await message.answer("Welcome to the bot!")
+
+    @botspot_command("help", "Show available commands")
+    @router.message(Command("help"))
+    async def cmd_help(message: Message):
+        await message.answer("Help message here")
+
+    # Add a hidden command
+    @add_hidden_command("secret", "Secret command")
+    @router.message(Command("secret"))
+    async def cmd_secret(message: Message):
+        await message.answer("This is a hidden command")
+
+    # Print all registered commands
+    print("Registered commands:")
+    print(get_commands_by_visibility(include_admin=True))

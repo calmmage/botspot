@@ -16,6 +16,7 @@ class AdminFilterSettings(BaseSettings):
         extra = "ignore"
 
 
+# todo consolidate this class and is_admin function to avoid responsibility duplication
 class AdminFilter(BaseFilter):
     async def __call__(self, event: Union[Message, CallbackQuery], *args: Any) -> bool:
         from botspot import send_safe

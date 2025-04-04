@@ -13,7 +13,14 @@ from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
 from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
 from botspot.components.middlewares import error_handler
-from botspot.components.new import chat_binder, contact_manager, llm_provider
+from botspot.components.new import (
+    auto_archive,
+    chat_binder,
+    chat_fetcher,
+    contact_manager,
+    llm_provider,
+    queue_manager,
+)
 from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
@@ -64,6 +71,15 @@ class BotManager(metaclass=Singleton):
         if self.settings.contact_manager.enabled:
             self.deps.contact_manager = contact_manager.initialize(self.settings.contact_manager)
 
+        if self.settings.queue_manager.enabled:
+            self.deps.queue_manager = queue_manager.initialize(self.settings.queue_manager)
+
+        if self.settings.chat_fetcher.enabled:
+            self.deps.chat_fetcher = chat_fetcher.initialize(self.settings.chat_fetcher)
+
+        if self.settings.auto_archive.enabled:
+            self.deps.auto_archive = auto_archive.initialize(self.settings.auto_archive)
+
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
         # Remove global bot check - each component handles its own requirements
@@ -111,3 +127,12 @@ class BotManager(metaclass=Singleton):
             
         if self.settings.contact_manager.enabled:
             contact_manager.setup_dispatcher(dp)
+
+        if self.settings.queue_manager.enabled:
+            queue_manager.setup_dispatcher(dp)
+
+        if self.settings.chat_fetcher.enabled:
+            chat_fetcher.setup_dispatcher(dp)
+
+        if self.settings.auto_archive.enabled:
+            auto_archive.setup_dispatcher(dp)

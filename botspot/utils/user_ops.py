@@ -1,11 +1,14 @@
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 
-from aiogram.types import User
-from loguru import logger
+from aiogram.types import User as AiogramUser
 from pydantic import BaseModel
 
 from botspot.utils.cache_utils import AsyncLRUCache
 from botspot.utils.internal import get_logger
+
+if TYPE_CHECKING:
+
+    from botspot.components.data.user_data import User
 
 logger = get_logger()
 
@@ -19,18 +22,25 @@ class UserRecord(BaseModel):
     phone: Optional[str] = None
 
 
-UserLike = Union[str, int, UserRecord, User]
+UserLike = Union[str, int, UserRecord, AiogramUser, "User"]
 
 
 def to_user_record(user: UserLike) -> UserRecord:
+    from botspot.components.data.user_data import User
+
     if isinstance(user, UserRecord):
         return user
-    if isinstance(user, User):
+    if isinstance(user, AiogramUser):
         return UserRecord(
             user_id=user.id,
             username=user.username,
             # first_name=user.first_name,
             # last_name=user.last_name,
+        )
+    if isinstance(user, User):
+        return UserRecord(
+            user_id=user.user_id,
+            username=user.username,
         )
     if isinstance(user, str):
         return get_user_record(user)
@@ -152,31 +162,27 @@ async def get_user_record_enriched(user_key: Union[str, int]) -> UserRecord:
         if not (deps.botspot_settings.user_data.enabled and deps.user_manager is not None):
             return record
 
-        try:
-            # Try to find user in database
-            if record.user_id:
-                user = await deps.user_manager.get_user(record.user_id)
-            elif record.username:
-                user = await deps.user_manager.find_user(username=record.username)
-            elif record.phone:
-                user = await deps.user_manager.find_user(phone=record.phone)
-            else:
-                return record
-
-            # If found, enrich record
-            if user:
-                if not record.user_id:
-                    record.user_id = user.user_id
-                if not record.username and user.username:
-                    record.username = user.username
-                # Add phone if we implement it in User model
-                # if not record.phone and user.phone:
-                #     record.phone = user.phone
-
+        # Try to find user in database
+        if record.user_id:
+            user = await deps.user_manager.get_user(record.user_id)
+        elif record.username:
+            user = await deps.user_manager.find_user(username=record.username)
+        elif record.phone:
+            user = await deps.user_manager.find_user(phone=record.phone)
+        else:
             return record
-        except Exception as e:
-            logger.error(f"Error enriching user record: {e}")
-            return record
+
+        # If found, enrich record
+        if user:
+            if not record.user_id:
+                record.user_id = user.user_id
+            if not record.username and user.username:
+                record.username = user.username
+            # Add phone if we implement it in User model
+            # if not record.phone and user.phone:
+            #     record.phone = user.phone
+
+        return record
 
     return await _user_record_cache.get_or_set(user_key, _get_record)
 

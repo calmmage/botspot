@@ -2,7 +2,7 @@ Sample commit that adds a new component:
 "Add telethon_manager component"
 cc18f0491d082431a813ac6298b3e899c139379b
 
-The full diff is here: [new_component.txt](../../dev/new_component.txt)
+The full diff is here: [new_component.txt](../../dev/hide/new_component.txt)
 
 Commit contents:
 

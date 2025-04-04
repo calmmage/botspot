@@ -1,42 +1,31 @@
-import asyncio
-import logging
-import sys
-from os import getenv
-
-from aiogram import Bot, Dispatcher, html
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram import html
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
-from dotenv import load_dotenv
 
-from botspot.components.middlewares import error_handler
-from botspot.components.qol import bot_commands_menu, print_bot_url
-from botspot.core.botspot_settings import BotspotSettings
-from botspot.core.dependency_manager import DependencyManager
-
-load_dotenv()
-# Bot token can be obtained via https://t.me/BotFather
-TOKEN = getenv("TELEGRAM_BOT_TOKEN")
-
-dp = Dispatcher()
+from botspot.commands_menu import botspot_command
+from examples.base_bot import App, main, router
 
 
-@bot_commands_menu.add_command("start")
-@dp.message(CommandStart())
+class StandaloneComponentsApp(App):
+    name = "Standalone Components Demo"
+
+
+@botspot_command("start", "Start the bot")
+@router.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     """Send a welcome message when the command /start is issued"""
+    assert message.from_user is not None
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
 
-@bot_commands_menu.add_command("error")
-@dp.message(Command("error"))
+@botspot_command("error", "Raise a test exception")
+@router.message(Command("error"))
 async def command_error_handler(message: Message) -> None:
     """Raise an exception to test error handling"""
     raise Exception("Something Went Wrong")
 
 
-@dp.message()
+@router.message()
 async def echo_handler(message: Message) -> None:
     try:
         # Send a copy of the received message
@@ -46,28 +35,5 @@ async def echo_handler(message: Message) -> None:
         await message.answer("Nice try!")
 
 
-# ---------------------------------------
-# region BOTSPOT CONTENT START HERE
-# ---------------------------------------
-deps = DependencyManager(botspot_settings=BotspotSettings())
-error_handler.setup_dispatcher(dp)
-print_bot_url.setup_dispatcher(dp)
-bot_commands_menu.setup_dispatcher(dp)
-
-
-# todo: let's register our commands:
-# /start - to start the bot
-# /error - to raise an exception
-# ---------------------------------------
-# region BOTSPOT CONTENT END HERE
-# ---------------------------------------
-
-
-async def main() -> None:
-    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    await dp.start_polling(bot)
-
-
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    asyncio.run(main())
+    main(routers=[router], AppClass=StandaloneComponentsApp)

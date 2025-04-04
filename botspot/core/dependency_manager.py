@@ -3,20 +3,21 @@ from typing import TYPE_CHECKING, Optional
 from aiogram import Bot, Dispatcher
 
 from botspot.core.botspot_settings import BotspotSettings
+from botspot.core.errors import BotspotError
 from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import (  # noqa: F401
-        AsyncIOMotorClient,
-        AsyncIOMotorCollection,
-        AsyncIOMotorDatabase,
-    )
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.new.auto_archive import AutoArchive
+    from botspot.components.new.chat_binder import ChatBinder
+    from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.contact_manager import ContactManager
     from botspot.components.new.llm_provider import LLMProvider
+    from botspot.components.new.queue_manager import QueueManager
 
 
 class DependencyManager(metaclass=Singleton):
@@ -40,6 +41,9 @@ class DependencyManager(metaclass=Singleton):
         self._chat_binder = None
         self._llm_provider = None
         self._contact_manager = None
+        self._queue_manager = None
+        self._chat_fetcher = None
+        self._auto_archive = None
         self.__dict__.update(kwargs)
 
     @property
@@ -53,7 +57,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def bot(self) -> Bot:
         if self._bot is None:
-            raise RuntimeError("Bot is not initialized")
+            raise BotspotError("Bot is not initialized")
         return self._bot
 
     @bot.setter
@@ -63,7 +67,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def dispatcher(self) -> Dispatcher:
         if self._dispatcher is None:
-            raise RuntimeError("Dispatcher is not initialized")
+            raise BotspotError("Dispatcher is not initialized")
         return self._dispatcher
 
     @dispatcher.setter
@@ -73,7 +77,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def mongo_client(self) -> "AsyncIOMotorClient":
         if self._mongo_client is None:
-            raise RuntimeError("MongoDB client is not initialized")
+            raise BotspotError("MongoDB client is not initialized")
         return self._mongo_client
 
     @mongo_client.setter
@@ -83,7 +87,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def mongo_database(self) -> "AsyncIOMotorDatabase":
         if self._mongo_database is None:
-            raise RuntimeError("MongoDB database is not initialized")
+            raise BotspotError("MongoDB database is not initialized")
         return self._mongo_database
 
     @mongo_database.setter
@@ -93,7 +97,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def scheduler(self) -> "AsyncIOScheduler":
         if self._scheduler is None:
-            raise RuntimeError("Scheduler is not initialized")
+            raise BotspotError("Scheduler is not initialized")
         return self._scheduler
 
     @scheduler.setter
@@ -103,7 +107,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def telethon_manager(self) -> "TelethonManager":
         if self._telethon_manager is None:
-            raise RuntimeError("Telethon manager is not initialized")
+            raise BotspotError("Telethon manager is not initialized")
         return self._telethon_manager
 
     @telethon_manager.setter
@@ -113,7 +117,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def user_manager(self) -> "UserManager":
         if self._user_manager is None:
-            raise RuntimeError("User manager is not initialized")
+            raise BotspotError("User manager is not initialized")
         return self._user_manager
 
     @user_manager.setter
@@ -121,9 +125,9 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = value
 
     @property
-    def chat_binder(self) -> "AsyncIOMotorCollection":
+    def chat_binder(self) -> "ChatBinder":
         if self._chat_binder is None:
-            raise RuntimeError("Bind chat is not initialized")
+            raise BotspotError("Bind chat is not initialized")
         return self._chat_binder
 
     @chat_binder.setter
@@ -133,7 +137,7 @@ class DependencyManager(metaclass=Singleton):
     @property
     def llm_provider(self) -> "LLMProvider":
         if self._llm_provider is None:
-            raise RuntimeError("LLM Provider is not initialized")
+            raise BotspotError("LLM Provider is not initialized")
         return self._llm_provider
 
     @llm_provider.setter
@@ -149,6 +153,36 @@ class DependencyManager(metaclass=Singleton):
     @contact_manager.setter
     def contact_manager(self, value):
         self._contact_manager = value
+
+    @property
+    def queue_manager(self) -> "QueueManager":
+        if self._queue_manager is None:
+            raise BotspotError("Queue Manager is not initialized")
+        return self._queue_manager
+
+    @queue_manager.setter
+    def queue_manager(self, value):
+        self._queue_manager = value
+
+    @property
+    def chat_fetcher(self) -> "ChatFetcher":
+        if self._chat_fetcher is None:
+            raise BotspotError("Chat Fetcher is not initialized")
+        return self._chat_fetcher
+
+    @chat_fetcher.setter
+    def chat_fetcher(self, value):
+        self._chat_fetcher = value
+
+    @property
+    def auto_archive(self) -> "AutoArchive":
+        if self._auto_archive is None:
+            raise BotspotError("Auto Archive is not initialized")
+        return self._auto_archive
+
+    @auto_archive.setter
+    def auto_archive(self, value):
+        self._auto_archive = value
 
     @classmethod
     def is_initialized(cls) -> bool:

@@ -1,4 +1,3 @@
-import traceback
 from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
@@ -72,37 +71,28 @@ class UserManager:
     # todo: add functionality for searching users - by name etc.
     async def add_user(self, user: User) -> bool:
         """Add or update user"""
-        try:
-            # Set user type based on settings
-            if any([compare_users(user, friend) for friend in self.settings.admins]):
-                user.user_type = UserType.ADMIN
-            elif any([compare_users(user, friend) for friend in self.settings.friends]):
-                user.user_type = UserType.FRIEND
-            else:
-                user.user_type = UserType.REGULAR
+        # Set user type based on settings
+        if any([compare_users(user, friend) for friend in self.settings.admins]):
+            user.user_type = UserType.ADMIN
+        elif any([compare_users(user, friend) for friend in self.settings.friends]):
+            user.user_type = UserType.FRIEND
+        else:
+            user.user_type = UserType.REGULAR
 
-            existing = await self.get_user(user.user_id)
-            if existing:
-                raise ValueError("User already exists - cannot add")
+        existing = await self.get_user(user.user_id)
+        if existing:
+            raise ValueError("User already exists - cannot add")
 
-            await self.users_collection.update_one(
-                {"user_id": user.user_id}, {"$set": user.model_dump()}, upsert=True
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Failed to add user {user.user_id}: {e}")
-            logger.debug(traceback.format_exc())
-            return False
+        await self.users_collection.update_one(
+            {"user_id": user.user_id}, {"$set": user.model_dump()}, upsert=True
+        )
+        return True
 
     async def update_user(self, user_id: int, field: str, value: Any) -> bool:
         """Update a user's field"""
-        try:
-            await self.users_collection.update_one({"user_id": user_id}, {"$set": {field: value}})
-            logger.debug(f"Updated user {user_id} field {field} to {value}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to update user {user_id} field {field}: {e}")
-            return False
+        await self.users_collection.update_one({"user_id": user_id}, {"$set": {field: value}})
+        logger.debug(f"Updated user {user_id} field {field} to {value}")
+        return True
 
     # todo: make sure this works with username as well
     async def get_user(self, user_id: int) -> Optional[User]:
@@ -169,18 +159,15 @@ class UserManager:
     # todo: make sure this works with username as well
     async def make_friend(self, user_id: int) -> bool:
         """Make user a friend (admin only operation)"""
-        try:
-            user = await self.get_user(user_id)
-            if not user:
-                return False
-
-            user.user_type = UserType.FRIEND
-            await self.users_collection.update_one(
-                {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
-            )
-            return True
-        except Exception:
+        user = await self.get_user(user_id)
+        if not user:
             return False
+
+        user.user_type = UserType.FRIEND
+        await self.users_collection.update_one(
+            {"user_id": user_id}, {"$set": {"user_type": UserType.FRIEND}}
+        )
+        return True
 
     async def sync_user_types(self) -> None:
         """
@@ -189,34 +176,30 @@ class UserManager:
         - Admins: promote/demote based on settings
         - Friends: promote only (no automatic demotion)
         """
-        try:
-            # Update admins
-            if self.settings.admins:
-                # Promote current admins
-                result = await self.users_collection.update_many(
-                    {"user_id": {"$in": list(self.settings.admins)}},
-                    {"$set": {"user_type": UserType.ADMIN}},
-                )
-                if result.modified_count:
-                    logger.info(f"Promoted {result.modified_count} users to admin")
+        # Update admins
+        if self.settings.admins:
+            # Promote current admins
+            result = await self.users_collection.update_many(
+                {"user_id": {"$in": list(self.settings.admins)}},
+                {"$set": {"user_type": UserType.ADMIN}},
+            )
+            if result.modified_count:
+                logger.info(f"Promoted {result.modified_count} users to admin")
 
-                # Demote former admins
-                result = await self.users_collection.update_many(
-                    {
-                        "user_id": {"$nin": list(self.settings.admins)},
-                        "user_type": UserType.ADMIN,
-                    },
-                    {"$set": {"user_type": UserType.REGULAR}},
-                )
-                if result.modified_count:
-                    logger.info(f"Demoted {result.modified_count} admins to regular users")
+            # Demote former admins
+            result = await self.users_collection.update_many(
+                {
+                    "user_id": {"$nin": list(self.settings.admins)},
+                    "user_type": UserType.ADMIN,
+                },
+                {"$set": {"user_type": UserType.REGULAR}},
+            )
+            if result.modified_count:
+                logger.info(f"Demoted {result.modified_count} admins to regular users")
 
-            # Update friends (only promote, don't demote)
-            if self.settings.friends:
-                await self._promote_friends()
-        except Exception as e:
-            logger.error(f"Failed to sync user types: {e}")
-            raise  # Re-raise to handle in startup
+        # Update friends (only promote, don't demote)
+        if self.settings.friends:
+            await self._promote_friends()
 
     async def _promote_friends(self):
         # handle int and str cases
@@ -316,8 +299,57 @@ class UserDataSettings(BaseSettings):
 
 
 def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
-    """Initialize the user data component"""
-    db = get_database()
+    """Initialize the user data component.
+
+    Args:
+        settings: Botspot settings
+        user_class: Optional custom User class to use
+
+    Returns:
+        UserManager instance
+
+    Raises:
+        RuntimeError: If MongoDB is not enabled or initialized
+        ImportError: If motor package is not installed
+    """
+    # Check that motor is installed
+    try:
+        from motor.motor_asyncio import AsyncIOMotorDatabase
+    except ImportError:
+        from botspot.utils.internal import get_logger
+
+        logger = get_logger()
+        logger.error(
+            "motor package is not installed. Please install it to use the user_data component."
+        )
+        raise ImportError(
+            "motor package is not installed. Please install it with 'poetry add motor' or 'pip install motor' to use the user_data component."
+        )
+
+    # Check that MongoDB component is enabled
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    deps = get_dependency_manager()
+    if not deps.botspot_settings.mongo_database.enabled:
+        from botspot.utils.internal import get_logger
+
+        logger = get_logger()
+        logger.error("MongoDB is not enabled. User data component requires it.")
+        raise RuntimeError("MongoDB is not enabled. BOTSPOT_MONGO_DATABASE_ENABLED=true in .env")
+
+    # Get database and ensure we can access it
+    from botspot.components.data.mongo_database import get_database
+
+    try:
+        db = get_database()
+        # Simple existence check to verify database is accessible
+        _ = db.name
+    except Exception as e:
+        from botspot.utils.internal import get_logger
+
+        logger = get_logger()
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        raise RuntimeError(f"MongoDB connection failed: {str(e)}")
 
     if user_class is None:
         user_class = User
@@ -387,3 +419,36 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
         await manager.sync_user_types()
 
     dp.startup.register(sync_types)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    from aiogram.types import User as AiogramUser
+
+    async def main():
+        # Create a sample user
+        telegram_user = AiogramUser(
+            id=12345, first_name="John", last_name="Doe", username="johndoe", is_bot=False
+        )
+
+        # Get user manager
+        user_manager = get_user_manager()
+
+        # Create a User object from Telegram user data
+        user = User(
+            user_id=telegram_user.id,
+            username=telegram_user.username,
+            first_name=telegram_user.first_name,
+            last_name=telegram_user.last_name,
+        )
+
+        # Add user to database
+        await user_manager.add_user(user)
+
+        # Retrieve user from database
+        retrieved_user = await user_manager.get_user(user.user_id)
+        print(f"Retrieved user: {retrieved_user.full_name} (ID: {retrieved_user.user_id})")
+        print(f"User type: {retrieved_user.user_type}")
+
+    asyncio.run(main())

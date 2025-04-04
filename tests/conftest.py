@@ -89,14 +89,14 @@ def mock_callback_query():
     return callback_query
 
 
-@pytest.fixture
-def mock_botspot_deps():
-    """Mock BotSpot dependencies for all tests"""
-    with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_deps:
-        mock_manager = MagicMock()
-        mock_manager.bot = AsyncMock()
-        mock_deps.return_value = mock_manager
-        yield mock_deps
+# @pytest.fixture
+# def mock_botspot_deps():
+#     """Mock BotSpot dependencies for all tests"""
+#     with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_deps:
+#         mock_manager = MagicMock()
+#         mock_manager.bot = AsyncMock()
+#         mock_deps.return_value = mock_manager
+#         yield mock_deps
 
 
 @pytest.fixture

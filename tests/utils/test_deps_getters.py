@@ -132,6 +132,7 @@ class TestGetTelethonManager:
 
     def test_get_telethon_manager_not_initialized(self):
         """Test error when telethon manager is not initialized"""
+        from botspot.core.errors import ConfigurationError
         from botspot.utils.deps_getters import get_telethon_manager
 
         with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
@@ -140,8 +141,8 @@ class TestGetTelethonManager:
             mock_deps.telethon_manager = None
             mock_get_deps.return_value = mock_deps
 
-            # Execute & Verify
-            with pytest.raises(RuntimeError, match="TelethonManager is not initialized"):
+            # Execute & Verify - just check if the right error type is raised
+            with pytest.raises(ConfigurationError):
                 get_telethon_manager()
 
             mock_get_deps.assert_called_once()
@@ -192,6 +193,7 @@ class TestGetTelethonClient:
     @pytest.mark.asyncio
     async def test_get_telethon_client_not_found(self):
         """Test error when telethon client is not found"""
+        from botspot.core.errors import TelethonClientNotConnectedError
         from botspot.utils.deps_getters import get_telethon_client
 
         with patch("botspot.utils.deps_getters.get_telethon_manager") as mock_get_telethon_manager:
@@ -200,8 +202,8 @@ class TestGetTelethonClient:
             mock_manager.get_client = AsyncMock(return_value=None)
             mock_get_telethon_manager.return_value = mock_manager
 
-            # Execute & Verify
-            with pytest.raises(RuntimeError, match="No active Telethon client found for user"):
+            # Execute & Verify - just check if the right error type is raised
+            with pytest.raises(TelethonClientNotConnectedError):
                 await get_telethon_client(123456789)
 
             mock_get_telethon_manager.assert_called_once()

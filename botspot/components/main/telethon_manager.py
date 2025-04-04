@@ -56,22 +56,17 @@ class TelethonManager:
             return None
 
         client = TelegramClient(str(session_key), self.api_id, self.api_hash)
-        try:
-            await client.connect()
+        await client.connect()
 
-            is_authorized = await client.is_user_authorized()
-            logger.info(f"Session authorization check for user {user_id}: {is_authorized}")
+        is_authorized = await client.is_user_authorized()
+        logger.info(f"Session authorization check for user {user_id}: {is_authorized}")
 
-            if is_authorized:
-                return client
+        if is_authorized:
+            return client
 
-            logger.info(f"Session exists but not authorized for user {user_id}")
-            # todo: delete the file here and now - so that next attempt will try again..
-            return None
-
-        except Exception as e:
-            logger.warning(f"Failed to initialize session for user {user_id}: {e}")
-            return None
+        logger.info(f"Session exists but not authorized for user {user_id}")
+        # todo: delete the file here and now - so that next attempt will try again..
+        return None
 
     async def init_all_sessions(self):
         """Initialize all existing sessions from disk"""
@@ -80,14 +75,11 @@ class TelethonManager:
         logger.info(f"Found {len(session_files)} session files: {session_files}")
 
         for session_file in session_files:
-            try:
-                user_id = int(session_file.stem.split("_")[1])
-                logger.info(f"Found session file for user {user_id}")
-                client = await self._init_session(user_id)
-                if client:
-                    self.clients[user_id] = client
-            except Exception as e:
-                logger.warning(f"Failed to init session from {session_file}: {e}")
+            user_id = int(session_file.stem.split("_")[1])
+            logger.info(f"Found session file for user {user_id}")
+            client = await self._init_session(user_id)
+            if client:
+                self.clients[user_id] = client
 
     async def get_client(self, user_id: int, state=None) -> "TelegramClient":
         """
@@ -119,7 +111,8 @@ class TelethonManager:
                 logger.warning("State is required for auto-authentication")
 
         # No client could be initialized or created
-        raise RuntimeError(f"Client for {user_id} not found")
+        from botspot.core.errors import TelethonClientNotConnectedError
+        raise TelethonClientNotConnectedError(f"Client for user {user_id} not found. Please run the /setup_telethon command to authenticate.")
 
     async def disconnect_all(self):
         """Disconnect all clients"""
@@ -128,11 +121,8 @@ class TelethonManager:
             (user_id, client) for user_id, client in self.clients.items() if client is not None
         ]
         for user_id, client in valid_clients:
-            try:
-                # Guaranteed to be non-None because of the filtering above
-                await client.disconnect()  # type: ignore
-            except Exception as e:
-                logger.warning(f"Failed to disconnect client for user {user_id}: {e}")
+            # Guaranteed to be non-None because of the filtering above
+            await client.disconnect()  # type: ignore
         self.clients.clear()
 
     async def setup_client(
@@ -161,7 +151,7 @@ class TelethonManager:
                     "Use /setup_telethon_force to create a new one.",
                 )
                 return existing_client
-            except RuntimeError:
+            except Exception:
                 # No existing client, continue with setup
                 pass
 
@@ -278,7 +268,8 @@ def get_telethon_manager() -> "TelethonManager":
 
     deps = get_dependency_manager()
     if not deps.telethon_manager:
-        raise RuntimeError(
+        from botspot.core.errors import ConfigurationError
+        raise ConfigurationError(
             "TelethonManager is not initialized. Make sure it's enabled in settings."
         )
     return deps.telethon_manager
@@ -316,6 +307,7 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     async def check_telethon_handler(message: Message) -> None:
         """Check if user has an active Telethon client"""
         assert message.from_user
+        # The error handler will take care of TelethonClientNotConnectedError
         client = await telethon_manager.get_client(message.from_user.id)
         if client and await client.is_user_authorized():
             me = await client.get_me()
