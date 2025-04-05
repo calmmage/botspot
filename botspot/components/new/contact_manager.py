@@ -1,6 +1,8 @@
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+from botspot.core.errors import ContactDataError
+
 if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
     from botspot.commands_menu import Visibility
@@ -42,7 +44,7 @@ class ContactManagerSettings(BaseSettings):
 
 class ContactItem(BaseModel):
     """Contact information model."""
-    
+
     name: str
     user_id: Optional[int] = None  # Telegram user ID if applicable
     phone: Optional[str] = None  # Phone number
@@ -53,12 +55,12 @@ class ContactItem(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     owner_id: Optional[int] = None  # Who added this contact (user_id)
-    
+
     @property
     def display_info(self) -> str:
         """Return formatted contact information."""
         parts = [f"📇 **{self.name}**"]
-        
+
         if self.phone:
             parts.append(f"📱 Phone: {self.phone}")
         if self.email:
@@ -70,7 +72,7 @@ class ContactItem(BaseModel):
             parts.append(f"🎂 Birthday: {self.birthday.strftime('%d %B')}")
         if self.notes:
             parts.append(f"📝 Notes: {self.notes}")
-            
+
         return "\n".join(parts)
 
 
@@ -85,7 +87,7 @@ class ContactItem(BaseModel):
 
 class ContactManager:
     """Manager for user contacts."""
-    
+
     def __init__(self, settings: ContactManagerSettings):
         """Initialize contact manager with settings."""
         self.settings = settings
@@ -93,41 +95,49 @@ class ContactManager:
             key="contacts",
             item_model=ContactItem
         )
-    
-    async def add_contact(self, contact: ContactItem) -> bool:
-        """Add a new contact to the database."""
+
+    async def add_contact(self, contact: ContactItem, user_id: Optional[int] = None) -> bool:
+        """Add a new contact to the database"""
         try:
             contact.updated_at = datetime.now(timezone.utc)
-            await self.queue.add_item(contact, user_id=contact.owner_id)
+            if user_id is not None:
+                contact.owner_id = user_id
+            await self.queue.add_item(contact, user_id=user_id)
             logger.info(f"Added contact: {contact.name}")
-            # used to be 
-            # logger.info(f"Added contact: {contact.name}, with ID {result.inserted_id}"), but QM does not provide ID, add_item returns void.
-            # may change QM iterface in the future
             return True
         except Exception as e:
             logger.error(f"Error adding contact {contact.name}: {e}")
-            return False
-            
-    async def update_contact(self, contact_id: str, data: Dict[str, Any]) -> bool:
-        """Update an existing contact."""
+            from botspot.core.errors import BotspotError
+            raise BotspotError(f"Failed to add contact: {str(e)}")
+
+    async def update_contact(self, contact_id: str, data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+        """Update an existing contact"""
         try:
             # Update the timestamp
             data["updated_at"] = datetime.now(timezone.utc)
-            
+
             # Use the queue's update_record method to directly update the contact
-            return await self.queue.update_record(contact_id, data)
+            success = await self.queue.update_record(contact_id, data)
+            if not success:
+                raise ContactDataError("Contact not found or update failed")
+            return True
         except Exception as e:
             logger.error(f"Error updating contact {contact_id}: {e}")
-            return False
-            
-    async def delete_contact(self, contact_id: str) -> bool:
-        """Delete a contact by ID."""
+            from botspot.core.errors import BotspotError
+            raise BotspotError(f"Failed to update contact: {str(e)}")
+
+    async def delete_contact(self, contact_id: str, user_id: Optional[int] = None) -> bool:
+        """Delete a contact by ID"""
         try:
-            return await self.queue.delete_record(contact_id)
+            success = await self.queue.delete_record(contact_id, user_id=user_id)
+            if not success:
+                raise ContactDataError("Contact not found or deletion failed")
+            return True
         except Exception as e:
             logger.error(f"Error deleting contact {contact_id}: {e}")
-            return False
-            
+            from botspot.core.errors import BotspotError
+            raise BotspotError(f"Failed to delete contact: {str(e)}")
+
     async def get_contact_by_id(self, contact_id: str, owner_id: Optional[int] = None) -> Optional[ContactItem]:
         """Get a contact by ID."""
         try:
@@ -136,31 +146,31 @@ class ContactManager:
         except Exception as e:
             logger.error(f"Error getting contact {contact_id}: {e}")
             return None
-            
+
     async def find_contacts(
-        self, 
-        query: Dict[str, Any], 
-        limit: int = 10,
-        owner_id: Optional[int] = None
+            self,
+            query: Dict[str, Any],
+            limit: int = 10,
+            owner_id: Optional[int] = None
     ) -> List[ContactItem]:
         """Find contacts matching the query."""
         try:
             # If owner_id is provided, add it to the query
             if owner_id is not None:
                 query["owner_id"] = owner_id
-            
+
             # Use the queue's find_many method
             contact_dicts = await self.queue.find_many(query, user_id=owner_id, limit=limit)
             return [ContactItem(**doc) for doc in contact_dicts]
         except Exception as e:
             logger.error(f"Error finding contacts: {e}")
             return []
-            
+
     async def search_contacts(
-        self, 
-        text: str, 
-        owner_id: Optional[int] = None,
-        limit: int = 10
+            self,
+            text: str,
+            owner_id: Optional[int] = None,
+            limit: int = 10
     ) -> List[ContactItem]:
         """Search for contacts by name, email, etc."""
         try:
@@ -174,18 +184,18 @@ class ContactManager:
                     {"notes": {"$regex": text, "$options": "i"}}
                 ]
             }
-            
+
             # Add owner_id constraint if provided
             if owner_id is not None:
                 query["owner_id"] = owner_id
-            
+
             # Use find_many with the query
             contact_dicts = await self.queue.find_many(query, user_id=owner_id, limit=limit)
             return [ContactItem(**doc) for doc in contact_dicts]
         except Exception as e:
             logger.error(f"Error searching contacts: {e}")
             return []
-        
+
     async def get_random_contact(self, owner_id: Optional[int] = None) -> Optional[ContactItem]:
         """Get a random contact."""
         try:
@@ -195,11 +205,11 @@ class ContactManager:
         except Exception as e:
             logger.error(f"Error getting random contact: {e}")
             return None
-            
+
     async def parse_contact_with_llm(
-        self, 
-        text: str, 
-        user_id: Optional[int] = None
+            self,
+            text: str,
+            user_id: Optional[int] = None
     ) -> Optional[ContactItem]:
         """
         Parse contact information from text using LLM.
@@ -214,10 +224,10 @@ class ContactManager:
         try:
             from botspot.components.new.llm_provider import get_llm_provider
             from botspot.utils.deps_getters import get_llm_provider
-            
+
             # Get LLM provider
             llm = get_llm_provider()
-            
+
             # System message for the LLM
             system_message = """
             You are a contact information parser. Extract contact details from the user's message.
@@ -235,7 +245,7 @@ class ContactManager:
             If a field is not found, set it to null.
             The name field is required - make your best guess if not explicit.
             """
-            
+
             # Create a temporary model for parsing
             class TempContact(BaseModel):
                 name: str
@@ -245,7 +255,7 @@ class ContactManager:
                 birthday: Optional[date] = None
                 notes: Optional[str] = None
                 owner_id: Optional[int] = None
-            
+
             # Use structured output for better parsing
             temp_contact = await llm.aquery_llm_structured(
                 prompt=text,
@@ -254,17 +264,18 @@ class ContactManager:
                 system_message=system_message,
                 temperature=0.2,  # Lower temperature for more deterministic output
             )
-            
+
             # Create a new dictionary with owner_id if provided
             contact_data = temp_contact.model_dump()
             if user_id is not None:
                 contact_data["owner_id"] = user_id
-            
+
             # Convert to ContactItem
             return ContactItem.model_validate(contact_data)
         except Exception as e:
             logger.error(f"Error parsing contact with LLM: {e}")
             return None
+
 
 # ---------------------------------------------
 # endregion Contact Manager Implementation
@@ -278,9 +289,9 @@ class ContactManager:
 def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: ContactManagerSettings):
     """Set up command handlers for contact management."""
     from botspot.commands_menu import Visibility
-    
+
     router = Router(name="contact_manager")
-    
+
     # Add command to add contact
     @commands_menu.add_command("add_contact", "Add a new contact", Visibility.PUBLIC)
     @router.message(Command("add_contact"))
@@ -293,22 +304,22 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
                 "/add_contact John Doe, phone: 555-1234, email: john@example.com"
             )
             return
-            
+
         # Extract contact text (everything after the command)
         contact_text = message.text.split(maxsplit=1)[1]
-        
+
         # Parse contact with LLM
         contact = await manager.parse_contact_with_llm(contact_text, message.from_user.id)
-        
+
         if not contact:
             await message.reply("I couldn't parse the contact information. Please try again with more details.")
             return
-            
+
         # Check if any required fields are missing
         missing_fields = []
         if not contact.phone and not contact.email and not contact.telegram:
             missing_fields.append("a way to contact (phone, email, or telegram)")
-        
+
         # If missing fields, ask user to provide them
         if missing_fields:
             missing_info = ", ".join(missing_fields)
@@ -316,10 +327,10 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
                 f"I need {missing_info} for this contact. Please add this information and try again."
             )
             return
-        
+
         # Add contact to database
-        success = await manager.add_contact(contact)
-        
+        success = await manager.add_contact(contact, message.from_user.id)
+
         if success:
             await message.reply(
                 f"✅ Contact added successfully!\n\n{contact.display_info}",
@@ -327,7 +338,7 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
             )
         else:
             await message.reply("❌ Failed to add contact. Please try again.")
-    
+
     # Add command to find contact
     @commands_menu.add_command("find_contact", "Find contacts by name, phone, etc.", Visibility.PUBLIC)
     @router.message(Command("find_contact"))
@@ -339,17 +350,17 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
                 "/find_contact John"
             )
             return
-            
+
         # Extract search text
         search_text = message.text.split(maxsplit=1)[1]
-        
+
         # Search for contacts
         contacts = await manager.search_contacts(search_text, message.from_user.id)
-        
+
         if not contacts:
             await message.reply(f"No contacts found matching '{search_text}'.")
             return
-            
+
         # Format results
         if len(contacts) == 1:
             await message.reply(
@@ -363,24 +374,24 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
                 f"{count_msg}\n\n{results}",
                 parse_mode="Markdown"
             )
-    
+
     # Add command for random contact
     if settings.random_contact_enabled:
-        @commands_menu.add_command("random_contact", "Get a random contact", Visibility.PUBLIC) 
+        @commands_menu.add_command("random_contact", "Get a random contact", Visibility.PUBLIC)
         @router.message(Command("random_contact"))
         async def random_contact_cmd(message: Message):
             """Get a random contact."""
             contact = await manager.get_random_contact(message.from_user.id)
-            
+
             if not contact:
                 await message.reply("You don't have any contacts saved yet.")
                 return
-                
+
             await message.reply(
                 f"Random contact:\n\n{contact.display_info}",
                 parse_mode="Markdown"
             )
-    
+
     # Handle message parsing if enabled
     if settings.message_parser_enabled:
         @router.message()
@@ -389,17 +400,17 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
             # Skip commands
             if message.text and message.text.startswith('/'):
                 return
-                
+
             # Simple heuristic: Look for some indicators of contact info
             # This is intentionally simple as the LLM will do the heavy lifting
             if not message.text or not any(kw in message.text.lower() for kw in [
                 'phone', 'email', 'telegram', '@', 'contact', 'reach', 'name'
             ]):
                 return
-                
+
             # Try to parse as contact
             contact = await manager.parse_contact_with_llm(message.text, message.from_user.id)
-            
+
             # If we have a name and at least one contact method, offer to save
             if contact and contact.name and (contact.phone or contact.email or contact.telegram):
                 await message.reply(
@@ -408,9 +419,10 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
                     f"Reply with /add_contact to confirm.",
                     parse_mode="Markdown"
                 )
-    
+
     # Include router in dispatcher
     dp.include_router(router)
+
 
 # ---------------------------------------------
 # endregion Command Handlers
@@ -424,25 +436,25 @@ def setup_command_handlers(dp: Dispatcher, manager: ContactManager, settings: Co
 def setup_dispatcher(dp: Dispatcher, **kwargs):
     """Setup contact manager component in the dispatcher."""
     settings = ContactManagerSettings(**kwargs)
-    
+
     if not settings.enabled:
         logger.info("Contact Manager component is disabled")
         return dp
-    
+
     # Make sure dependencies are available
     from botspot.core.dependency_manager import get_dependency_manager
-    
+
     deps = get_dependency_manager()
-    
+
     if deps.contact_manager is None:
         logger.warning("Contact Manager component is not initialized")
         return dp
-    
+
     logger.info("Setting up Contact Manager component")
-    
+
     # Set up command handlers
     setup_command_handlers(dp, deps.contact_manager, settings)
-    
+
     return dp
 
 
@@ -451,7 +463,7 @@ def initialize(settings: ContactManagerSettings) -> ContactManager:
     if not settings.enabled:
         logger.info("Contact Manager component is disabled")
         return ContactManager(settings)  # Return empty manager instead of None
-    
+
     logger.info("Initializing Contact Manager component")
     manager = ContactManager(settings)
     return manager
@@ -462,12 +474,69 @@ def get_contact_manager() -> ContactManager:
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    
+
     if deps.contact_manager is None:
         raise RuntimeError("Contact Manager is not initialized")
-        
+
     return deps.contact_manager
+
 
 # ---------------------------------------------
 # endregion Initialization and Setup
 # ---------------------------------------------
+
+
+# ---------------------------------------------
+# region Utils
+# ---------------------------------------------
+
+
+async def add_contact(contact: ContactItem, user_id: Optional[int] = None) -> bool:
+    """Add a new contact to the database."""
+    manager = get_contact_manager()
+    return await manager.add_contact(contact, user_id)
+
+
+async def update_contact(contact_id: str, data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+    """Update an existing contact."""
+    manager = get_contact_manager()
+    return await manager.update_contact(contact_id, data, user_id)
+
+
+async def delete_contact(contact_id: str, user_id: Optional[int] = None) -> bool:
+    """Delete a contact by ID."""
+    manager = get_contact_manager()
+    return await manager.delete_contact(contact_id, user_id)
+
+
+async def get_contact_by_id(contact_id: str, user_id: Optional[int] = None) -> Optional[ContactItem]:
+    """Get a contact by ID."""
+    manager = get_contact_manager()
+    return await manager.get_contact_by_id(contact_id, user_id)
+
+
+async def find_contacts(query: Dict[str, Any], user_id: Optional[int] = None, limit: int = 10) -> List[ContactItem]:
+    """Find contacts matching the query."""
+    manager = get_contact_manager()
+    return await manager.find_contacts(query, limit=limit, owner_id=user_id)
+
+
+async def search_contacts(text: str, user_id: Optional[int] = None, limit: int = 10) -> List[ContactItem]:
+    """Search for contacts by name, email, etc."""
+    manager = get_contact_manager()
+    return await manager.search_contacts(text, user_id, limit)
+
+
+async def get_random_contact(user_id: Optional[int] = None) -> Optional[ContactItem]:
+    """Get a random contact."""
+    manager = get_contact_manager()
+    return await manager.get_random_contact(user_id)
+
+
+async def parse_contact_with_llm(text: str, user_id: Optional[int] = None) -> Optional[ContactItem]:
+    """Parse contact information from text using LLM."""
+    manager = get_contact_manager()
+    return await manager.parse_contact_with_llm(text, user_id)
+
+# ---------------------------------------------
+# endregion Utils
