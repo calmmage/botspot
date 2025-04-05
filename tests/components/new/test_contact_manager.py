@@ -102,12 +102,12 @@ def test_get_contact_by_id(contact_manager, sample_contact):
     
     # Execute
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(contact_manager.get_contact_by_id("contact123"))
+    result = loop.run_until_complete(contact_manager.get_contact_by_id("contact123", owner_id=9876))
     
     # Assert
     assert isinstance(result, ContactItem)
     assert result.name == "Test Contact"
-    contact_manager.queue.find.assert_called_once_with({"_id": "contact123"})
+    contact_manager.queue.find.assert_called_once_with({"_id": "contact123"}, user_id=9876)
 
 
 def test_find_contacts(contact_manager, sample_contact):

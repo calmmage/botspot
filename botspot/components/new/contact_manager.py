@@ -128,10 +128,10 @@ class ContactManager:
             logger.error(f"Error deleting contact {contact_id}: {e}")
             return False
             
-    async def get_contact_by_id(self, contact_id: str) -> Optional[ContactItem]:
+    async def get_contact_by_id(self, contact_id: str, owner_id: Optional[int] = None) -> Optional[ContactItem]:
         """Get a contact by ID."""
         try:
-            contact_dict = await self.queue.find({"_id": contact_id})
+            contact_dict = await self.queue.find({"_id": contact_id}, user_id=owner_id)
             return ContactItem(**contact_dict) if contact_dict else None
         except Exception as e:
             logger.error(f"Error getting contact {contact_id}: {e}")
@@ -150,7 +150,7 @@ class ContactManager:
                 query["owner_id"] = owner_id
             
             # Use the queue's find_many method
-            contact_dicts = await self.queue.find_many(query, limit=limit)
+            contact_dicts = await self.queue.find_many(query, user_id=owner_id, limit=limit)
             return [ContactItem(**doc) for doc in contact_dicts]
         except Exception as e:
             logger.error(f"Error finding contacts: {e}")
@@ -165,7 +165,7 @@ class ContactManager:
         """Search for contacts by name, email, etc."""
         try:
             # Create a query with $or for text matching across multiple fields
-            query = {
+            query: Dict[str, Any] = {
                 "$or": [
                     {"name": {"$regex": text, "$options": "i"}},
                     {"email": {"$regex": text, "$options": "i"}},
@@ -180,7 +180,7 @@ class ContactManager:
                 query["owner_id"] = owner_id
             
             # Use find_many with the query
-            contact_dicts = await self.queue.find_many(query, limit=limit)
+            contact_dicts = await self.queue.find_many(query, user_id=owner_id, limit=limit)
             return [ContactItem(**doc) for doc in contact_dicts]
         except Exception as e:
             logger.error(f"Error searching contacts: {e}")
@@ -228,26 +228,40 @@ class ContactManager:
                 "email": "Email (if found)",
                 "telegram": "Telegram username (if found)",
                 "birthday": "Birthday in YYYY-MM-DD format (if found)",
-                "notes": "Any additional information"
+                "notes": "Any additional information",
+                "owner_id": null
             }
             
             If a field is not found, set it to null.
             The name field is required - make your best guess if not explicit.
             """
             
+            # Create a temporary model for parsing
+            class TempContact(BaseModel):
+                name: str
+                phone: Optional[str] = None
+                email: Optional[str] = None
+                telegram: Optional[str] = None
+                birthday: Optional[date] = None
+                notes: Optional[str] = None
+                owner_id: Optional[int] = None
+            
             # Use structured output for better parsing
-            result = await llm.aquery_llm_structured(
+            temp_contact = await llm.aquery_llm_structured(
                 prompt=text,
-                output_schema=ContactItem,
+                output_schema=TempContact,
                 user=user_id,
                 system_message=system_message,
                 temperature=0.2,  # Lower temperature for more deterministic output
             )
             
-            # Add owner ID
-            result.owner_id = user_id
+            # Create a new dictionary with owner_id if provided
+            contact_data = temp_contact.model_dump()
+            if user_id is not None:
+                contact_data["owner_id"] = user_id
             
-            return result
+            # Convert to ContactItem
+            return ContactItem.model_validate(contact_data)
         except Exception as e:
             logger.error(f"Error parsing contact with LLM: {e}")
             return None
@@ -436,7 +450,7 @@ def initialize(settings: ContactManagerSettings) -> ContactManager:
     """Initialize the Contact Manager component."""
     if not settings.enabled:
         logger.info("Contact Manager component is disabled")
-        return None
+        return ContactManager(settings)  # Return empty manager instead of None
     
     logger.info("Initializing Contact Manager component")
     manager = ContactManager(settings)
