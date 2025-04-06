@@ -93,6 +93,10 @@ async def _ask_user_base(
     """Base function for asking user questions with optional reply_markup"""
     from botspot.core.dependency_manager import get_dependency_manager
 
+    # Check if question text is empty
+    if not question or question.strip() == "":
+        raise ValueError("Message text cannot be empty")
+
     deps = get_dependency_manager()
     bot: Bot = deps.bot
 
@@ -192,7 +196,9 @@ async def ask_user_choice(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
     default_choice: Optional[str] = None,
+    highlight_default: bool = True,
     cleanup: bool = False,
+    columns: Optional[int] = 1,
     **kwargs,
 ) -> Optional[str]:
     """
@@ -206,6 +212,7 @@ async def ask_user_choice(
         timeout: How long to wait for response (seconds)
         default_choice: Choice to select if user doesn't respond
         cleanup: Whether to delete both question and answer messages after getting response
+        columns: Number of buttons per row in the keyboard layout
         add_hint: Whether to add a hint about text input option
         **kwargs: Additional parameters passed to send_message
     """
@@ -216,18 +223,26 @@ async def ask_user_choice(
     if default_choice is None and choices:
         default_choice = next(iter(choices.keys()))
 
-    # Add star to default choice text
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"⭐ {text}" if data == default_choice else text,
-                    callback_data=f"choice_{data}",
-                )
-            ]
-            for data, text in choices.items()
-        ]
-    )
+    # Build keyboard with specified number of columns
+    items = []
+    rows = []
+
+    for data, text in choices.items():
+        button = InlineKeyboardButton(
+            text=f"⭐ {text}" if highlight_default and (data == default_choice) else text,
+            callback_data=f"choice_{data}",
+        )
+        items.append(button)
+
+        if len(items) == columns:
+            rows.append(items)
+            items = []
+
+    # Add any remaining items
+    if items:
+        rows.append(items)
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     return await _ask_user_base(
         chat_id=chat_id,
@@ -325,8 +340,10 @@ async def ask_user_choice_raw(
     state: FSMContext,
     timeout: Optional[float] = 60.0,
     default_choice: Optional[str] = None,
+    highlight_default: bool = True,
     cleanup: bool = False,
     add_hint: bool = False,
+    columns: Optional[int] = 1,
     **kwargs,
 ) -> Optional[Message]:
     """
@@ -341,6 +358,7 @@ async def ask_user_choice_raw(
         default_choice: Choice to select if user doesn't respond
         cleanup: Whether to delete both question and answer messages after getting response
         add_hint: Whether to add a hint about text input option
+        columns: Number of buttons per row in the keyboard layout
         **kwargs: Additional parameters passed to send_message
 
     Returns:
@@ -353,18 +371,26 @@ async def ask_user_choice_raw(
     if default_choice is None and choices:
         default_choice = next(iter(choices.keys()))
 
-    # Add star to default choice text
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"⭐ {text}" if data == default_choice else text,
-                    callback_data=f"choice_{data}",
-                )
-            ]
-            for data, text in choices.items()
-        ]
-    )
+    # Build keyboard with specified number of columns
+    items = []
+    rows = []
+
+    for data, text in choices.items():
+        button = InlineKeyboardButton(
+            text=f"⭐ {text}" if highlight_default and (data == default_choice) else text,
+            callback_data=f"choice_{data}",
+        )
+        items.append(button)
+
+        if len(items) == columns:
+            rows.append(items)
+            items = []
+
+    # Add any remaining items
+    if items:
+        rows.append(items)
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     # If adding hint is requested
     displayed_question = question
