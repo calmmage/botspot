@@ -66,14 +66,22 @@ class TestCommandInfo:
     def test_command_info_creation(self):
         """Test creating CommandInfo objects"""
         # With all parameters
-        info = CommandInfo("Test description", Visibility.PUBLIC)
+        info = CommandInfo("Test description", Visibility.PUBLIC, "TestGroup")
         assert info.description == "Test description"
         assert info.visibility == Visibility.PUBLIC
+        assert info.group == "TestGroup"
 
         # With default visibility
         info = CommandInfo("Test description")
         assert info.description == "Test description"
         assert info.visibility == Visibility.PUBLIC
+        assert info.group == "General"
+
+        # With custom group
+        info = CommandInfo("Test description", group="CustomGroup")
+        assert info.description == "Test description"
+        assert info.visibility == Visibility.PUBLIC
+        assert info.group == "CustomGroup"
 
 
 class TestGetCommandsByVisibility:
@@ -153,6 +161,34 @@ class TestGetCommandsByVisibility:
         assert "/hidden1 - Hidden command 1" in result
         assert "👑 Admin commands:" in result
         assert "/admin1 - Admin command 1" in result
+
+    def test_commands_with_groups(self):
+        """Test get_commands_by_visibility with commands in different groups"""
+        commands["cmd1"] = CommandInfo("Command 1", Visibility.PUBLIC, "Group1")
+        commands["cmd2"] = CommandInfo("Command 2", Visibility.PUBLIC, "Group1")
+        commands["cmd3"] = CommandInfo("Command 3", Visibility.PUBLIC, "Group2")
+        commands["cmd4"] = CommandInfo("Command 4", Visibility.HIDDEN, "Group1")
+        commands["cmd5"] = CommandInfo("Command 5", Visibility.ADMIN_ONLY, "Group3")
+
+        # Get all commands
+        result = get_commands_by_visibility(include_admin=True)
+
+        # Check public commands by group
+        assert "📝 Public commands:" in result
+        assert "Group1:" in result
+        assert "Group2:" in result
+        assert "/cmd1 - Command 1" in result
+        assert "/cmd2 - Command 2" in result
+        assert "/cmd3 - Command 3" in result
+
+        # Check hidden commands by group
+        assert "🕵️ Hidden commands:" in result
+        assert "/cmd4 - Command 4" in result
+
+        # Check admin commands by group
+        assert "👑 Admin commands:" in result
+        assert "Group3:" in result
+        assert "/cmd5 - Command 5" in result
 
 
 class TestSetAiogramBotCommands:

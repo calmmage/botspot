@@ -24,6 +24,7 @@ class CommandInfo(NamedTuple):
 
     description: str
     visibility: Visibility = Visibility.PUBLIC
+    group: str = "General"
 
 
 class BotCommandsMenuSettings(BaseSettings):
@@ -44,7 +45,7 @@ NO_COMMAND_DESCRIPTION = "No description"
 
 def get_commands_by_visibility(include_admin: bool = False) -> str:
     """
-    Get formatted list of commands grouped by visibility
+    Get formatted list of commands grouped by visibility and command group
 
     Args:
         include_admin: Whether to include admin commands in the output
@@ -52,29 +53,41 @@ def get_commands_by_visibility(include_admin: bool = False) -> str:
     Returns:
         Formatted string with command list
     """
-    groups: Dict[Visibility, List[Tuple[str, str]]] = defaultdict(list)
+    # First level: visibility, second level: group, third level: commands
+    grouped_commands: Dict[Visibility, Dict[str, List[Tuple[str, str]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
 
-    # Then add user commands
+    # Group commands by visibility and command group
     for cmd, info in commands.items():
-        groups[info.visibility].append((cmd, info.description))
+        grouped_commands[info.visibility][info.group].append((cmd, info.description))
 
     # Format output
     result = []
 
-    if groups[Visibility.PUBLIC]:
+    # Process public commands by group
+    if grouped_commands[Visibility.PUBLIC]:
         result.append("📝 Public commands:")
-        for cmd, desc in sorted(groups[Visibility.PUBLIC]):
-            result.append(f"/{cmd} - {desc}")
+        for group_name, cmds in sorted(grouped_commands[Visibility.PUBLIC].items()):
+            result.append(f"\n{group_name.title()}:")
+            for cmd, desc in sorted(cmds):
+                result.append(f"  /{cmd} - {desc}")
 
-    if groups[Visibility.HIDDEN]:
+    # Process hidden commands by group
+    if grouped_commands[Visibility.HIDDEN]:
         result.append("\n🕵️ Hidden commands:")
-        for cmd, desc in sorted(groups[Visibility.HIDDEN]):
-            result.append(f"/{cmd} - {desc}")
+        for group_name, cmds in sorted(grouped_commands[Visibility.HIDDEN].items()):
+            result.append(f"\n{group_name.title()}:")
+            for cmd, desc in sorted(cmds):
+                result.append(f"  /{cmd} - {desc}")
 
-    if include_admin and groups[Visibility.ADMIN_ONLY]:
+    # Process admin commands by group (if allowed)
+    if include_admin and grouped_commands[Visibility.ADMIN_ONLY]:
         result.append("\n👑 Admin commands:")
-        for cmd, desc in sorted(groups[Visibility.ADMIN_ONLY]):
-            result.append(f"/{cmd} - {desc}")
+        for group_name, cmds in sorted(grouped_commands[Visibility.ADMIN_ONLY].items()):
+            result.append(f"\n{group_name}.title():")
+            for cmd, desc in sorted(cmds):
+                result.append(f"  /{cmd} - {desc}")
 
     return "\n".join(result) if result else "No commands available"
 
@@ -117,7 +130,9 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
             await message.answer(help_text)
 
 
-def add_botspot_command(func=None, names=None, description=None, visibility=Visibility.PUBLIC):
+def add_botspot_command(
+    func=None, names=None, description=None, visibility=Visibility.PUBLIC, group="General"
+):
     """Add a command to the bot's command list"""
     visibility = Visibility(visibility)
 
@@ -141,15 +156,15 @@ def add_botspot_command(func=None, names=None, description=None, visibility=Visi
         if n in commands:
             logger.warning(f"Trying to add duplicate command: /{n} - skipping")
             continue
-        commands[n] = CommandInfo(description, visibility=visibility)
+        commands[n] = CommandInfo(description, visibility=visibility, group=group)
 
 
-def botspot_command(names=None, description=None, visibility=Visibility.PUBLIC):
+def botspot_command(names=None, description=None, visibility=Visibility.PUBLIC, group="General"):
     """Add a command to the bot's command list"""
     visibility = Visibility(visibility)
 
     def wrapper(func):
-        add_botspot_command(func, names, description, visibility)
+        add_botspot_command(func, names, description, visibility, group)
         return func
 
     return wrapper
@@ -158,14 +173,14 @@ def botspot_command(names=None, description=None, visibility=Visibility.PUBLIC):
 add_command = deprecated("Please use commands_menu.botspot_command instead")(botspot_command)
 
 
-def add_hidden_command(names=None, description=None):
+def add_hidden_command(names=None, description=None, group="General"):
     """Add a hidden command to the bot's command list"""
-    return add_command(names, description, visibility=Visibility.HIDDEN)
+    return add_command(names, description, visibility=Visibility.HIDDEN, group=group)
 
 
-def add_admin_command(names=None, description=None):
+def add_admin_command(names=None, description=None, group="General"):
     """Add an admin-only command to the bot's command list"""
-    return add_command(names, description, visibility=Visibility.ADMIN_ONLY)
+    return add_command(names, description, visibility=Visibility.ADMIN_ONLY, group=group)
 
 
 if __name__ == "__main__":
@@ -176,21 +191,32 @@ if __name__ == "__main__":
     router = Router()
 
     # Register command handlers with decorators
-    @botspot_command("start", "Start the bot")
+    @botspot_command("start", "Start the bot", group="Basic")
     @router.message(Command("start"))
     async def cmd_start(message: Message):
         await message.answer("Welcome to the bot!")
 
-    @botspot_command("help", "Show available commands")
+    @botspot_command("help", "Show available commands", group="Basic")
     @router.message(Command("help"))
     async def cmd_help(message: Message):
         await message.answer("Help message here")
 
     # Add a hidden command
-    @add_hidden_command("secret", "Secret command")
+    @add_hidden_command("secret", "Secret command", group="Advanced")
     @router.message(Command("secret"))
     async def cmd_secret(message: Message):
         await message.answer("This is a hidden command")
+
+    # Add commands with different groups
+    @botspot_command("settings", "Change bot settings", group="Settings")
+    @router.message(Command("settings"))
+    async def cmd_settings(message: Message):
+        await message.answer("Settings menu")
+
+    @botspot_command("profile", "View your profile", group="User")
+    @router.message(Command("profile"))
+    async def cmd_profile(message: Message):
+        await message.answer("Your profile")
 
     # Print all registered commands
     print("Registered commands:")
