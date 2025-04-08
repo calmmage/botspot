@@ -197,7 +197,6 @@ async def set_aiogram_bot_commands(bot: Bot, settings: BotCommandsMenuSettings =
     # Use default settings if none provided
     if settings is None:
         settings = BotCommandsMenuSettings()
-
     all_commands = {}
 
     # Get all public commands
@@ -225,7 +224,6 @@ async def set_aiogram_bot_commands(bot: Bot, settings: BotCommandsMenuSettings =
             logger.info(f"Setting bot command: /{c} - {info.description}")
             bot_commands.append(BotCommand(command=c, description=info.description))
 
-    # Set commands in Telegram
     await bot.set_my_commands(bot_commands)
 
 
