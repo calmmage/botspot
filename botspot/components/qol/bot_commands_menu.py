@@ -38,6 +38,7 @@ class BotCommandsMenuSettings(BaseSettings):
     botspot_help: bool = True
     group_display_mode: str = GroupDisplayMode.NESTED.value
     default_group: str = "General"
+    sort_commands: bool = True  # Sort commands alphabetically by default
 
     class Config:
         env_prefix = "BOTSPOT_BOT_COMMANDS_MENU_"
@@ -185,10 +186,21 @@ def _format_flat_commands(include_admin: bool, settings: BotCommandsMenuSettings
     return "\n".join(result).strip() if result else "No commands available"
 
 
-async def set_aiogram_bot_commands(bot: Bot):
+async def set_aiogram_bot_commands(bot: Bot, settings: BotCommandsMenuSettings = None):
+    """
+    Set bot commands for display in Telegram interface
+
+    Args:
+        bot: Bot instance
+        settings: Settings instance (creates default if None)
+    """
+    # Use default settings if none provided
+    if settings is None:
+        settings = BotCommandsMenuSettings()
+
     all_commands = {}
 
-    # Then add user commands (excluding hidden ones)
+    # Get all public commands
     for cmd, info in commands.items():
         if info.visibility == Visibility.PUBLIC:  # Only add visible commands to menu
             if cmd in all_commands:
@@ -198,16 +210,31 @@ async def set_aiogram_bot_commands(bot: Bot):
                 )
             all_commands[cmd] = info
 
+    # Create bot commands list
     bot_commands = []
-    for c, info in all_commands.items():
-        if info.visibility == Visibility.PUBLIC:
+
+    # Generate commands list using different approaches based on settings
+    if settings.sort_commands:
+        # Sort commands alphabetically
+        for c, info in sorted(all_commands.items()):
             logger.info(f"Setting bot command: /{c} - {info.description}")
             bot_commands.append(BotCommand(command=c, description=info.description))
+    else:
+        # Use original order (order of registration)
+        for c, info in all_commands.items():
+            logger.info(f"Setting bot command: /{c} - {info.description}")
+            bot_commands.append(BotCommand(command=c, description=info.description))
+
+    # Set commands in Telegram
     await bot.set_my_commands(bot_commands)
 
 
 def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
-    dp.startup.register(set_aiogram_bot_commands)
+    # Register startup handler with settings
+    async def set_commands_with_settings(bot: Bot):
+        await set_aiogram_bot_commands(bot, settings)
+
+    dp.startup.register(set_commands_with_settings)
 
     if settings.botspot_help:
         from aiogram.types import Message
@@ -312,6 +339,8 @@ def add_admin_command(names=None, description=None, group=None):
 
 
 if __name__ == "__main__":
+    from unittest.mock import AsyncMock, MagicMock
+
     from aiogram import Router
     from aiogram.types import Message
 
@@ -357,12 +386,29 @@ if __name__ == "__main__":
     async def cmd_admin(message: Message):
         await message.answer("Admin only")
 
-    # Print all registered commands with NESTED mode (default)
-    nested_settings = BotCommandsMenuSettings(group_display_mode=GroupDisplayMode.NESTED.value)
-    print("\n\n=== NESTED DISPLAY MODE ===")
+    # Print all registered commands with NESTED mode (default) and sorting enabled
+    nested_settings = BotCommandsMenuSettings(
+        group_display_mode=GroupDisplayMode.NESTED.value, sort_commands=True
+    )
+    print("\n\n=== NESTED DISPLAY MODE (SORTED) ===")
     print(get_commands_by_visibility(include_admin=True, settings=nested_settings))
 
-    # Print all registered commands with FLAT mode
-    flat_settings = BotCommandsMenuSettings(group_display_mode=GroupDisplayMode.FLAT.value)
-    print("\n\n=== FLAT DISPLAY MODE ===")
+    # Create a fake bot to demonstrate sorted commands
+    mock_bot = MagicMock()
+    mock_bot.set_my_commands = AsyncMock()
+    print("\n\n=== COMMAND LIST (SORTED) ===")
+    import asyncio
+
+    asyncio.run(set_aiogram_bot_commands(mock_bot, nested_settings))
+
+    # Print all registered commands with FLAT mode and sorting disabled
+    flat_settings = BotCommandsMenuSettings(
+        group_display_mode=GroupDisplayMode.FLAT.value, sort_commands=False
+    )
+    print("\n\n=== FLAT DISPLAY MODE (UNSORTED) ===")
     print(get_commands_by_visibility(include_admin=True, settings=flat_settings))
+
+    # Demonstrate unsorted commands
+    print("\n\n=== COMMAND LIST (UNSORTED) ===")
+    mock_bot.set_my_commands.reset_mock()
+    asyncio.run(set_aiogram_bot_commands(mock_bot, flat_settings))
