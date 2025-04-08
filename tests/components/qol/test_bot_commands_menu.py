@@ -6,6 +6,7 @@ from aiogram.types import BotCommand
 from botspot.components.qol.bot_commands_menu import (
     BotCommandsMenuSettings,
     CommandInfo,
+    GroupDisplayMode,
     Visibility,
     add_admin_command,
     add_command,
@@ -33,6 +34,9 @@ class TestBotCommandsMenuSettings:
         assert settings.enabled is True
         assert settings.admin_id == 0
         assert settings.botspot_help is True
+        assert settings.group_display_mode == GroupDisplayMode.NESTED.value
+        assert settings.default_group == "General"
+        assert settings.display_mode == GroupDisplayMode.NESTED
 
     def test_settings_from_env(self):
         """Test settings from environment variables"""
@@ -40,12 +44,17 @@ class TestBotCommandsMenuSettings:
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ENABLED", "False")
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ADMIN_ID", "123456789")
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_BOTSPOT_HELP", "False")
+            mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_GROUP_DISPLAY_MODE", "flat")
+            mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_DEFAULT_GROUP", "CustomDefault")
 
             settings = BotCommandsMenuSettings()
 
             assert settings.enabled is False
             assert settings.admin_id == 123456789
             assert settings.botspot_help is False
+            assert settings.group_display_mode == "flat"
+            assert settings.default_group == "CustomDefault"
+            assert settings.display_mode == GroupDisplayMode.FLAT
 
 
 class TestVisibility:
@@ -62,6 +71,18 @@ class TestVisibility:
         assert Visibility("admin_only") == Visibility.ADMIN_ONLY
 
 
+class TestGroupDisplayMode:
+    def test_enum_values(self):
+        """Test GroupDisplayMode enum values"""
+        assert GroupDisplayMode.NESTED.value == "nested"
+        assert GroupDisplayMode.FLAT.value == "flat"
+
+    def test_enum_from_string(self):
+        """Test creating GroupDisplayMode enum from string"""
+        assert GroupDisplayMode("nested") == GroupDisplayMode.NESTED
+        assert GroupDisplayMode("flat") == GroupDisplayMode.FLAT
+
+
 class TestCommandInfo:
     def test_command_info_creation(self):
         """Test creating CommandInfo objects"""
@@ -75,7 +96,7 @@ class TestCommandInfo:
         info = CommandInfo("Test description")
         assert info.description == "Test description"
         assert info.visibility == Visibility.PUBLIC
-        assert info.group == "General"
+        assert info.group is None  # Default is now None
 
         # With custom group
         info = CommandInfo("Test description", group="CustomGroup")
@@ -170,8 +191,9 @@ class TestGetCommandsByVisibility:
         commands["cmd4"] = CommandInfo("Command 4", Visibility.HIDDEN, "Group1")
         commands["cmd5"] = CommandInfo("Command 5", Visibility.ADMIN_ONLY, "Group3")
 
-        # Get all commands
-        result = get_commands_by_visibility(include_admin=True)
+        # Get all commands with default nested mode
+        settings = BotCommandsMenuSettings(group_display_mode=GroupDisplayMode.NESTED.value)
+        result = get_commands_by_visibility(include_admin=True, settings=settings)
 
         # Check public commands by group
         assert "📝 Public commands:" in result
@@ -189,6 +211,39 @@ class TestGetCommandsByVisibility:
         assert "👑 Admin commands:" in result
         assert "Group3:" in result
         assert "/cmd5 - Command 5" in result
+
+    def test_commands_with_flat_display_mode(self):
+        """Test get_commands_by_visibility with flat display mode"""
+        # Clear previous commands
+        commands.clear()
+
+        # Add commands with different groups
+        commands["cmd1"] = CommandInfo("Command 1", Visibility.PUBLIC, "CustomGroup")
+        commands["cmd2"] = CommandInfo("Command 2", Visibility.PUBLIC, "CustomGroup")
+        commands["cmd3"] = CommandInfo(
+            "Command 3", Visibility.PUBLIC, None
+        )  # Default group (visibility)
+        commands["cmd4"] = CommandInfo("Command 4", Visibility.HIDDEN, "CustomGroup")
+        commands["cmd5"] = CommandInfo(
+            "Command 5", Visibility.ADMIN_ONLY, None
+        )  # Default group (visibility)
+
+        # Get commands with flat display mode
+        settings = BotCommandsMenuSettings(group_display_mode=GroupDisplayMode.FLAT.value)
+        result = get_commands_by_visibility(include_admin=True, settings=settings)
+
+        # Check groups appear at the same level
+        assert "CustomGroup:" in result
+        assert "📝 Public commands:" in result
+        assert "🕵️ Hidden commands:" not in result  # Hidden command is in CustomGroup
+        assert "👑 Admin commands:" in result
+
+        # Check commands in the right groups
+        assert "/cmd1 - Command 1" in result
+        assert "/cmd2 - Command 2" in result
+        assert "/cmd3 - Command 3" in result  # In visibility group
+        assert "/cmd4 - Command 4" in result  # In CustomGroup
+        assert "/cmd5 - Command 5" in result  # In Admin group
 
 
 class TestSetAiogramBotCommands:
