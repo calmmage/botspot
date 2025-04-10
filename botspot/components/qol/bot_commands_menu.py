@@ -15,7 +15,7 @@ logger = get_logger()
 
 class Visibility(Enum):
     PUBLIC = "public"
-    HIDDEN = "hidden"  # in /botspot_help command only
+    HIDDEN = "hidden"  # in /list_commands command only
     ADMIN_ONLY = "admin_only"
 
 
@@ -35,7 +35,7 @@ class CommandInfo(NamedTuple):
 class BotCommandsMenuSettings(BaseSettings):
     enabled: bool = True
     admin_id: int = 0
-    botspot_help: bool = True
+    add_list_commands_handler: bool = True
     group_display_mode: str = GroupDisplayMode.NESTED.value
     default_group: str = "General"
     sort_commands: bool = True  # Sort commands alphabetically by default
@@ -234,12 +234,12 @@ def setup_dispatcher(dp: Dispatcher, settings: BotCommandsMenuSettings):
 
     dp.startup.register(set_commands_with_settings)
 
-    if settings.botspot_help:
+    if settings.add_list_commands_handler:
         from aiogram.types import Message
 
-        @add_command("help_botspot", "Show available bot commands")
-        @dp.message(Command("help_botspot"))
-        async def help_botspot_cmd(message: Message):
+        @add_command("list_commands", "Show available bot commands")
+        @dp.message(Command("list_commands"))
+        async def list_commands_cmd(message: Message):
             """Show available bot commands"""
             from botspot.utils.user_ops import is_admin
 

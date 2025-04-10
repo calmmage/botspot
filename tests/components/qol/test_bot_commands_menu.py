@@ -33,7 +33,7 @@ class TestBotCommandsMenuSettings:
 
         assert settings.enabled is True
         assert settings.admin_id == 0
-        assert settings.botspot_help is True
+        assert settings.add_list_commands_handler is True
         assert settings.group_display_mode == GroupDisplayMode.NESTED.value
         assert settings.default_group == "General"
         assert settings.display_mode == GroupDisplayMode.NESTED
@@ -44,7 +44,7 @@ class TestBotCommandsMenuSettings:
         with pytest.MonkeyPatch.context() as mp:
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ENABLED", "False")
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ADMIN_ID", "123456789")
-            mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_BOTSPOT_HELP", "False")
+            mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ADD_LIST_COMMANDS_HANDLER", "False")
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_GROUP_DISPLAY_MODE", "flat")
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_DEFAULT_GROUP", "CustomDefault")
             mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_SORT_COMMANDS", "False")
@@ -53,7 +53,7 @@ class TestBotCommandsMenuSettings:
 
             assert settings.enabled is False
             assert settings.admin_id == 123456789
-            assert settings.botspot_help is False
+            assert settings.add_list_commands_handler is False
             assert settings.group_display_mode == "flat"
             assert settings.default_group == "CustomDefault"
             assert settings.display_mode == GroupDisplayMode.FLAT
@@ -360,7 +360,7 @@ class TestSetupDispatcher:
         #
         # # Mock settings
         # mock_settings = MagicMock()
-        # mock_settings.botspot_help = False
+        # mock_settings.add_list_commands_handler = False
         #
         # # Call setup_dispatcher
         # setup_dispatcher(mock_dispatcher, mock_settings)
@@ -368,15 +368,15 @@ class TestSetupDispatcher:
         # # Verify startup handler registration
         # mock_dispatcher.startup.register.assert_called_once_with(set_aiogram_bot_commands)
 
-    def test_setup_dispatcher_with_botspot_help(self):
-        """Test setup_dispatcher registers help command when botspot_help is enabled"""
+    def test_setup_dispatcher_with_list_commands_handler(self):
+        """Test setup_dispatcher registers help command when add_list_commands_handler is enabled"""
         with patch("botspot.components.qol.bot_commands_menu.add_command") as mock_add_command:
             # Mock dispatcher
             mock_dispatcher = MagicMock()
 
             # Mock settings
             mock_settings = MagicMock()
-            mock_settings.botspot_help = True
+            mock_settings.add_list_commands_handler = True
 
             # Call setup_dispatcher
             setup_dispatcher(mock_dispatcher, mock_settings)
@@ -386,11 +386,11 @@ class TestSetupDispatcher:
 
             # Verify help command addition
             mock_add_command.assert_called_once()
-            assert mock_add_command.call_args[0][0] == "help_botspot"
+            assert mock_add_command.call_args[0][0] == "list_commands"
 
-    def test_help_botspot_command(self):
-        """Test help_botspot_command is properly added in setup_dispatcher"""
-        # This test will focus only on verifying that help_botspot_command is properly
+    def test_list_commands_command(self):
+        """Test list_commands_command is properly added in setup_dispatcher"""
+        # This test will focus only on verifying that list_commands_command is properly
         # registered in setup_dispatcher, which is the main purpose of this test
 
         with patch("botspot.components.qol.bot_commands_menu.add_command") as mock_add_command:
@@ -401,13 +401,13 @@ class TestSetupDispatcher:
 
             # Mock settings
             mock_settings = MagicMock()
-            mock_settings.botspot_help = True
+            mock_settings.add_list_commands_handler = True
 
             # Call setup_dispatcher
             setup_dispatcher(mock_dispatcher, mock_settings)
 
             # Verify add_command was called with the correct parameters
-            mock_add_command.assert_called_once_with("help_botspot", "Show available bot commands")
+            mock_add_command.assert_called_once_with("list_commands", "Show available bot commands")
 
 
 class TestAddCommand:

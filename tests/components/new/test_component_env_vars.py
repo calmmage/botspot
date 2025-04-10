@@ -97,7 +97,7 @@ def test_bot_commands_menu_env_vars():
         # Set environment variables
         mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ENABLED", "True")
         mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ADMIN_ID", "2")
-        mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_BOTSPOT_HELP", "False")
+        mp.setenv("BOTSPOT_BOT_COMMANDS_MENU_ADD_LIST_COMMANDS_HANDLER", "False")
 
         # Initialize settings
         settings = BotCommandsMenuSettings()
@@ -105,4 +105,4 @@ def test_bot_commands_menu_env_vars():
         # Verify settings
         assert settings.enabled is True
         assert settings.admin_id == 2
-        assert settings.botspot_help is False
+        assert settings.add_list_commands_handler is False
