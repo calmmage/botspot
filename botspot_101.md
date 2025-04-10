@@ -107,3 +107,23 @@ Single user mode eliminates the need to specify user_id in almost all component 
 - **Chat Binding**: Get bound chats without providing user_id
 - **Database Operations**: Store and retrieve user-specific data without explicit filtering
 - **Telethon Operations**: Access the user's Telegram account directly
+
+
+## Error Handling
+
+```python
+from botspot.errors import BotspotError
+
+# Never use try/except - let errors bubble up to global handlers!
+# Only set params that differ from defaults!
+# Only set user_message if user needs to take action!
+
+# Minimal example
+raise BotspotError("Data validation failed")
+
+# Action required example
+raise BotspotError(
+    message="Invalid format", # error message for logs
+    user_message="Please use DD/MM/YYYY format" # message that will be shown to user
+)
+```
