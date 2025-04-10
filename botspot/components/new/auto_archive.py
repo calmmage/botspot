@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 class AutoArchiveSettings(BaseSettings):
     enabled: bool = False
     delay: int = 10  # seconds
+    enable_chat_handler: bool = False  # whether to add a general chat message handler
 
     # todo:
     #  add bind_chat_key config
@@ -83,6 +84,15 @@ def setup_dispatcher(dp):
     logger.info("Setting up AutoArchive middleware")
 
     dp.message.middleware(aa)
+
+    # Add general chat message handler if enabled
+    if aa.settings.enable_chat_handler:
+
+        @dp.message()
+        async def general_chat_handler(message: Message):
+            # This handler does nothing but activates the auto-archive middleware
+            pass
+
     return dp
 
 
