@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.9.16"
+version = "0.9.17"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"

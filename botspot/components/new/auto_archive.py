@@ -139,6 +139,8 @@ def setup_dispatcher(dp):
     aa = get_auto_archive()
     logger.info("Setting up AutoArchive middleware")
 
+    # load_state
+    dp.startup.register(aa._load_intro_sent)
     dp.message.middleware(aa)
 
     # Add bind command
@@ -213,7 +215,6 @@ def initialize(settings: AutoArchiveSettings) -> AutoArchive:
 
     # Initialize auto archive and load intro sent state
     auto_archive = AutoArchive(settings)
-    asyncio.create_task(auto_archive._load_intro_sent())
 
     logger.info("AutoArchive component initialized")
     return auto_archive
