@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Set
 
 from aiogram import BaseMiddleware, types
 from aiogram.filters import Command
@@ -8,6 +8,7 @@ from loguru import logger
 from pydantic_settings import BaseSettings
 
 from botspot.commands_menu import Visibility, botspot_command
+from botspot.utils.deps_getters import get_database
 from botspot.utils.send_safe import send_safe
 
 if TYPE_CHECKING:
@@ -21,11 +22,8 @@ class AutoArchiveSettings(BaseSettings):
     private_chats_only: bool = True  # whether to only auto-archive in private chats
     chat_binding_key: str = "default"  # key to use for chat binding
     bind_command_visible: bool = True  # whether the bind command should be visible in menu
-
-    # todo:
-    #  add bind_chat_key config
-    # bound_chat_key: str = "auto-archive"
-    #  add a flag to add special command e.g. /bind_auto_archive
+    no_archive_tag: str = "#noarchive"  # tag that prevents both forwarding and deletion
+    no_delete_tag: str = "#nodelete"  # tag that prevents deletion but allows forwarding
 
     class Config:
         env_prefix = "BOTSPOT_AUTO_ARCHIVE_"
@@ -37,6 +35,35 @@ class AutoArchiveSettings(BaseSettings):
 class AutoArchive(BaseMiddleware):
     def __init__(self, settings: AutoArchiveSettings) -> None:
         self.settings = settings
+        self._intro_sent: Set[int] = set()
+        self._warning_sent: Set[int] = set()
+        self._collection = None
+
+    async def _get_collection(self) -> "AsyncIOMotorCollection":
+        if self._collection is None:
+            db = get_database()
+            self._collection = db["auto_archive_intro"]
+        return self._collection
+
+    async def _load_intro_sent(self) -> None:
+        collection = await self._get_collection()
+        cursor = collection.find({})
+        async for doc in cursor:
+            self._intro_sent.add(doc["user_id"])
+            if doc.get("warning_sent", False):
+                self._warning_sent.add(doc["user_id"])
+
+    async def _save_intro_sent(self, user_id: int) -> None:
+        collection = await self._get_collection()
+        await collection.update_one(
+            {"user_id": user_id}, {"$set": {"user_id": user_id}}, upsert=True
+        )
+
+    async def _save_warning_sent(self, user_id: int) -> None:
+        collection = await self._get_collection()
+        await collection.update_one(
+            {"user_id": user_id}, {"$set": {"user_id": user_id, "warning_sent": True}}, upsert=True
+        )
 
     async def __call__(
         self,
@@ -56,6 +83,20 @@ class AutoArchive(BaseMiddleware):
         assert message.from_user is not None
         user_id = message.from_user.id
 
+        # Check for tags
+        message_text = message.text or ""
+        message_text = message_text.lower()
+
+        if self.settings.no_archive_tag in message_text:
+            # Skip both forwarding and deletion
+            return await handler(event, data)
+
+        if self.settings.no_delete_tag in message_text:
+            # Forward but don't delete
+            should_delete = False
+        else:
+            should_delete = True
+
         # step 1: get the bound chat.
         from botspot.components.new.chat_binder import get_bound_chat
         from botspot.core.errors import ChatBindingNotFoundError
@@ -64,15 +105,33 @@ class AutoArchive(BaseMiddleware):
             target_chat_id = await get_bound_chat(user_id, key=self.settings.chat_binding_key)
         except ChatBindingNotFoundError:
             # tell user to bind the chat
-            message_text = "Auto-archive is enabled, but you don't have a bound chat for forwarding messages to."
-            await send_safe(message.chat.id, message_text)
+            if user_id not in self._warning_sent:
+                message_text = "Auto-archive is enabled, but you don't have a bound chat for forwarding messages to."
+                await send_safe(message.chat.id, message_text)
+                self._warning_sent.add(user_id)
+                await self._save_warning_sent(user_id)
             return await handler(event, data)
+
+        # Send intro message if this is first time for this user
+        if user_id not in self._intro_sent:
+            intro_message = (
+                "🔔 Auto-archive is enabled! Your messages will be forwarded and deleted after a short delay.\n"
+                f"• Use {self.settings.no_archive_tag} to prevent both forwarding and deletion\n"
+                f"• Use {self.settings.no_delete_tag} to forward but keep the original message\n"
+                "Use /autoarchive_help for more info."
+            )
+            await send_safe(message.chat.id, intro_message)
+            self._intro_sent.add(user_id)
+            await self._save_intro_sent(user_id)
 
         forwarded = await message.forward(target_chat_id)
 
         result = await handler(event, data)
-        await asyncio.sleep(self.settings.delay)
-        await message.delete()
+
+        if should_delete:
+            await asyncio.sleep(self.settings.delay)
+            await message.delete()
+
         return result
 
 
@@ -97,6 +156,24 @@ def setup_dispatcher(dp):
         await send_safe(message.chat.id, "Chat bound for auto-archiving")
 
     dp.message.register(cmd_bind_auto_archive, Command("bind_auto_archive"))
+
+    # Add help command
+    @botspot_command(
+        "autoarchive_help",
+        "Show auto-archive help",
+        visibility=Visibility.PUBLIC,
+    )
+    async def cmd_autoarchive_help(message: Message):
+        help_text = (
+            "🤖 Auto-Archive Help\n\n"
+            "• Messages are automatically forwarded to your bound chat and deleted after a short delay\n"
+            f"• Use {aa.settings.no_archive_tag} to prevent both forwarding and deletion\n"
+            f"• Use {aa.settings.no_delete_tag} to forward but keep the original message\n"
+            "• Use /bind_auto_archive to bind a chat for auto-archiving"
+        )
+        await send_safe(message.chat.id, help_text)
+
+    dp.message.register(cmd_autoarchive_help, Command("autoarchive_help"))
 
     # Add general chat message handler if enabled
     if aa.settings.enable_chat_handler:
@@ -134,8 +211,12 @@ def initialize(settings: AutoArchiveSettings) -> AutoArchive:
         logger.error("Chat Binder is not enabled. AutoArchive component requires it.")
         raise RuntimeError("Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env")
 
+    # Initialize auto archive and load intro sent state
+    auto_archive = AutoArchive(settings)
+    asyncio.create_task(auto_archive._load_intro_sent())
+
     logger.info("AutoArchive component initialized")
-    return AutoArchive(settings)
+    return auto_archive
 
 
 def get_auto_archive() -> AutoArchive:
