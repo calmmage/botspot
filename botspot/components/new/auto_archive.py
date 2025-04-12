@@ -118,7 +118,7 @@ class AutoArchive(BaseMiddleware):
                 "🔔 Auto-archive is enabled! Your messages will be forwarded and deleted after a short delay.\n"
                 f"• Use {self.settings.no_archive_tag} to prevent both forwarding and deletion\n"
                 f"• Use {self.settings.no_delete_tag} to forward but keep the original message\n"
-                "Use /autoarchive_help for more info."
+                "Use /help_autoarchive for more info."
             )
             await send_safe(message.chat.id, intro_message)
             self._intro_sent.add(user_id)
@@ -159,11 +159,11 @@ def setup_dispatcher(dp):
 
     # Add help command
     @botspot_command(
-        "autoarchive_help",
+        "help_autoarchive",
         "Show auto-archive help",
         visibility=Visibility.PUBLIC,
     )
-    async def cmd_autoarchive_help(message: Message):
+    async def cmd_help_autoarchive(message: Message):
         help_text = (
             "🤖 Auto-Archive Help\n\n"
             "• Messages are automatically forwarded to your bound chat and deleted after a short delay\n"
@@ -173,7 +173,7 @@ def setup_dispatcher(dp):
         )
         await send_safe(message.chat.id, help_text)
 
-    dp.message.register(cmd_autoarchive_help, Command("autoarchive_help"))
+    dp.message.register(cmd_help_autoarchive, Command("help_autoarchive"))
 
     # Add general chat message handler if enabled
     if aa.settings.enable_chat_handler:
