@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.9.17"
+version = "0.9.18"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -88,10 +88,10 @@ pytest-asyncio = "^0.25.3"
 pytest-mock = "^3.14.0"
 pytest-cov = "^6.0.0"
 #pytest-mongodb = "*"
-black = {extras = ["jupyter"], version = "^24.10.0"}
-isort = "^5.13.2"
 vulture = "^2.14"
 pyupgrade = "^3.19.1"
+pyright = "^1.1.399"
+ruff = "^0.11.5"
 
 [tool.poetry.group.docs.dependencies]
 #mkdocs = ">=1.6"

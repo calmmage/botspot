@@ -1,7 +1,8 @@
 import asyncio
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Set
 
-from aiogram import BaseMiddleware, types
+from aiogram import BaseMiddleware
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import Message
 from loguru import logger
@@ -21,7 +22,9 @@ class AutoArchiveSettings(BaseSettings):
     enable_chat_handler: bool = False  # whether to add a general chat message handler
     private_chats_only: bool = True  # whether to only auto-archive in private chats
     chat_binding_key: str = "default"  # key to use for chat binding
-    bind_command_visible: bool = True  # whether the bind command should be visible in menu
+    bind_command_visible: bool = (
+        True  # whether the bind command should be visible in menu
+    )
     no_archive_tag: str = "#noarchive"  # tag that prevents both forwarding and deletion
     no_delete_tag: str = "#nodelete"  # tag that prevents deletion but allows forwarding
 
@@ -62,7 +65,9 @@ class AutoArchive(BaseMiddleware):
     async def _save_warning_sent(self, user_id: int) -> None:
         collection = await self._get_collection()
         await collection.update_one(
-            {"user_id": user_id}, {"$set": {"user_id": user_id, "warning_sent": True}}, upsert=True
+            {"user_id": user_id},
+            {"$set": {"user_id": user_id, "warning_sent": True}},
+            upsert=True,
         )
 
     async def __call__(
@@ -98,11 +103,13 @@ class AutoArchive(BaseMiddleware):
             should_delete = True
 
         # step 1: get the bound chat.
-        from botspot.components.new.chat_binder import get_bound_chat
+        from botspot.components.new.chat_binder import get_bound_chat, unbind_chat
         from botspot.core.errors import ChatBindingNotFoundError
 
         try:
-            target_chat_id = await get_bound_chat(user_id, key=self.settings.chat_binding_key)
+            target_chat_id = await get_bound_chat(
+                user_id, key=self.settings.chat_binding_key
+            )
         except ChatBindingNotFoundError:
             # tell user to bind the chat
             if user_id not in self._warning_sent:
@@ -118,13 +125,25 @@ class AutoArchive(BaseMiddleware):
                 "🔔 Auto-archive is enabled! Your messages will be forwarded and deleted after a short delay.\n"
                 f"• Use {self.settings.no_archive_tag} to prevent both forwarding and deletion\n"
                 f"• Use {self.settings.no_delete_tag} to forward but keep the original message\n"
-                "Use /help_autoarchive for more info."
+                "Use /autoarchive_help for more info."
             )
             await send_safe(message.chat.id, intro_message)
             self._intro_sent.add(user_id)
             await self._save_intro_sent(user_id)
 
-        forwarded = await message.forward(target_chat_id)
+        try:
+            await message.forward(target_chat_id)
+        except TelegramBadRequest as e:
+            if "the message can't be forwarded" in str(e):
+                # Likely the group was upgraded to supergroup
+                await unbind_chat(user_id, key=self.settings.chat_binding_key)
+                message_text = (
+                    "⚠️ The bound chat was upgraded to supergroup. "
+                    "Please use /bind_auto_archive to bind the new supergroup."
+                )
+                await send_safe(message.chat.id, message_text)
+                return await handler(event, data)
+            raise
 
         result = await handler(event, data)
 
@@ -147,14 +166,18 @@ def setup_dispatcher(dp):
     @botspot_command(
         "bind_auto_archive",
         "Bind a chat for auto-archiving",
-        visibility=Visibility.PUBLIC if aa.settings.bind_command_visible else Visibility.HIDDEN,
+        visibility=Visibility.PUBLIC
+        if aa.settings.bind_command_visible
+        else Visibility.HIDDEN,
     )
     async def cmd_bind_auto_archive(message: Message):
         if message.from_user is None:
             return
         from botspot.chat_binder import bind_chat
 
-        await bind_chat(message.from_user.id, message.chat.id, key=aa.settings.chat_binding_key)
+        await bind_chat(
+            message.from_user.id, message.chat.id, key=aa.settings.chat_binding_key
+        )
         await send_safe(message.chat.id, "Chat bound for auto-archiving")
 
     dp.message.register(cmd_bind_auto_archive, Command("bind_auto_archive"))
@@ -211,7 +234,9 @@ def initialize(settings: AutoArchiveSettings) -> AutoArchive:
 
     if not deps.botspot_settings.chat_binder.enabled:
         logger.error("Chat Binder is not enabled. AutoArchive component requires it.")
-        raise RuntimeError("Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env")
+        raise RuntimeError(
+            "Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env"
+        )
 
     # Initialize auto archive and load intro sent state
     auto_archive = AutoArchive(settings)

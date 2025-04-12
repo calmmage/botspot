@@ -7,20 +7,6 @@ repos:
         files: \.ipynb$
         stages: [pre-commit]
 
-  - repo: https://github.com/psf/black
-    rev: 24.2.0
-    hooks:
-      - id: black
-        args: [ --line-length=100 ]
-        name: black
-        description: "Black: The uncompromising Python code formatter (with Jupyter Notebook support)"
-        entry: black
-        language: python
-        minimum_pre_commit_version: 2.9.2
-        require_serial: true
-        types_or: [python, pyi, jupyter]
-        additional_dependencies: [".[jupyter]"]
-
   - repo: https://github.com/jendrikseipp/vulture
     rev: 'v2.10'
     hooks:
@@ -48,13 +34,6 @@ repos:
 #          "--ignore=E203,W503",  # Ignore some style errors that conflict with other tools
 #        ]
 #        files: ^botspot/.*\.py$ # project_name - path to scan
-
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        name: isort (python)
-        files: ^.*\.py$
 
   - repo: local
     hooks:
@@ -84,3 +63,15 @@ repos:
         types: [python]
         pass_filenames: true
         args: ["--project", "pyrightconfig.json"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.7.4
+    hooks:
+      # Run the linter.
+      - id: ruff
+        types_or: [ python, pyi ]
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
+        types_or: [ python, pyi ]
