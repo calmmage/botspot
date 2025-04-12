@@ -10,7 +10,6 @@ from pydantic_settings import BaseSettings
 
 from botspot.utils import compare_users
 from botspot.utils.admin_filter import AdminFilter
-from botspot.utils.deps_getters import get_database
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
@@ -314,7 +313,7 @@ def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
     """
     # Check that motor is installed
     try:
-        from motor.motor_asyncio import AsyncIOMotorDatabase
+        import motor  # noqa: F401
     except ImportError:
         from botspot.utils.internal import get_logger
 
@@ -398,6 +397,7 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
                 await message.answer("Reply to a user's message to make them a friend")
                 return
 
+            assert message.reply_to_message.from_user is not None
             user_id = message.reply_to_message.from_user.id
             # Direct access to dependency_manager to avoid circular imports
             from botspot.core.dependency_manager import get_dependency_manager
@@ -447,7 +447,9 @@ if __name__ == "__main__":
         await user_manager.add_user(user)
 
         # Retrieve user from database
+        assert user is not None
         retrieved_user = await user_manager.get_user(user.user_id)
+        assert retrieved_user is not None
         print(f"Retrieved user: {retrieved_user.full_name} (ID: {retrieved_user.user_id})")
         print(f"User type: {retrieved_user.user_type}")
 

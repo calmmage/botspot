@@ -2,10 +2,12 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware, types
+from aiogram.filters import Command
 from aiogram.types import Message
 from loguru import logger
 from pydantic_settings import BaseSettings
 
+from botspot.commands_menu import Visibility, botspot_command
 from botspot.utils.send_safe import send_safe
 
 if TYPE_CHECKING:
@@ -16,6 +18,9 @@ class AutoArchiveSettings(BaseSettings):
     enabled: bool = False
     delay: int = 10  # seconds
     enable_chat_handler: bool = False  # whether to add a general chat message handler
+    private_chats_only: bool = True  # whether to only auto-archive in private chats
+    chat_binding_key: str = "default"  # key to use for chat binding
+    bind_command_visible: bool = True  # whether the bind command should be visible in menu
 
     # todo:
     #  add bind_chat_key config
@@ -41,8 +46,14 @@ class AutoArchive(BaseMiddleware):
     ) -> Any:
         logger.debug("AutoArchive middleware called")
 
-        # data['counter'] = self.counter
         message = event
+
+        # Check if this is a private chat if private_chats_only is enabled
+        if self.settings.private_chats_only and message.chat.type != "private":
+            # If not private and private_chats_only is enabled, just pass through to handler without auto-archiving
+            return await handler(event, data)
+
+        assert message.from_user is not None
         user_id = message.from_user.id
 
         # step 1: get the bound chat.
@@ -50,33 +61,19 @@ class AutoArchive(BaseMiddleware):
         from botspot.core.errors import ChatBindingNotFoundError
 
         try:
-            target_chat_id = await get_bound_chat(user_id)
+            target_chat_id = await get_bound_chat(user_id, key=self.settings.chat_binding_key)
         except ChatBindingNotFoundError:
             # tell user to bind the chat
-            message = "Auto-archive is enabled, but you don't have a bound chat for forwarding messages to."
-            await send_safe(user_id, message)
+            message_text = "Auto-archive is enabled, but you don't have a bound chat for forwarding messages to."
+            await send_safe(message.chat.id, message_text)
             return await handler(event, data)
 
         forwarded = await message.forward(target_chat_id)
-
-        # before:
-        # return await handler(event, data)
 
         result = await handler(event, data)
         await asyncio.sleep(self.settings.delay)
         await message.delete()
         return result
-
-        # return await handler(event, data)
-        # async def new_handler(message: Message, data: Dict[str, Any]):
-        #     await handler(message, data)
-        #     # Optional delay (e.g., 1 second) to let the user see the message
-        #     await asyncio.sleep(self.settings.delay)  # Configurable delay
-        #
-        #     # Delete the original message from the bot chat
-        #     await message.delete()
-        #
-        # return await new_handler(message, data)
 
 
 def setup_dispatcher(dp):
@@ -84,6 +81,22 @@ def setup_dispatcher(dp):
     logger.info("Setting up AutoArchive middleware")
 
     dp.message.middleware(aa)
+
+    # Add bind command
+    @botspot_command(
+        "bind_auto_archive",
+        "Bind a chat for auto-archiving",
+        visibility=Visibility.PUBLIC if aa.settings.bind_command_visible else Visibility.HIDDEN,
+    )
+    async def cmd_bind_auto_archive(message: Message):
+        if message.from_user is None:
+            return
+        from botspot.chat_binder import bind_chat
+
+        await bind_chat(message.from_user.id, message.chat.id, key=aa.settings.chat_binding_key)
+        await send_safe(message.chat.id, "Chat bound for auto-archiving")
+
+    dp.message.register(cmd_bind_auto_archive, Command("bind_auto_archive"))
 
     # Add general chat message handler if enabled
     if aa.settings.enable_chat_handler:

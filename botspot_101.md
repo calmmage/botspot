@@ -12,9 +12,12 @@ await send_safe(chat_id, "Very long message..." * 100)
 ### commands_menu.py
 ```python
 from botspot.commands_menu import botspot_command, add_hidden_command, Visibility
+from aiogram.filters import Command
 
+# @botspot_command only adds command to menu - you still need to register the handler!
 @botspot_command("start", "Start the bot")
 async def cmd_start(message): pass
+dp.message.register(cmd_start, Command("start"))
 
 @botspot_command("stats", "Show stats", visibility=Visibility.PUBLIC)
 async def cmd_stats(message): pass
