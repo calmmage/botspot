@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.9.19"
+version = "0.9.20"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -10,7 +10,7 @@ packages=[
 
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4.0"
+python = ">=3.12,<4.0"
 calmlib = { git = "https://github.com/calmmage/calmlib.git", branch = "main" }
 loguru = ">=0.7"
 # for parsing version

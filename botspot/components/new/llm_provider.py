@@ -2,17 +2,19 @@ import json
 import os
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union
 
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings
-
+from aiogram.types import Chat, User
 from botspot.utils.internal import get_logger
 from botspot.utils.send_safe import send_safe
 from botspot.utils.user_ops import UserLike, compare_users_async
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 
 if TYPE_CHECKING:
-    from litellm.types.utils import ModelResponse  # noqa: F401
+    from litellm.types.utils import ModelResponse
+    from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 
 
 logger = get_logger()
@@ -31,7 +33,8 @@ class LLMProviderSettings(BaseSettings):
     default_temperature: float = 0.7
     default_max_tokens: int = 1000
     default_timeout: int = 30
-    allow_everyone: bool = False  # If False, only friends and admins can use LLM features
+    # If False, only friends and admins can use LLM features
+    allow_everyone: bool = False
 
     skip_import_check: bool = False  # Skip import check for dependencies
 
@@ -137,7 +140,9 @@ class LLMProvider:
             return model
         return MODEL_NAME_SHORTCUTS.get(model, model)
 
-    def _prepare_messages(self, prompt: str, system_message: Optional[str] = None) -> list:
+    def _prepare_messages(
+        self, prompt: str, system_message: Optional[str] = None
+    ) -> list:
         """Prepare messages for the LLM request."""
         messages = []
 
@@ -179,6 +184,9 @@ class LLMProvider:
                 return True
             # Otherwise, check if the user matches the single user
             single_user = deps.botspot_settings.single_user_mode.user
+            assert (
+                single_user is not None
+            ), "Single user mode is enabled but user is not set"
             return await compare_users_async(user, single_user)
 
         # Check if user is admin or friend
@@ -227,7 +235,10 @@ class LLMProvider:
 
         # If MongoDB is enabled, store stats there
         # todo: adapt this to user
-        if deps.botspot_settings.mongo_database.enabled and deps.mongo_database is not None:
+        if (
+            deps.botspot_settings.mongo_database.enabled
+            and deps.mongo_database is not None
+        ):
             await deps.mongo_database.llm_usage.update_one(
                 {"user": user_key},
                 {"$inc": {f"models.{model}": tokens, "total": tokens}},
@@ -250,7 +261,7 @@ class LLMProvider:
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
         **extra_kwargs,
-    ) -> "ModelResponse":
+    ) -> "ModelResponse | CustomStreamWrapper":
         """
         Raw query to the LLM - returns the complete response object.
 
@@ -271,9 +282,8 @@ class LLMProvider:
         """
         import asyncio
 
-        from litellm import completion
-
         from botspot.core.dependency_manager import get_dependency_manager
+        from litellm import completion
 
         deps = get_dependency_manager()
 
@@ -293,7 +303,11 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
+            chat_id = (
+                int(user)
+                if isinstance(user, (int, str)) and str(user).isdigit()
+                else None
+            )
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -308,7 +322,11 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
+        temperature = (
+            temperature
+            if temperature is not None
+            else self.settings.default_temperature
+        )
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -360,6 +378,11 @@ class LLMProvider:
 
         Arguments are the same as query_llm_raw but returns a string.
         """
+        from litellm.types.utils import (
+            ModelResponse,
+            StreamingChoices,
+        )
+
         response = self.query_llm_raw(
             prompt=prompt,
             user=user,
@@ -371,7 +394,14 @@ class LLMProvider:
             max_retries=max_retries,
             **extra_kwargs,
         )
-        return response.choices[0].message.content
+        assert isinstance(response, ModelResponse), "Expected ModelResponse"
+        choice = response.choices[0]
+        assert not isinstance(choice, StreamingChoices)
+        message = choice.message
+        # assert isinstance(message, LLMMessage), "Expected Message"
+        content = message.content
+        assert content is not None, "Expected non-None content from LLM response"
+        return content
 
     def query_llm_stream(
         self,
@@ -393,9 +423,9 @@ class LLMProvider:
         """
         import asyncio
 
-        from litellm import completion
-
         from botspot.core.dependency_manager import get_dependency_manager
+        from litellm import completion
+        from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 
         deps = get_dependency_manager()
 
@@ -413,7 +443,11 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
+            chat_id = (
+                int(user)
+                if isinstance(user, (int, str)) and str(user).isdigit()
+                else None
+            )
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -426,7 +460,11 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
+        temperature = (
+            temperature
+            if temperature is not None
+            else self.settings.default_temperature
+        )
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -451,15 +489,16 @@ class LLMProvider:
             stream=True,
             **extra_kwargs,
         )
+        assert isinstance(response, CustomStreamWrapper), "Expected ModelResponseStream"
 
         for chunk in response:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-    def query_llm_structured(
+    def query_llm_structured[T: BaseModel](
         self,
         prompt: str,
-        output_schema: Type[BaseModel],
+        output_schema: Type[T],
         *,
         user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
@@ -469,7 +508,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         **extra_kwargs,
-    ) -> BaseModel:
+    ) -> T:
         """
         Query LLM with structured output.
 
@@ -482,9 +521,9 @@ class LLMProvider:
         """
         import asyncio
 
-        from litellm import completion
-
         from botspot.core.dependency_manager import get_dependency_manager
+        from litellm import completion
+        from litellm.types.utils import ModelResponse, StreamingChoices
 
         deps = get_dependency_manager()
 
@@ -502,7 +541,11 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
+            chat_id = (
+                int(user)
+                if isinstance(user, (int, str)) and str(user).isdigit()
+                else None
+            )
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -515,7 +558,11 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
+        temperature = (
+            temperature
+            if temperature is not None
+            else self.settings.default_temperature
+        )
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -524,9 +571,7 @@ class LLMProvider:
 
         # Prepare messages and add structured output instructions
         enhanced_system = system_message or ""
-        enhanced_system += (
-            "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
-        )
+        enhanced_system += "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
 
         messages = self._prepare_messages(prompt, enhanced_system)
 
@@ -543,12 +588,16 @@ class LLMProvider:
         )
 
         # Track usage (approximate tokens)
-        token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
+        assert isinstance(response, ModelResponse), "Expected ModelResponse"
+        choice = response.choices[0]
+        assert not isinstance(choice, StreamingChoices)
+        content = choice.message.content
+        assert content is not None, "Expected non-None content from LLM response"
+        token_estimate = len(prompt) // 4 + len(content)
         asyncio.run(self._track_usage(user, model, token_estimate))
 
         # Parse the response into the Pydantic model
-        result_text = response.choices[0].message.content
-        result_json = json.loads(result_text)
+        result_json = json.loads(content)
         return output_schema(**result_json)
 
     # ---------------------------------------------
@@ -578,9 +627,9 @@ class LLMProvider:
 
         Args are the same as query_llm_raw but using async/await.
         """
-        from litellm import acompletion
-
         from botspot.core.dependency_manager import get_dependency_manager
+        from litellm import acompletion
+        from litellm.types.utils import ModelResponse
 
         deps = get_dependency_manager()
 
@@ -598,7 +647,11 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
+            chat_id = (
+                int(user)
+                if isinstance(user, (int, str)) and str(user).isdigit()
+                else None
+            )
             if chat_id:
                 await send_safe(
                     chat_id,
@@ -609,7 +662,11 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
+        temperature = (
+            temperature
+            if temperature is not None
+            else self.settings.default_temperature
+        )
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -641,6 +698,9 @@ class LLMProvider:
         token_estimate = len(prompt) // 4 + max_tokens
         await self._track_usage(user, model, token_estimate)
 
+        assert isinstance(
+            response, ModelResponse
+        ), "Expected ModelResponse but got CustomStreamWrapper"
         return response
 
     async def aquery_llm_text(
@@ -661,6 +721,8 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns a string.
         """
+        from litellm.types.utils import ModelResponse, StreamingChoices
+
         response = await self.aquery_llm_raw(
             prompt=prompt,
             user=user,
@@ -672,7 +734,14 @@ class LLMProvider:
             max_retries=max_retries,
             **extra_kwargs,
         )
-        return response.choices[0].message.content
+        assert isinstance(response, ModelResponse), "Expected ModelResponse"
+        choice = response.choices[0]
+        assert choice is not None and not isinstance(
+            choice, StreamingChoices
+        ), "Expected ModelResponse but got CustomStreamWrapper"
+        content = choice.message.content
+        assert content is not None, "Expected non-None content from LLM response"
+        return content
 
     async def aquery_llm_stream(
         self,
@@ -692,9 +761,9 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns an async generator of text chunks.
         """
-        from litellm import acompletion
-
         from botspot.core.dependency_manager import get_dependency_manager
+        from litellm import acompletion
+        from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 
         deps = get_dependency_manager()
 
@@ -712,7 +781,11 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
+            chat_id = (
+                int(user)
+                if isinstance(user, (int, str)) and str(user).isdigit()
+                else None
+            )
             if chat_id:
                 await send_safe(
                     chat_id,
@@ -723,7 +796,11 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
+        temperature = (
+            temperature
+            if temperature is not None
+            else self.settings.default_temperature
+        )
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -748,15 +825,15 @@ class LLMProvider:
             stream=True,
             **extra_kwargs,
         )
-
+        assert isinstance(response, CustomStreamWrapper)
         async for chunk in response:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-    async def aquery_llm_structured(
+    async def aquery_llm_structured[T: BaseModel](
         self,
         prompt: str,
-        output_schema: Type[BaseModel],
+        output_schema: Type[T],
         *,
         user: Optional[UserLike] = None,
         system_message: Optional[str] = None,
@@ -766,7 +843,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         **extra_kwargs,
-    ) -> BaseModel:
+    ) -> T:
         """
         Async query LLM with structured output.
 
@@ -777,9 +854,9 @@ class LLMProvider:
         Returns:
             An instance of the provided Pydantic model
         """
-        from litellm import acompletion
-
         from botspot.core.dependency_manager import get_dependency_manager
+        from litellm import acompletion
+        from litellm.types.utils import ModelResponse, StreamingChoices
 
         deps = get_dependency_manager()
 
@@ -797,7 +874,11 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
+            chat_id = (
+                int(user)
+                if isinstance(user, (int, str)) and str(user).isdigit()
+                else None
+            )
             if chat_id:
                 await send_safe(
                     chat_id,
@@ -808,7 +889,11 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
+        temperature = (
+            temperature
+            if temperature is not None
+            else self.settings.default_temperature
+        )
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -817,9 +902,7 @@ class LLMProvider:
 
         # Prepare messages and add structured output instructions
         enhanced_system = system_message or ""
-        enhanced_system += (
-            "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
-        )
+        enhanced_system += "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
 
         messages = self._prepare_messages(prompt, enhanced_system)
 
@@ -836,11 +919,17 @@ class LLMProvider:
         )
 
         # Track usage (approximate tokens)
-        token_estimate = len(prompt) // 4 + len(response.choices[0].message.content)
+        assert isinstance(response, ModelResponse)
+        choice = response.choices[0]
+        assert not isinstance(choice, StreamingChoices)
+        content = choice.message.content
+
+        assert content is not None, "Expected non-None content from LLM response"
+        token_estimate = len(prompt) // 4 + len(content)
         await self._track_usage(user, model, token_estimate)
 
         # Parse the response into the Pydantic model
-        result_text = response.choices[0].message.content
+        result_text = content
         result_json = json.loads(result_text)
         return output_schema(**result_json)
 
@@ -864,7 +953,6 @@ def setup_dispatcher(dp):
     from aiogram import Router
     from aiogram.filters import Command
     from aiogram.types import Message
-
     from botspot.utils.admin_filter import AdminFilter
 
     router = Router(name="llm_provider")
@@ -886,11 +974,14 @@ def setup_dispatcher(dp):
                 models_str = ""
                 if "models" in user_stats and user_stats["models"]:
                     models_list = [
-                        f"{model}: {count}" for model, count in user_stats["models"].items()
+                        f"{model}: {count}"
+                        for model, count in user_stats["models"].items()
                     ]
                     models_str = f" ({', '.join(models_list)})"
 
-                lines.append(f"User {user_id}: {user_stats['total']} tokens{models_str}")
+                lines.append(
+                    f"User {user_id}: {user_stats['total']} tokens{models_str}"
+                )
             else:
                 lines.append(f"User {user_id}: {user_stats} tokens")
 
@@ -950,6 +1041,9 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
                 msg = f"✅ {lib_name} is available."
                 # todo: check api key, if not -> print warning
                 env_key = api_keys_env_names.get(lib_name)
+                assert (
+                    env_key is not None
+                ), f"Expected env key for {lib_name} but got None"
                 api_key = os.getenv(env_key)
 
                 if api_key:
@@ -1024,7 +1118,7 @@ def query_llm_raw(
     system_message: Optional[str] = None,
     model: Optional[str] = None,
     **kwargs,
-) -> "ModelResponse":
+) -> "ModelResponse | CustomStreamWrapper":
     """
     Raw query to the LLM - returns the complete response object.
 
@@ -1131,15 +1225,15 @@ async def astream_llm(
         yield chunk
 
 
-async def aquery_llm_structured(
+async def aquery_llm_structured[T: BaseModel](
     prompt: str,
-    output_schema: Type[BaseModel],
+    output_schema: Type[T],
     *,
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
     **kwargs,
-) -> BaseModel:
+) -> T:
     """
     Async query LLM with structured output.
 
@@ -1254,7 +1348,11 @@ if __name__ == "__main__":
         reasons: list[str]
 
     async def llm_message_handler(message: Message):
+        from litellm.types.utils import ModelResponse
+
         prompt = message.text
+        assert prompt is not None, "Expected message to have text"
+        assert message.from_user is not None, "Expected message to have from_user"
         user_id = message.from_user.id
         provider = get_llm_provider()
 
@@ -1271,7 +1369,9 @@ if __name__ == "__main__":
 
         # 3. Structured output with Pydantic
         structured_result = await provider.aquery_llm_structured(
-            prompt="Recommend a sci-fi movie", output_schema=MovieRecommendation, user=user_id
+            prompt="Recommend a sci-fi movie",
+            output_schema=MovieRecommendation,
+            user=user_id,
         )
         print(f"\n\nMovie: {structured_result.title} ({structured_result.year})")
 
@@ -1279,9 +1379,19 @@ if __name__ == "__main__":
         raw_response = await provider.aquery_llm_raw(
             prompt="What's the weather like?", user=user_id
         )
-        print(f"\nToken usage: {raw_response.usage}")
+        assert isinstance(raw_response, ModelResponse), "Expected ModelResponse"
+
+        # print(f"\nToken usage: {raw_response.usage}")
 
     # Run the example with a mock message
     asyncio.run(
-        llm_message_handler(Message(text="What is the meaning of life?", from_user={"id": 12345}))
+        llm_message_handler(
+            Message(
+                message_id=1,
+                date=datetime.now(),
+                chat=Chat(id=12345, type="private"),
+                text="What is the meaning of life?",
+                from_user=User(id=12345, is_bot=False, first_name="Test"),
+            )
+        )
     )
