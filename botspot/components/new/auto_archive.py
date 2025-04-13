@@ -1,4 +1,5 @@
 import asyncio
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Set
 
 from aiogram import BaseMiddleware
@@ -16,6 +17,14 @@ if TYPE_CHECKING:
     from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
 
 
+class CommandFilterMode(str, Enum):
+    PURE_COMMANDS = (
+        "pure_commands"  # delete only commands that have /command and NO OTHER TEXT
+    )
+    SINGLE_LINE = "single_line"  # delete only commands that are within one line
+    ALL_COMMANDS = "all_commands"  # delete all commands, even multi-line
+
+
 class AutoArchiveSettings(BaseSettings):
     enabled: bool = False
     delay: int = 10  # seconds
@@ -27,6 +36,11 @@ class AutoArchiveSettings(BaseSettings):
     )
     no_archive_tag: str = "#noarchive"  # tag that prevents both forwarding and deletion
     no_delete_tag: str = "#nodelete"  # tag that prevents deletion but allows forwarding
+    forward_sent_messages: bool = True  # whether to forward messages sent by the bot
+    dont_forward_commands: bool = True  # whether to not forward commands
+    command_filter_mode: CommandFilterMode = (
+        CommandFilterMode.PURE_COMMANDS
+    )  # how to filter commands
 
     class Config:
         env_prefix = "BOTSPOT_AUTO_ARCHIVE_"
@@ -69,6 +83,32 @@ class AutoArchive(BaseMiddleware):
             {"$set": {"user_id": user_id, "warning_sent": True}},
             upsert=True,
         )
+
+    def _is_command(self, message: Message) -> bool:
+        """Check if message is a command based on filter mode.
+
+        Args:
+            message: Message to check
+
+        Returns:
+            bool: True if message should be treated as a command
+        """
+        if not message.text:
+            return False
+
+        text = message.text.strip()
+
+        if self.settings.command_filter_mode == CommandFilterMode.PURE_COMMANDS:
+            # Only pure commands (no args)
+            return text.startswith("/") and len(text.split()) == 1
+
+        elif self.settings.command_filter_mode == CommandFilterMode.SINGLE_LINE:
+            # Commands in single line
+            return text.startswith("/") and "\n" not in text
+
+        else:  # ALL_COMMANDS
+            # All commands
+            return text.startswith("/")
 
     async def __call__(
         self,
@@ -131,19 +171,25 @@ class AutoArchive(BaseMiddleware):
             self._intro_sent.add(user_id)
             await self._save_intro_sent(user_id)
 
-        try:
-            await message.forward(target_chat_id)
-        except TelegramBadRequest as e:
-            if "the message can't be forwarded" in str(e):
-                # Likely the group was upgraded to supergroup
-                await unbind_chat(user_id, key=self.settings.chat_binding_key)
-                message_text = (
-                    "⚠️ The bound chat was upgraded to supergroup. "
-                    "Please use /bind_auto_archive to bind the new supergroup."
-                )
-                await send_safe(message.chat.id, message_text)
-                return await handler(event, data)
-            raise
+        # Check if this is a command and we should not forward it
+        should_forward = not (
+            self.settings.dont_forward_commands and self._is_command(message)
+        )
+
+        if should_forward:
+            try:
+                await message.forward(target_chat_id)
+            except TelegramBadRequest as e:
+                if "the message can't be forwarded" in str(e):
+                    # Likely the group was upgraded to supergroup
+                    await unbind_chat(user_id, key=self.settings.chat_binding_key)
+                    message_text = (
+                        "⚠️ The bound chat was upgraded to supergroup. "
+                        "Please use /bind_auto_archive to bind the new supergroup."
+                    )
+                    await send_safe(message.chat.id, message_text)
+                    return await handler(event, data)
+                raise
 
         result = await handler(event, data)
 
@@ -237,6 +283,10 @@ def initialize(settings: AutoArchiveSettings) -> AutoArchive:
         raise RuntimeError(
             "Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env"
         )
+
+    # Set auto-delete flag in send_safe settings if not explicitly set
+    if deps.botspot_settings.send_safe.auto_delete_enabled is None:
+        deps.botspot_settings.send_safe.auto_delete_enabled = True
 
     # Initialize auto archive and load intro sent state
     auto_archive = AutoArchive(settings)
