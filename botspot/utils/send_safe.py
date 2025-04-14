@@ -1,16 +1,17 @@
+import asyncio
 import textwrap
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Union
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.types import BufferedInputFile, Message, Chat, User
-from loguru import logger
+from aiogram.types import BufferedInputFile, Chat, Message, User
 from botspot.utils.text_utils import (
     MAX_TELEGRAM_MESSAGE_LENGTH,
     escape_md,
     split_long_message,
 )
+from loguru import logger
 
 if TYPE_CHECKING:
     from botspot.core.dependency_manager import DependencyManager
@@ -358,9 +359,6 @@ async def answer_safe(message: Message, text: str, **kwargs):
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    from aiogram.types import Chat, Message, User
 
     async def message_handler(message: Message):
         super_long_text = "This is a very long message. " * 100
