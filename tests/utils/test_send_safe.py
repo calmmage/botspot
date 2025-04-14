@@ -51,9 +51,13 @@ class TestSendWithParseModeCallback:
         chat_id = 12345
         text = "Test message"
 
-        await _send_with_parse_mode_fallback(mock_bot, chat_id, text, parse_mode=ParseMode.HTML)
+        await _send_with_parse_mode_fallback(
+            mock_bot, chat_id, text, parse_mode=ParseMode.HTML
+        )
 
-        mock_bot.send_message.assert_called_once_with(chat_id, text, parse_mode=ParseMode.HTML)
+        mock_bot.send_message.assert_called_once_with(
+            chat_id, text, parse_mode=ParseMode.HTML
+        )
 
     @pytest.mark.asyncio
     async def test_fallback_on_error(self, mock_bot):
@@ -62,9 +66,14 @@ class TestSendWithParseModeCallback:
         text = "Test message with <b>invalid HTML"
 
         # First call raises exception, second call succeeds
-        mock_bot.send_message.side_effect = [Exception("Parse error"), MagicMock(spec=Message)]
+        mock_bot.send_message.side_effect = [
+            Exception("Parse error"),
+            MagicMock(spec=Message),
+        ]
 
-        await _send_with_parse_mode_fallback(mock_bot, chat_id, text, parse_mode=ParseMode.HTML)
+        await _send_with_parse_mode_fallback(
+            mock_bot, chat_id, text, parse_mode=ParseMode.HTML
+        )
 
         # Check that it was called twice
         assert mock_bot.send_message.call_count == 2
@@ -118,7 +127,7 @@ class TestSendSafe:
         # Verify the document is a BufferedInputFile with the correct content
         file_arg = mock_deps.bot.send_document.call_args[0][1]
         assert isinstance(file_arg, BufferedInputFile)
-        assert file_arg.filename.endswith(".txt")
+        assert file_arg.filename is not None and file_arg.filename.endswith(".txt")
 
     @pytest.mark.asyncio
     async def test_long_message_split(self, mock_deps):
@@ -158,7 +167,16 @@ class TestReplySafe:
 
         # Check that send_safe was called with correct parameters
         mock_send_safe.assert_called_once_with(
-            mock_message.chat.id, text, reply_to_message_id=mock_message.message_id
+            mock_message.chat.id,
+            text,
+            deps=None,
+            reply_to_message_id=mock_message.message_id,
+            filename=None,
+            escape_markdown=False,
+            wrap=None,
+            parse_mode=None,
+            cleanup=None,
+            cleanup_timeout=None,
         )
 
 
@@ -172,4 +190,14 @@ class TestAnswerSafe:
         await answer_safe(mock_message, text)
 
         # Check that send_safe was called with correct parameters
-        mock_send_safe.assert_called_once_with(mock_message.chat.id, text)
+        mock_send_safe.assert_called_once_with(
+            mock_message.chat.id,
+            text,
+            deps=None,
+            filename=None,
+            escape_markdown=False,
+            wrap=None,
+            parse_mode=None,
+            cleanup=None,
+            cleanup_timeout=None,
+        )

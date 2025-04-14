@@ -1,7 +1,7 @@
 import asyncio
 import textwrap
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, Any
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
@@ -227,6 +227,8 @@ async def _handle_auto_delete(
     sent_message: Message,
     settings: SendSafeSettings,
     deps: "DependencyManager",
+    cleanup: Optional[bool] = None,
+    cleanup_timeout: Optional[int] = None,
 ) -> None:
     """Handle auto-deletion and forwarding to auto_archive.
 
@@ -234,36 +236,47 @@ async def _handle_auto_delete(
         sent_message: The message that was sent
         settings: SendSafeSettings instance
         deps: DependencyManager instance
+        cleanup: Whether to enable auto-deletion (overrides settings)
+        cleanup_timeout: Timeout in seconds for auto-deletion (overrides settings)
     """
-    if settings.auto_delete_enabled:
-        # Forward to auto_archive if enabled and bound
-        if (
-            deps.botspot_settings.auto_archive.enabled
-            and deps.botspot_settings.auto_archive.forward_sent_messages
-        ):
-            from botspot.components.new.chat_binder import get_bound_chat
-            from botspot.core.errors import ChatBindingNotFoundError
+    # Determine if auto-deletion should be enabled
+    should_delete = cleanup if cleanup is not None else settings.auto_delete_enabled
+    if not should_delete:
+        return
 
-            try:
-                if sent_message.from_user and sent_message.from_user.id:
-                    target_chat_id = await get_bound_chat(
-                        sent_message.chat.id,
-                        key=deps.auto_archive.settings.chat_binding_key,
-                    )
-                    await sent_message.forward(target_chat_id)
-            except ChatBindingNotFoundError:
-                # no binding found, do nothing
-                pass
+    # Forward to auto_archive if enabled and bound
+    if (
+        deps.botspot_settings.auto_archive.enabled
+        and deps.botspot_settings.auto_archive.forward_sent_messages
+    ):
+        from botspot.components.new.chat_binder import get_bound_chat
+        from botspot.core.errors import ChatBindingNotFoundError
 
-        # Schedule auto-deletion
-        async def delete_message():
-            await asyncio.sleep(settings.auto_delete_timeout)
-            try:
-                await sent_message.delete()
-            except Exception as e:
-                logger.warning(f"Failed to auto-delete message: {e}")
+        try:
+            if sent_message.from_user and sent_message.from_user.id:
+                target_chat_id = await get_bound_chat(
+                    sent_message.chat.id,
+                    key=deps.auto_archive.settings.chat_binding_key,
+                )
+                await sent_message.forward(target_chat_id)
+        except ChatBindingNotFoundError:
+            # no binding found, do nothing
+            pass
 
-        asyncio.create_task(delete_message())
+    # Schedule auto-deletion
+    async def delete_message():
+        timeout = (
+            cleanup_timeout
+            if cleanup_timeout is not None
+            else settings.auto_delete_timeout
+        )
+        await asyncio.sleep(timeout)
+        try:
+            await sent_message.delete()
+        except Exception as e:
+            logger.warning(f"Failed to auto-delete message: {e}")
+
+    asyncio.create_task(delete_message())
 
 
 async def send_safe(
@@ -275,6 +288,8 @@ async def send_safe(
     escape_markdown: bool = False,
     wrap: Optional[bool] = None,
     parse_mode: Optional[str] = None,
+    cleanup: Optional[bool] = None,
+    cleanup_timeout: Optional[int] = None,
     **kwargs,
 ):
     """
@@ -289,6 +304,8 @@ async def send_safe(
         escape_markdown: Whether to escape markdown characters
         wrap: Whether to wrap text (overrides settings)
         parse_mode: Message parse mode (overrides settings)
+        cleanup: Whether to enable auto-deletion (overrides settings)
+        cleanup_timeout: Timeout in seconds for auto-deletion (overrides settings)
         **kwargs: Additional arguments for send_message
     """
     if deps is None:
@@ -341,21 +358,66 @@ async def send_safe(
             )
 
     # Handle auto-deletion
-    await _handle_auto_delete(sent_message, settings, deps)
+    await _handle_auto_delete(sent_message, settings, deps, cleanup, cleanup_timeout)
 
     return sent_message
 
 
-async def reply_safe(message: Message, text: str, **kwargs):
+async def reply_safe(
+    message: Message,
+    text: str,
+    *,
+    deps: Optional["DependencyManager"] = None,
+    filename: Optional[str] = None,
+    escape_markdown: bool = False,
+    wrap: Optional[bool] = None,
+    parse_mode: Optional[str] = None,
+    cleanup: Optional[bool] = None,
+    cleanup_timeout: Optional[int] = None,
+    **kwargs: Any,
+) -> Message:
     """Reply to a message with safe sending"""
-    await send_safe(
-        message.chat.id, text, reply_to_message_id=message.message_id, **kwargs
+    return await send_safe(
+        message.chat.id,
+        text,
+        deps=deps,
+        reply_to_message_id=message.message_id,
+        filename=filename,
+        escape_markdown=escape_markdown,
+        wrap=wrap,
+        parse_mode=parse_mode,
+        cleanup=cleanup,
+        cleanup_timeout=cleanup_timeout,
+        **kwargs,
     )
 
 
-async def answer_safe(message: Message, text: str, **kwargs):
+async def answer_safe(
+    message: Message,
+    text: str,
+    *,
+    deps: Optional["DependencyManager"] = None,
+    filename: Optional[str] = None,
+    escape_markdown: bool = False,
+    wrap: Optional[bool] = None,
+    parse_mode: Optional[str] = None,
+    cleanup: Optional[bool] = None,
+    cleanup_timeout: Optional[int] = None,
+    **kwargs: Any,
+) -> Message:
     """Answer to a message with safe sending"""
-    await send_safe(message.chat.id, text, **kwargs)
+    return await send_safe(
+        message.chat.id,
+        text,
+        deps=deps,
+        filename=filename,
+        escape_markdown=escape_markdown,
+        wrap=wrap,
+        parse_mode=parse_mode,
+        cleanup=cleanup,
+        cleanup_timeout=cleanup_timeout,
+        **kwargs,
+    )
 
 
 if __name__ == "__main__":
