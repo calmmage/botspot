@@ -11,7 +11,12 @@ from botspot import __version__
 from botspot.components.data import mongo_database, user_data
 from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
-from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
+from botspot.components.main import (
+    event_scheduler,
+    single_user_mode,
+    telethon_manager,
+    trial_mode,
+)
 from botspot.components.middlewares import error_handler
 from botspot.components.new import (
     auto_archive,
@@ -19,6 +24,7 @@ from botspot.components.new import (
     chat_fetcher,
     llm_provider,
     queue_manager,
+    s3_storage,
 )
 from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
@@ -45,18 +51,26 @@ class BotManager(metaclass=Singleton):
         self.user_class = user_class
 
         if self.settings.mongo_database.enabled:
-            mongo_client, mongo_db = mongo_database.initialize(self.settings.mongo_database)
+            mongo_client, mongo_db = mongo_database.initialize(
+                self.settings.mongo_database
+            )
             self.deps.mongo_client = mongo_client
             self.deps.mongo_database = mongo_db
 
         if self.settings.event_scheduler.enabled:
-            self.deps.scheduler = event_scheduler.initialize(self.settings.event_scheduler)
+            self.deps.scheduler = event_scheduler.initialize(
+                self.settings.event_scheduler
+            )
 
         if self.settings.telethon_manager.enabled:
-            self.deps.telethon_manager = telethon_manager.initialize(self.settings.telethon_manager)
+            self.deps.telethon_manager = telethon_manager.initialize(
+                self.settings.telethon_manager
+            )
 
         if self.settings.user_data.enabled:
-            self.deps.user_manager = user_data.initialize(self.settings, user_class=user_class)
+            self.deps.user_manager = user_data.initialize(
+                self.settings, user_class=user_class
+            )
 
         if self.settings.single_user_mode.enabled:
             single_user_mode.initialize(self.settings.single_user_mode)
@@ -68,13 +82,19 @@ class BotManager(metaclass=Singleton):
             self.deps.llm_provider = llm_provider.initialize(self.settings.llm_provider)
 
         if self.settings.queue_manager.enabled:
-            self.deps.queue_manager = queue_manager.initialize(self.settings.queue_manager)
+            self.deps.queue_manager = queue_manager.initialize(
+                self.settings.queue_manager
+            )
 
         if self.settings.chat_fetcher.enabled:
             self.deps.chat_fetcher = chat_fetcher.initialize(self.settings.chat_fetcher)
 
         if self.settings.auto_archive.enabled:
             self.deps.auto_archive = auto_archive.initialize(self.settings.auto_archive)
+
+        if self.settings.s3_storage.enabled:
+            s3_provider = s3_storage.initialize(self.settings.s3_storage)
+            self.deps.s3_storage = s3_provider
 
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
@@ -102,7 +122,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.ask_user.enabled:
             if not self.deps.bot:
-                raise RuntimeError("Bot instance is required for ask_user functionality")
+                raise RuntimeError(
+                    "Bot instance is required for ask_user functionality"
+                )
 
             user_interactions.setup_dispatcher(dp)
 
