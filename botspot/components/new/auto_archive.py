@@ -84,7 +84,7 @@ class AutoArchive(BaseMiddleware):
             upsert=True,
         )
 
-    def _is_command(self, message: Message) -> bool:
+    def _is_filtered_command(self, message: Message) -> bool:
         """Check if message is a command based on filter mode.
 
         Args:
@@ -136,11 +136,7 @@ class AutoArchive(BaseMiddleware):
             # Skip both forwarding and deletion
             return await handler(event, data)
 
-        if self.settings.no_delete_tag in message_text:
-            # Forward but don't delete
-            should_delete = False
-        else:
-            should_delete = True
+        should_delete = self.settings.no_delete_tag not in message_text
 
         # step 1: get the bound chat.
         from botspot.components.new.chat_binder import get_bound_chat, unbind_chat
@@ -173,7 +169,7 @@ class AutoArchive(BaseMiddleware):
 
         # Check if this is a command and we should not forward it
         should_forward = not (
-            self.settings.dont_forward_commands and self._is_command(message)
+            self.settings.dont_forward_commands and self._is_filtered_command(message)
         )
 
         if should_forward:
