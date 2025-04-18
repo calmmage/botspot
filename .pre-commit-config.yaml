@@ -76,15 +76,3 @@ repos:
           "--cov-report=xml",
           "--cov-fail-under=50",
         ]
-      - id: poetry-version-patch
-        name: Increment Poetry patch version
-        entry: scripts/version_patch.sh  # Assumes you’re using a script to avoid double-bumping
-        language: system
-        files: pyproject.toml
-        stages: [ pre-commit ]
-      - id: stage-modified-files
-        name: Stage files modified by pre-commit hooks
-        entry: bash -c 'git add $(git diff --name-only --diff-filter=M)'
-        language: system
-        always_run: true
-        stages: [ pre-commit ]
