@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from botspot.components.new.auto_archive import AutoArchive
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.chat_fetcher import ChatFetcher
+    from botspot.components.new.contact_manager import ContactManager
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
 
@@ -39,6 +40,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = None
         self._chat_binder = None
         self._llm_provider = None
+        self._contact_manager = None
         self._queue_manager = None
         self._chat_fetcher = None
         self._auto_archive = None
@@ -141,6 +143,16 @@ class DependencyManager(metaclass=Singleton):
     @llm_provider.setter
     def llm_provider(self, value):
         self._llm_provider = value
+        
+    @property
+    def contact_manager(self) -> "ContactManager":
+        if self._contact_manager is None:
+            raise RuntimeError("Contact Manager is not initialized")
+        return self._contact_manager
+        
+    @contact_manager.setter
+    def contact_manager(self, value):
+        self._contact_manager = value
 
     @property
     def queue_manager(self) -> "QueueManager":
