@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
-from aiogram import Bot, types
+from aiogram import Bot, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InaccessibleMessage, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -147,7 +147,7 @@ async def _ask_user_base(
             if default_choice is not None:
                 question += f"\n\n⏰ Auto-selected: {default_choice}"
             else:
-                question += f"\n\n⏰ No response received within the time limit."
+                question += "\n\n⏰ No response received within the time limit."
             await sent_message.edit_text(question)
         return default_choice  # None if no default choice
     finally:
@@ -451,6 +451,11 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
 def setup_dispatcher(dp):
     """Register message and callback handlers"""
     dp.message.register(handle_user_input, UserInputState.waiting)
+    dp.message.register(
+        handle_user_input,
+        UserInputState.waiting,
+        ~F.text.startswith("/"),  # Using magic filter to exclude commands
+    )
     dp.callback_query.register(
         handle_choice_callback,
         lambda c: c.data and c.data.startswith("choice_"),

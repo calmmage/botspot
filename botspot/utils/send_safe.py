@@ -30,7 +30,7 @@ class SendSafeSettings(BaseSettings):
     auto_delete_enabled: Optional[bool] = (
         None  # None means it will be set based on auto_archive settings
     )
-    auto_delete_timeout: int = 10  # seconds
+    auto_delete_timeout: int = 300  # 5 minutes
 
     # Configuration
     preview_cutoff: int = 200
@@ -223,6 +223,7 @@ async def _send_split_messages(
     return messages[-1]
 
 
+# todo: I need to add a way for user to pause / stop auto-delete. Preferably - for a single command/message. Use state?
 async def _handle_auto_delete(
     sent_message: Message,
     settings: SendSafeSettings,

@@ -35,19 +35,6 @@ repos:
 #        ]
 #        files: ^botspot/.*\.py$ # project_name - path to scan
 
-  - repo: local
-    hooks:
-      - id: pytest-check
-        name: pytest-check
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        args: [
-          "--cov=botspot",  # project_name - path to scan
-          "--cov-report=xml",
-          "--cov-fail-under=50",
-        ]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.19.0
@@ -75,3 +62,17 @@ repos:
       # Run the formatter.
       - id: ruff-format
         types_or: [ python, pyi ]
+
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        args: [
+          "--cov=botspot",  # project_name - path to scan
+          "--cov-report=xml",
+          "--cov-fail-under=50",
+        ]
