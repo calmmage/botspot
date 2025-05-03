@@ -1,20 +1,29 @@
+import asyncio
+import base64
 import json
 import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, List, Optional, Type, Union
 
 from aiogram.types import Chat, User
-from botspot.utils.internal import get_logger
-from botspot.utils.send_safe import send_safe
-from botspot.utils.user_ops import UserLike, compare_users_async
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+from botspot.utils.internal import get_logger
+from botspot.utils.send_safe import send_safe
+from botspot.utils.unsorted import Attachment, download_telegram_file, get_attachment_format
+from botspot.utils.user_ops import UserLike, compare_users_async
+
+# todo: check max attachments for different models
+# from botspot.utils.unsorted import download_telegram_file
+# max attachments for each model
+MAX_ATTACHMENTS = defaultdict(lambda: 10)
+
 if TYPE_CHECKING:
-    from litellm.types.utils import ModelResponse
     from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+    from litellm.types.utils import ModelResponse
 
 
 logger = get_logger()
@@ -29,7 +38,7 @@ class LLMProviderSettings(BaseSettings):
     """Settings for the LLM Provider component."""
 
     enabled: bool = False
-    default_model: str = "claude-3.7"  # Default model to use
+    default_model: str = "claude-3.7"  # Default model to use (maps to claude-3-7-sonnet-latest)
     default_temperature: float = 0.7
     default_max_tokens: int = 1000
     default_timeout: int = 30
@@ -49,8 +58,17 @@ class LLMProviderSettings(BaseSettings):
 # This maps simple names to the provider-specific model names
 MODEL_NAME_SHORTCUTS = {
     # Anthropic (Claude models)
-    "claude-3.5": "anthropic/claude-3-5-sonnet-20241022",
-    "claude-3.7-max": "anthropic/claude-3-7-sonnet-max",
+    # Claude 3.7 Sonnet
+    "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
+    "claude-3.7-sonnet": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
+    "claude-3-7-sonnet-20250219": "anthropic/claude-3-7-sonnet-20250219",  # specific version
+    # Claude 3.5 Models
+    "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # hardcoded: claude-3-5-haiku-20241022
+    "claude-3.5": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
+    "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
+    "claude-3-5-sonnet-20241022": "anthropic/claude-3-5-sonnet-20241022",  # specific version
+    "claude-3.5-sonnet-v1": "anthropic/claude-3-5-sonnet-20240620",
+    "claude-3-5-sonnet-20240620": "anthropic/claude-3-5-sonnet-20240620",
     # OpenAI models
     "gpt-4o": "openai/gpt-4o",
     "o1": "openai/o1",
@@ -63,11 +81,6 @@ MODEL_NAME_SHORTCUTS = {
     "grok-2": "grok/grok-2",
     "gpt-4.5": "openai/gpt-4.5-preview",
     # Remaining models
-    # Claude models (continued)
-    "claude-3-opus": "anthropic/claude-3-opus",
-    "claude-3.5-haiku": "anthropic/claude-3-5-haiku",
-    "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet",
-    "claude-3.7": "anthropic/claude-3-7-sonnet",
     # OpenAI models (continued)
     "gpt-3.5": "openai/gpt-3.5-turbo",
     "gpt-4": "openai/gpt-4",
@@ -141,7 +154,10 @@ class LLMProvider:
         return MODEL_NAME_SHORTCUTS.get(model, model)
 
     def _prepare_messages(
-        self, prompt: str, system_message: Optional[str] = None
+        self,
+        prompt: str,
+        system_message: Optional[str] = None,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
     ) -> list:
         """Prepare messages for the LLM request."""
         messages = []
@@ -150,8 +166,96 @@ class LLMProvider:
         if system_message:
             messages.append({"role": "system", "content": system_message})
 
+        if attachments is None or not attachments:
+            content = prompt
+        else:
+            if not isinstance(attachments, list):
+                attachments = [attachments]
+            content = [{"type": "text", "text": prompt}]
+            for attachment in attachments:
+                if isinstance(attachment, Attachment):
+                    file_stream = asyncio.run(download_telegram_file(attachment))
+                    file_bytes = file_stream.read()
+                else:
+                    file_bytes = attachment
+                # assert isinstance(file, BinaryIO)
+                assert isinstance(file_bytes, bytes)
+
+                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
+                # todo: figure out the proper way to include mime type - for now, do hardcoded as it worked before
+
+                if isinstance(attachment, Attachment):
+                    format = get_attachment_format(attachment)
+                    image_url = f"data:{format};base64,{encoded_file}"
+                else:
+                    # todo: check if this even works
+                    # todo: figure out to provide mime type here - need to pass with the bytes somehow / as a file. BinaryIO?
+                    logger.warning(
+                        f"received non-telegram file as attachment: {attachment}, using without mime type"
+                    )
+                    image_url = f"base64,{encoded_file}"
+
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": image_url,
+                    }
+                )
         # Add user prompt
-        messages.append({"role": "user", "content": prompt})
+        messages.append({"role": "user", "content": content})
+
+        return messages
+
+    async def _aprepare_messages(
+        self,
+        prompt: str,
+        system_message: Optional[str] = None,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    ) -> list:
+        """Prepare messages for the LLM request."""
+        messages = []
+
+        # Add system message if provided
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
+
+        if attachments is None or not attachments:
+            content = prompt
+        else:
+            if not isinstance(attachments, list):
+                attachments = [attachments]
+            content = [{"type": "text", "text": prompt}]
+            for attachment in attachments:
+                if isinstance(attachment, Attachment):
+                    file_stream = await download_telegram_file(attachment)
+                    file_bytes = file_stream.read()
+                else:
+                    file_bytes = attachment
+                # assert isinstance(file, BinaryIO)
+                assert isinstance(file_bytes, bytes)
+
+                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
+                # todo: figure out the proper way to include mime type - for now, do hardcoded as it worked before
+
+                if isinstance(attachment, Attachment):
+                    format = get_attachment_format(attachment)
+                    image_url = f"data:{format};base64,{encoded_file}"
+                else:
+                    # todo: check if this even works
+                    # todo: figure out to provide mime type here - need to pass with the bytes somehow / as a file. BinaryIO?
+                    logger.warning(
+                        f"received non-telegram file as attachment: {attachment}, using without mime type"
+                    )
+                    image_url = f"base64,{encoded_file}"
+
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": image_url,
+                    }
+                )
+        # Add user prompt
+        messages.append({"role": "user", "content": content})
 
         return messages
 
@@ -184,9 +288,7 @@ class LLMProvider:
                 return True
             # Otherwise, check if the user matches the single user
             single_user = deps.botspot_settings.single_user_mode.user
-            assert (
-                single_user is not None
-            ), "Single user mode is enabled but user is not set"
+            assert single_user is not None, "Single user mode is enabled but user is not set"
             return await compare_users_async(user, single_user)
 
         # Check if user is admin or friend
@@ -235,10 +337,7 @@ class LLMProvider:
 
         # If MongoDB is enabled, store stats there
         # todo: adapt this to user
-        if (
-            deps.botspot_settings.mongo_database.enabled
-            and deps.mongo_database is not None
-        ):
+        if deps.botspot_settings.mongo_database.enabled and deps.mongo_database is not None:
             await deps.mongo_database.llm_usage.update_one(
                 {"user": user_key},
                 {"$inc": {f"models.{model}": tokens, "total": tokens}},
@@ -260,6 +359,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> "ModelResponse | CustomStreamWrapper":
         """
@@ -275,15 +375,15 @@ class LLMProvider:
             timeout: Request timeout
             max_retries: Number of times to retry failed requests
             structured_output_schema: Optional Pydantic model for structured output
+            attachments: Optional list of attachments to include in the request
             **extra_kwargs: Additional arguments to pass to the LLM
 
         Returns:
             Raw response from the LLM
         """
-        import asyncio
+        from litellm import completion
 
         from botspot.core.dependency_manager import get_dependency_manager
-        from litellm import completion
 
         deps = get_dependency_manager()
 
@@ -303,11 +403,7 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = (
-                int(user)
-                if isinstance(user, (int, str)) and str(user).isdigit()
-                else None
-            )
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -322,11 +418,7 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = (
-            temperature
-            if temperature is not None
-            else self.settings.default_temperature
-        )
+        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -334,7 +426,7 @@ class LLMProvider:
         full_model_name = self._get_full_model_name(model)
 
         # Prepare messages
-        messages = self._prepare_messages(prompt, system_message)
+        messages = self._prepare_messages(prompt, system_message, attachments)
 
         # Additional parameters
         params = {
@@ -371,6 +463,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> str:
         """
@@ -378,10 +471,7 @@ class LLMProvider:
 
         Arguments are the same as query_llm_raw but returns a string.
         """
-        from litellm.types.utils import (
-            ModelResponse,
-            StreamingChoices,
-        )
+        from litellm.types.utils import ModelResponse, StreamingChoices
 
         response = self.query_llm_raw(
             prompt=prompt,
@@ -392,6 +482,7 @@ class LLMProvider:
             max_tokens=max_tokens,
             timeout=timeout,
             max_retries=max_retries,
+            attachments=attachments,
             **extra_kwargs,
         )
         assert isinstance(response, ModelResponse), "Expected ModelResponse"
@@ -414,6 +505,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> Generator[str, None, None]:
         """
@@ -423,9 +515,10 @@ class LLMProvider:
         """
         import asyncio
 
-        from botspot.core.dependency_manager import get_dependency_manager
         from litellm import completion
         from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+
+        from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
 
@@ -443,11 +536,7 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = (
-                int(user)
-                if isinstance(user, (int, str)) and str(user).isdigit()
-                else None
-            )
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -460,11 +549,7 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = (
-            temperature
-            if temperature is not None
-            else self.settings.default_temperature
-        )
+        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -472,7 +557,7 @@ class LLMProvider:
         full_model_name = self._get_full_model_name(model)
 
         # Prepare messages
-        messages = self._prepare_messages(prompt, system_message)
+        messages = self._prepare_messages(prompt, system_message, attachments)
 
         # Track usage at the start (approximate tokens)
         token_estimate = len(prompt) // 4 + max_tokens
@@ -507,6 +592,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> T:
         """
@@ -521,9 +607,10 @@ class LLMProvider:
         """
         import asyncio
 
-        from botspot.core.dependency_manager import get_dependency_manager
         from litellm import completion
         from litellm.types.utils import ModelResponse, StreamingChoices
+
+        from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
 
@@ -541,11 +628,7 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = (
-                int(user)
-                if isinstance(user, (int, str)) and str(user).isdigit()
-                else None
-            )
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 asyncio.run(
                     send_safe(
@@ -558,11 +641,7 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = (
-            temperature
-            if temperature is not None
-            else self.settings.default_temperature
-        )
+        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -571,9 +650,11 @@ class LLMProvider:
 
         # Prepare messages and add structured output instructions
         enhanced_system = system_message or ""
-        enhanced_system += "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
+        enhanced_system += (
+            "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
+        )
 
-        messages = self._prepare_messages(prompt, enhanced_system)
+        messages = self._prepare_messages(prompt, enhanced_system, attachments)
 
         # Make the API call
         response = completion(
@@ -620,6 +701,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> "ModelResponse":
         """
@@ -627,9 +709,10 @@ class LLMProvider:
 
         Args are the same as query_llm_raw but using async/await.
         """
-        from botspot.core.dependency_manager import get_dependency_manager
         from litellm import acompletion
         from litellm.types.utils import ModelResponse
+
+        from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
 
@@ -647,11 +730,7 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = (
-                int(user)
-                if isinstance(user, (int, str)) and str(user).isdigit()
-                else None
-            )
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 await send_safe(
                     chat_id,
@@ -662,11 +741,7 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = (
-            temperature
-            if temperature is not None
-            else self.settings.default_temperature
-        )
+        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -674,7 +749,7 @@ class LLMProvider:
         full_model_name = self._get_full_model_name(model)
 
         # Prepare messages
-        messages = self._prepare_messages(prompt, system_message)
+        messages = await self._aprepare_messages(prompt, system_message, attachments)
 
         # Additional parameters
         params = {
@@ -714,6 +789,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> str:
         """
@@ -732,6 +808,7 @@ class LLMProvider:
             max_tokens=max_tokens,
             timeout=timeout,
             max_retries=max_retries,
+            attachments=attachments,
             **extra_kwargs,
         )
         assert isinstance(response, ModelResponse), "Expected ModelResponse"
@@ -754,6 +831,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> AsyncGenerator[str, None]:
         """
@@ -761,9 +839,10 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns an async generator of text chunks.
         """
-        from botspot.core.dependency_manager import get_dependency_manager
         from litellm import acompletion
         from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+
+        from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
 
@@ -781,11 +860,7 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = (
-                int(user)
-                if isinstance(user, (int, str)) and str(user).isdigit()
-                else None
-            )
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 await send_safe(
                     chat_id,
@@ -796,11 +871,7 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = (
-            temperature
-            if temperature is not None
-            else self.settings.default_temperature
-        )
+        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -808,7 +879,7 @@ class LLMProvider:
         full_model_name = self._get_full_model_name(model)
 
         # Prepare messages
-        messages = self._prepare_messages(prompt, system_message)
+        messages = await self._aprepare_messages(prompt, system_message, attachments)
 
         # Track usage at the start (approximate tokens)
         token_estimate = len(prompt) // 4 + max_tokens
@@ -842,6 +913,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
+        attachments: Optional[List[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> T:
         """
@@ -854,9 +926,10 @@ class LLMProvider:
         Returns:
             An instance of the provided Pydantic model
         """
-        from botspot.core.dependency_manager import get_dependency_manager
         from litellm import acompletion
         from litellm.types.utils import ModelResponse, StreamingChoices
+
+        from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
 
@@ -874,11 +947,7 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = (
-                int(user)
-                if isinstance(user, (int, str)) and str(user).isdigit()
-                else None
-            )
+            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
                 await send_safe(
                     chat_id,
@@ -889,11 +958,7 @@ class LLMProvider:
 
         # Get model parameters with defaults
         model = model or self.settings.default_model
-        temperature = (
-            temperature
-            if temperature is not None
-            else self.settings.default_temperature
-        )
+        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
@@ -902,9 +967,11 @@ class LLMProvider:
 
         # Prepare messages and add structured output instructions
         enhanced_system = system_message or ""
-        enhanced_system += "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
+        enhanced_system += (
+            "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
+        )
 
-        messages = self._prepare_messages(prompt, enhanced_system)
+        messages = await self._aprepare_messages(prompt, system_message, attachments)
 
         # Make the API call
         response = await acompletion(
@@ -953,6 +1020,7 @@ def setup_dispatcher(dp):
     from aiogram import Router
     from aiogram.filters import Command
     from aiogram.types import Message
+
     from botspot.utils.admin_filter import AdminFilter
 
     router = Router(name="llm_provider")
@@ -974,14 +1042,11 @@ def setup_dispatcher(dp):
                 models_str = ""
                 if "models" in user_stats and user_stats["models"]:
                     models_list = [
-                        f"{model}: {count}"
-                        for model, count in user_stats["models"].items()
+                        f"{model}: {count}" for model, count in user_stats["models"].items()
                     ]
                     models_str = f" ({', '.join(models_list)})"
 
-                lines.append(
-                    f"User {user_id}: {user_stats['total']} tokens{models_str}"
-                )
+                lines.append(f"User {user_id}: {user_stats['total']} tokens{models_str}")
             else:
                 lines.append(f"User {user_id}: {user_stats} tokens")
 
@@ -1041,9 +1106,7 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
                 msg = f"✅ {lib_name} is available."
                 # todo: check api key, if not -> print warning
                 env_key = api_keys_env_names.get(lib_name)
-                assert (
-                    env_key is not None
-                ), f"Expected env key for {lib_name} but got None"
+                assert env_key is not None, f"Expected env key for {lib_name} but got None"
                 api_key = os.getenv(env_key)
 
                 if api_key:
@@ -1098,6 +1161,7 @@ def query_llm_text(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> str:
     """
@@ -1107,7 +1171,12 @@ def query_llm_text(
     """
     provider = get_llm_provider()
     return provider.query_llm_text(
-        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+        prompt=prompt,
+        user=user,
+        system_message=system_message,
+        model=model,
+        attachments=attachments,
+        **kwargs,
     )
 
 
@@ -1117,6 +1186,7 @@ def query_llm_raw(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> "ModelResponse | CustomStreamWrapper":
     """
@@ -1129,6 +1199,7 @@ def query_llm_raw(
         user: User identifier for tracking usage and permissions
         system_message: Optional system message to prepend
         model: Optional model to use (defaults to provider default)
+        attachments: Optional list of attachments to include in the request
         **kwargs: Additional arguments to pass to the LLM provider
 
     Returns:
@@ -1136,7 +1207,12 @@ def query_llm_raw(
     """
     provider = get_llm_provider()
     return provider.query_llm_raw(
-        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+        prompt=prompt,
+        user=user,
+        system_message=system_message,
+        model=model,
+        attachments=attachments,
+        **kwargs,
     )
 
 
@@ -1147,6 +1223,7 @@ def query_llm_structured(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> BaseModel:
     """
@@ -1160,6 +1237,7 @@ def query_llm_structured(
         user: User identifier for tracking usage and permissions
         system_message: Optional system message to prepend
         model: Optional model to use (defaults to provider default)
+        attachments: Optional list of attachments to include in the request
         **kwargs: Additional arguments to pass to the LLM provider
 
     Returns:
@@ -1172,6 +1250,7 @@ def query_llm_structured(
         user=user,
         system_message=system_message,
         model=model,
+        attachments=attachments,
         **kwargs,
     )
 
@@ -1182,6 +1261,7 @@ async def aquery_llm_text(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> str:
     """
@@ -1191,7 +1271,12 @@ async def aquery_llm_text(
     """
     provider = get_llm_provider()
     return await provider.aquery_llm_text(
-        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+        prompt=prompt,
+        user=user,
+        system_message=system_message,
+        model=model,
+        attachments=attachments,
+        **kwargs,
     )
 
 
@@ -1201,6 +1286,7 @@ async def astream_llm(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> AsyncGenerator[str, None]:
     """
@@ -1213,6 +1299,7 @@ async def astream_llm(
         user: User identifier for tracking usage and permissions
         system_message: Optional system message to prepend
         model: Optional model to use (defaults to provider default)
+        attachments: Optional list of attachments to include in the request
         **kwargs: Additional arguments to pass to the LLM provider
 
     Returns:
@@ -1220,7 +1307,12 @@ async def astream_llm(
     """
     provider = get_llm_provider()
     async for chunk in provider.aquery_llm_stream(
-        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+        prompt=prompt,
+        user=user,
+        system_message=system_message,
+        model=model,
+        attachments=attachments,
+        **kwargs,
     ):
         yield chunk
 
@@ -1232,6 +1324,7 @@ async def aquery_llm_structured[T: BaseModel](
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> T:
     """
@@ -1245,6 +1338,7 @@ async def aquery_llm_structured[T: BaseModel](
         user: User identifier for tracking usage and permissions
         system_message: Optional system message to prepend
         model: Optional model to use (defaults to provider default)
+        attachments: Optional list of attachments to include in the request
         **kwargs: Additional arguments to pass to the LLM provider
 
     Returns:
@@ -1257,6 +1351,7 @@ async def aquery_llm_structured[T: BaseModel](
         user=user,
         system_message=system_message,
         model=model,
+        attachments=attachments,
         **kwargs,
     )
 
@@ -1267,6 +1362,7 @@ async def aquery_llm_raw(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
+    attachments: Optional[List[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> "ModelResponse":
     """
@@ -1279,6 +1375,7 @@ async def aquery_llm_raw(
         user: User identifier for tracking usage and permissions
         system_message: Optional system message to prepend
         model: Optional model to use (defaults to provider default)
+        attachments: Optional list of attachments to include in the request
         **kwargs: Additional arguments to pass to the LLM provider
 
     Returns:
@@ -1286,7 +1383,12 @@ async def aquery_llm_raw(
     """
     provider = get_llm_provider()
     return await provider.aquery_llm_raw(
-        prompt=prompt, user=user, system_message=system_message, model=model, **kwargs
+        prompt=prompt,
+        user=user,
+        system_message=system_message,
+        model=model,
+        attachments=attachments,
+        **kwargs,
     )
 
 

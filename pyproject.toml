@@ -19,6 +19,7 @@ python-dotenv = "*"
 aiogram = ">=3.19"
 pydantic-settings = "^2.6.0"
 pydantic = "^2.10"
+isort = "^6.0.1"
 
 [tool.poetry.group.extras.dependencies]
 apscheduler = "^3.10.4"

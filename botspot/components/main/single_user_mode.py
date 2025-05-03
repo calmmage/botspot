@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from aiogram import Dispatcher
+from aiogram.types import Message as TelegramMessage
 from aiogram.types import TelegramObject, Update
 from loguru import logger
 from pydantic_settings import BaseSettings
@@ -57,7 +58,7 @@ async def single_user_mode_middleware(
     if (
         not hasattr(event, "message")
         or event.message is None
-        or not isinstance(event.message, Message)
+        or not isinstance(event.message, TelegramMessage)
     ):
         # ignore event
         logger.debug(f"Event {type(event)} has no message attribute - ignoring")
@@ -119,12 +120,13 @@ def setup_dispatcher(dp: Dispatcher) -> None:
 if __name__ == "__main__":
     import asyncio
 
+    from aiogram import Dispatcher
     from aiogram.types import Message, User
 
     async def message_handler(message: Message):
         await message.answer("Hello! This message is only seen by the authorized user.")
 
-    async def example():
+    async def example(dp: Dispatcher):
         # Set up single user mode
         settings = SingleUserModeSettings(enabled=True, user="12345")
         initialize(settings)

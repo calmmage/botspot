@@ -1,7 +1,8 @@
-from typing import Dict, Union
+from io import BytesIO
+from typing import BinaryIO, Dict, List, Union
 
 from aiogram.enums import ChatAction
-from aiogram.types import Message
+from aiogram.types import Audio, Document, Message, PhotoSize, Video, Voice
 from loguru import logger
 
 
@@ -126,3 +127,81 @@ def strip_command(text: str):
             return parts[1].strip()
         return ""
     return text
+
+
+Attachment = Union[PhotoSize, Document, Video, Audio, Voice]
+
+
+# for getting attachment format for llm query attachment
+def get_attachment_format(attachment: Attachment) -> str:
+    if isinstance(attachment, PhotoSize):
+        return "image/jpeg"
+    elif isinstance(attachment, Document):
+        # todo: make sure file name is provided here
+        assert attachment.file_name is not None
+        stem = attachment.file_name.split(".")[-1]
+
+        format = f"application/{stem}"  # "application/pdf"
+        # todo: check if mime type is always provided - then use it instead
+        if not format == attachment.mime_type:
+            logger.warning(
+                f"File {attachment.file_name} has mime type {attachment.mime_type}, expected {format}"
+            )
+        return format
+    else:
+        raise ValueError(f"Unknown attachment type: {type(attachment)}")
+
+
+def get_message_attachments(message: Message) -> List[Attachment]:
+    # todo: figure out how to get all attachment types
+    attachments = []
+    if message.photo:
+        attachments.append(message.photo[-1])
+    if message.document:
+        attachments.append(message.document)
+    if message.video:
+        attachments.append(message.video)
+    if message.audio:
+        attachments.append(message.audio)
+    if message.voice:
+        attachments.append(message.voice)
+    return attachments
+
+
+def is_telegram_attachment(attachment: Attachment) -> bool:
+    return not isinstance(attachment, BinaryIO)
+
+
+async def download_telegram_file(attachment: Attachment) -> BinaryIO:
+    try:
+        return await _download_telegram_file_aiogram(attachment)
+    except:
+        logger.error(f"Failed to download file {attachment.file_id} with aiogram, trying telethon")
+        return await _download_telegram_file_telethon(attachment)
+
+
+async def _download_telegram_file_aiogram(attachment: Attachment) -> BinaryIO:
+    from botspot.utils.deps_getters import get_bot
+
+    file_id = attachment.file_id
+    bot = get_bot()
+
+    # Download the file
+    file = await bot.get_file(file_id)
+    if not file or not file.file_path:
+        # return None, None
+        # return
+        raise ValueError("File not found")
+
+    file_bytes = await bot.download_file(file.file_path)
+    if not file_bytes:
+        raise ValueError("File not found")
+    assert isinstance(file_bytes, (BinaryIO, BytesIO))  # BinaryIO for documents?
+
+    # logger.debug(f"Downloading telegram file with aiogram. Resulting file name: {file_bytes}")
+
+    return file_bytes
+
+
+async def _download_telegram_file_telethon(attachment: Attachment) -> BinaryIO:
+    raise NotImplementedError("Telethon downloading is not implemented")
