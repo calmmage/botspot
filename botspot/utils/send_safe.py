@@ -1,17 +1,14 @@
 import asyncio
 import textwrap
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional, Union, Any
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile, Chat, Message, User
-from botspot.utils.text_utils import (
-    MAX_TELEGRAM_MESSAGE_LENGTH,
-    escape_md,
-    split_long_message,
-)
 from loguru import logger
+
+from botspot.utils.text_utils import MAX_TELEGRAM_MESSAGE_LENGTH, escape_md, split_long_message
 
 if TYPE_CHECKING:
     from botspot.core.dependency_manager import DependencyManager
@@ -70,14 +67,10 @@ async def _send_with_parse_mode_fallback(
             return await bot.send_message(chat_id, text, **kwargs)
         else:
             # if parse_mode is specified, send message with specified parse mode
-            return await bot.send_message(
-                chat_id, text, parse_mode=parse_mode, **kwargs
-            )
+            return await bot.send_message(chat_id, text, parse_mode=parse_mode, **kwargs)
     except Exception:
         # Fallback to plain text if formatting fails
-        logger.warning(
-            f"Failed to send message {text} with parse mode, falling back to plain text"
-        )
+        logger.warning(f"Failed to send message {text} with parse mode, falling back to plain text")
         return await bot.send_message(chat_id, text, parse_mode=None, **kwargs)
 
 
@@ -168,9 +161,7 @@ async def _send_long_message_as_file(
     # Send preview if configured
     if settings.send_preview_for_long_messages:
         preview = text[: settings.preview_cutoff]
-        preview_text = (
-            f"Message is too long, sending as file {filename}\nPreview:\n{preview}..."
-        )
+        preview_text = f"Message is too long, sending as file {filename}\nPreview:\n{preview}..."
         await _send_with_parse_mode_fallback(
             bot,
             chat_id,
@@ -181,9 +172,7 @@ async def _send_long_message_as_file(
 
     # Send as file
     file = BufferedInputFile(text.encode("utf-8"), filename)
-    return await bot.send_document(
-        chat_id, file, reply_to_message_id=reply_to_message_id, **kwargs
-    )
+    return await bot.send_document(chat_id, file, reply_to_message_id=reply_to_message_id, **kwargs)
 
 
 async def _send_split_messages(
@@ -266,11 +255,7 @@ async def _handle_auto_delete(
 
     # Schedule auto-deletion
     async def delete_message():
-        timeout = (
-            cleanup_timeout
-            if cleanup_timeout is not None
-            else settings.auto_delete_timeout
-        )
+        timeout = cleanup_timeout if cleanup_timeout is not None else settings.auto_delete_timeout
         await asyncio.sleep(timeout)
         try:
             await sent_message.delete()

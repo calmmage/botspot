@@ -1,6 +1,7 @@
-from typing import Optional, AsyncGenerator, BinaryIO
-from pydantic_settings import BaseSettings
+from typing import AsyncGenerator, BinaryIO, Optional
+
 from loguru import logger
+from pydantic_settings import BaseSettings
 
 
 class S3StorageSettings(BaseSettings):
@@ -72,9 +73,7 @@ class S3StorageProvider:
         """List files in S3 with optional prefix."""
         client = await self._get_client()
         paginator = client.get_paginator("list_objects_v2")
-        async for page in paginator.paginate(
-            Bucket=self.settings.bucket_name, Prefix=prefix
-        ):
+        async for page in paginator.paginate(Bucket=self.settings.bucket_name, Prefix=prefix):
             for obj in page.get("Contents", []):
                 yield obj["Key"]
 

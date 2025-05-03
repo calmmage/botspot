@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type, TypeVar, Generic
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generic, Optional, Type, TypeVar
 
 from aiogram import BaseMiddleware, Dispatcher, Router
 from aiogram.filters import Command
@@ -13,7 +13,8 @@ from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.core.botspot_settings import BotspotSettings
 
