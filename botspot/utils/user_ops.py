@@ -1,4 +1,4 @@
-from typing import Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from aiogram.types import User as AiogramUser
 from pydantic import BaseModel
@@ -7,7 +7,6 @@ from botspot.utils.cache_utils import AsyncLRUCache
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-
     from botspot.components.data.user_data import User
 
 logger = get_logger()

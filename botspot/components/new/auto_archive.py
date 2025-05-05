@@ -18,9 +18,7 @@ if TYPE_CHECKING:
 
 
 class CommandFilterMode(str, Enum):
-    PURE_COMMANDS = (
-        "pure_commands"  # delete only commands that have /command and NO OTHER TEXT
-    )
+    PURE_COMMANDS = "pure_commands"  # delete only commands that have /command and NO OTHER TEXT
     SINGLE_LINE = "single_line"  # delete only commands that are within one line
     ALL_COMMANDS = "all_commands"  # delete all commands, even multi-line
 
@@ -31,9 +29,7 @@ class AutoArchiveSettings(BaseSettings):
     enable_chat_handler: bool = False  # whether to add a general chat message handler
     private_chats_only: bool = True  # whether to only auto-archive in private chats
     chat_binding_key: str = "default"  # key to use for chat binding
-    bind_command_visible: bool = (
-        True  # whether the bind command should be visible in menu
-    )
+    bind_command_visible: bool = True  # whether the bind command should be visible in menu
     no_archive_tag: str = "#noarchive"  # tag that prevents both forwarding and deletion
     no_delete_tag: str = "#nodelete"  # tag that prevents deletion but allows forwarding
     forward_sent_messages: bool = True  # whether to forward messages sent by the bot
@@ -143,9 +139,7 @@ class AutoArchive(BaseMiddleware):
         from botspot.core.errors import ChatBindingNotFoundError
 
         try:
-            target_chat_id = await get_bound_chat(
-                user_id, key=self.settings.chat_binding_key
-            )
+            target_chat_id = await get_bound_chat(user_id, key=self.settings.chat_binding_key)
         except ChatBindingNotFoundError:
             # tell user to bind the chat
             if user_id not in self._warning_sent:
@@ -208,18 +202,14 @@ def setup_dispatcher(dp):
     @botspot_command(
         "bind_auto_archive",
         "Bind a chat for auto-archiving",
-        visibility=Visibility.PUBLIC
-        if aa.settings.bind_command_visible
-        else Visibility.HIDDEN,
+        visibility=Visibility.PUBLIC if aa.settings.bind_command_visible else Visibility.HIDDEN,
     )
     async def cmd_bind_auto_archive(message: Message):
         if message.from_user is None:
             return
         from botspot.chat_binder import bind_chat
 
-        await bind_chat(
-            message.from_user.id, message.chat.id, key=aa.settings.chat_binding_key
-        )
+        await bind_chat(message.from_user.id, message.chat.id, key=aa.settings.chat_binding_key)
         await send_safe(message.chat.id, "Chat bound for auto-archiving")
 
     dp.message.register(cmd_bind_auto_archive, Command("bind_auto_archive"))
@@ -276,9 +266,7 @@ def initialize(settings: AutoArchiveSettings) -> AutoArchive:
 
     if not deps.botspot_settings.chat_binder.enabled:
         logger.error("Chat Binder is not enabled. AutoArchive component requires it.")
-        raise RuntimeError(
-            "Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env"
-        )
+        raise RuntimeError("Chat Binder is not enabled. BOTSPOT_CHAT_BINDER_ENABLED=true in .env")
 
     # Set auto-delete flag in send_safe settings if not explicitly set
     if deps.botspot_settings.send_safe.auto_delete_enabled is None:

@@ -19,6 +19,7 @@ from botspot.components.new import (
     chat_fetcher,
     llm_provider,
     queue_manager,
+    s3_storage,
 )
 from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
@@ -75,6 +76,10 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.auto_archive.enabled:
             self.deps.auto_archive = auto_archive.initialize(self.settings.auto_archive)
+
+        if self.settings.s3_storage.enabled:
+            s3_provider = s3_storage.initialize(self.settings.s3_storage)
+            self.deps.s3_storage = s3_provider
 
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""

@@ -334,7 +334,7 @@ async def bind_chat_command_handler(message: Message):
             else "❌ I don't have access to this chat."
         )
 
-        await message.reply(f"Chat bound successfully with key: {key}\n" f"{access_status}")
+        await message.reply(f"Chat bound successfully with key: {key}\n{access_status}")
     except ValueError as e:
         await message.reply(f"Error: {str(e)}")
 
@@ -533,7 +533,7 @@ if __name__ == "__main__":
         chat_id = message.chat.id
 
         # Bind the current chat to the user
-        record = await bind_chat(user_id, chat_id)
+        await bind_chat(user_id, chat_id)
 
         # Get all bound chats for this user
         chats = await list_user_bindings(user_id)

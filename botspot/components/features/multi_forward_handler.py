@@ -115,7 +115,6 @@ async def compose_messages(
 
 def multimessage_command_handler(self, handler):
     async def func(message: Message, app: MyApp):
-
         user = self.get_user(message)
         queue = app.user_message_queue[user]
         await queue.put(message)
@@ -166,9 +165,7 @@ async def multi_forward_handler():
     log error to the logger
     also send a message to the user
     """
-    from botspot.core.dependency_manager import get_dependency_manager
-
-    deps = get_dependency_manager()
+    raise NotImplementedError
 
 
 def setup_dispatcher(dp: Dispatcher):

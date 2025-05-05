@@ -112,7 +112,10 @@ class TelethonManager:
 
         # No client could be initialized or created
         from botspot.core.errors import TelethonClientNotConnectedError
-        raise TelethonClientNotConnectedError(f"Client for user {user_id} not found. Please run the /setup_telethon command to authenticate.")
+
+        raise TelethonClientNotConnectedError(
+            f"Client for user {user_id} not found. Please run the /setup_telethon command to authenticate."
+        )
 
     async def disconnect_all(self):
         """Disconnect all clients"""
@@ -269,6 +272,7 @@ def get_telethon_manager() -> "TelethonManager":
     deps = get_dependency_manager()
     if not deps.telethon_manager:
         from botspot.core.errors import ConfigurationError
+
         raise ConfigurationError(
             "TelethonManager is not initialized. Make sure it's enabled in settings."
         )

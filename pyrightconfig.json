@@ -2,6 +2,7 @@
   "include": ["botspot"],
   "exclude": ["**/__pycache__", "**/.mypy_cache"],
   "typeCheckingMode": "basic",
+  "venvpath": ".",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
   "pythonVersion": "3.12",

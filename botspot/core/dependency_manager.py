@@ -8,7 +8,8 @@ from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorClient  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
+    from botspot.components.new.s3_storage import S3StorageProvider
 
 
 class DependencyManager(metaclass=Singleton):
@@ -27,7 +29,7 @@ class DependencyManager(metaclass=Singleton):
         dispatcher: Optional[Dispatcher] = None,
         mongo_client: Optional["AsyncIOMotorClient"] = None,
         mongo_database: Optional["AsyncIOMotorDatabase"] = None,
-        **kwargs
+        **kwargs,
     ):
         self._botspot_settings = botspot_settings or BotspotSettings()
         self._bot = bot
@@ -42,6 +44,7 @@ class DependencyManager(metaclass=Singleton):
         self._queue_manager = None
         self._chat_fetcher = None
         self._auto_archive = None
+        self._s3_storage = None
         self.__dict__.update(kwargs)
 
     @property
@@ -171,6 +174,14 @@ class DependencyManager(metaclass=Singleton):
     @auto_archive.setter
     def auto_archive(self, value):
         self._auto_archive = value
+
+    @property
+    def s3_storage(self) -> Optional["S3StorageProvider"]:
+        return self._s3_storage
+
+    @s3_storage.setter
+    def s3_storage(self, value: Optional["S3StorageProvider"]):
+        self._s3_storage = value
 
     @classmethod
     def is_initialized(cls) -> bool:

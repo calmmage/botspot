@@ -16,11 +16,11 @@ from botspot.components.new.chat_binder import get_chat_binder
 from botspot.components.new.chat_fetcher import get_chat_fetcher
 from botspot.components.new.llm_provider import get_llm_provider
 from botspot.components.new.queue_manager import get_queue_manager
+from botspot.components.new.s3_storage import S3StorageProvider
 
 if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
     from aiogram.fsm.context import FSMContext
-    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase  # noqa: F401
     from telethon import TelegramClient
 
 
@@ -66,6 +66,13 @@ async def get_telethon_client(
     return client
 
 
+def get_s3_storage() -> Optional[S3StorageProvider]:
+    """Get the S3 Storage provider from dependency manager."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    return get_dependency_manager().s3_storage
+
+
 # Re-export all for convenience
 __all__ = [
     "get_bot",
@@ -80,4 +87,5 @@ __all__ = [
     "get_chat_fetcher",
     "get_queue_manager",
     "get_llm_provider",
+    "get_s3_storage",
 ]

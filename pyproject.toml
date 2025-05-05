@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.9.22"
+version = "0.10.2"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -19,6 +19,7 @@ python-dotenv = "*"
 aiogram = ">=3.19"
 pydantic-settings = "^2.6.0"
 pydantic = "^2.10"
+isort = "^6.0.1"
 
 [tool.poetry.group.extras.dependencies]
 apscheduler = "^3.10.4"
@@ -26,6 +27,7 @@ pymongo = ">=4.9"
 litellm = "^1.63"  # For LLM provider component
 motor = "^3.6.0"
 telethon = "^1.38.1"
+aioboto3 = "^14.1.0"
 # dependencies for extra features
 
 # Main
@@ -155,28 +157,5 @@ url = "https://github.com/calmmage/python-project-template.git"
 author = "Petr Lavrov <petrlavrov@calmmage.com>"
 description = "A template for creating a bot using calmapp and bot-lib"
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 100
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-skip = [".git", "venv", ".env", "__pycache__"]
-# known_first_party = ["your_package_name"]  # Replace with your package name
-# known_third_party = [
-#     "aiogram",
-#     "fastapi",
-#     "pydantic",
-#     "pytest",
-#     "tqdm",
-#     "loguru"
-# ]
-# sections = [
-#     "FUTURE",
-#     "STDLIB",
-#     "THIRDPARTY",
-#     "FIRSTPARTY",
-#     "LOCALFOLDER"
-# ]
+[tool.ruff]
+line-length = 100

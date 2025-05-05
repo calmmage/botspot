@@ -300,7 +300,6 @@ class ChatFetcher:
         search_channels: bool = True,
         search_users: bool = True,
     ) -> List["Chat"]:
-
         chats = await self.get_chats(
             user_id, skip_deactivated=skip_deactivated, skip_migrated=skip_migrated
         )
@@ -373,7 +372,7 @@ def initialize(settings: ChatFetcherSettings) -> ChatFetcher:
 
     # Check necessary import - telethon
     try:
-        from telethon import TelegramClient
+        from telethon import TelegramClient  # noqa: F401
 
         logger.debug("Telethon is installed")
     except ImportError:

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Type
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generic, Optional, Type, TypeVar
 
 from aiogram import BaseMiddleware, Dispatcher, Router
 from aiogram.filters import Command
@@ -13,7 +13,8 @@ from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
 
     from botspot.core.botspot_settings import BotspotSettings
 
@@ -50,14 +51,18 @@ class User(BaseModel):
         return self.first_name or self.username or str(self.user_id)
 
 
-class UserManager:
+# Define a type variable that represents any subclass of User
+UserT = TypeVar("UserT", bound=User)
+
+
+class UserManager(Generic[UserT]):
     """Manager class for user operations"""
 
     def __init__(
         self,
         db: "AsyncIOMotorDatabase",
         collection: str,
-        user_class: Type[User],
+        user_class: Type[UserT],
         settings: Optional["BotspotSettings"] = None,
     ):
         self.db = db
@@ -68,7 +73,7 @@ class UserManager:
         self.settings = settings or get_dependency_manager().botspot_settings
 
     # todo: add functionality for searching users - by name etc.
-    async def add_user(self, user: User) -> bool:
+    async def add_user(self, user: UserT) -> bool:
         """Add or update user"""
         # Set user type based on settings
         if any([compare_users(user, friend) for friend in self.settings.admins]):
@@ -94,7 +99,7 @@ class UserManager:
         return True
 
     # todo: make sure this works with username as well
-    async def get_user(self, user_id: int) -> Optional[User]:
+    async def get_user(self, user_id: int) -> Optional[UserT]:
         """Get user by ID"""
         data = await self.users_collection.find_one({"user_id": user_id})
         return self.user_class(**data) if data else None
@@ -107,6 +112,11 @@ class UserManager:
     def users_collection(self) -> "AsyncIOMotorCollection":
         return self.db[self.collection]
 
+    async def get_users(self, query: dict = {}) -> list[UserT]:
+        """Get all users matching the query"""
+        data = await self.users_collection.find(query).to_list()
+        return [self.user_class(**item) for item in data]
+
     async def find_user(
         self,
         user_id: Optional[int] = None,
@@ -114,7 +124,7 @@ class UserManager:
         phone: Optional[str] = None,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
-    ) -> Optional[User]:
+    ) -> Optional[UserT]:
         """Find user by any of the fields"""
         if not any([user_id, username, phone, first_name, last_name]):
             raise ValueError("find_user requires at least one of the fields")
