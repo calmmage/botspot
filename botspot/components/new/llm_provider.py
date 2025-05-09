@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union, Sequence
 
 from aiogram.types import Chat, User
 from pydantic import BaseModel
