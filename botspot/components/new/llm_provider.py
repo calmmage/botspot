@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union, Sequence
 
 from aiogram.types import Chat, User
 from pydantic import BaseModel
@@ -157,7 +157,7 @@ class LLMProvider:
         self,
         prompt: str,
         system_message: Optional[str] = None,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     ) -> list:
         """Prepare messages for the LLM request."""
         messages = []
@@ -195,6 +195,7 @@ class LLMProvider:
                     )
                     image_url = f"base64,{encoded_file}"
 
+                # todo: so far, only claude-3.5 worked. Need to research why gpt-4o didn't..
                 content.append(
                     {
                         "type": "image_url",
@@ -210,7 +211,7 @@ class LLMProvider:
         self,
         prompt: str,
         system_message: Optional[str] = None,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     ) -> list:
         """Prepare messages for the LLM request."""
         messages = []
@@ -359,7 +360,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> "ModelResponse | CustomStreamWrapper":
         """
@@ -463,7 +464,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> str:
         """
@@ -505,7 +506,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> Generator[str, None, None]:
         """
@@ -592,7 +593,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> T:
         """
@@ -701,7 +702,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> "ModelResponse":
         """
@@ -789,7 +790,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> str:
         """
@@ -831,7 +832,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> AsyncGenerator[str, None]:
         """
@@ -913,7 +914,7 @@ class LLMProvider:
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
         max_retries: int = 2,
-        attachments: Optional[List[Union[Attachment, bytes]]] = None,
+        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
         **extra_kwargs,
     ) -> T:
         """
@@ -1161,7 +1162,7 @@ def query_llm_text(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> str:
     """
@@ -1186,7 +1187,7 @@ def query_llm_raw(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> "ModelResponse | CustomStreamWrapper":
     """
@@ -1223,7 +1224,7 @@ def query_llm_structured(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> BaseModel:
     """
@@ -1261,7 +1262,7 @@ async def aquery_llm_text(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> str:
     """
@@ -1286,7 +1287,7 @@ async def astream_llm(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> AsyncGenerator[str, None]:
     """
@@ -1324,7 +1325,7 @@ async def aquery_llm_structured[T: BaseModel](
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> T:
     """
@@ -1362,7 +1363,7 @@ async def aquery_llm_raw(
     user: Optional[Union[int, str]] = None,
     system_message: Optional[str] = None,
     model: Optional[str] = None,
-    attachments: Optional[List[Union[Attachment, bytes]]] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
 ) -> "ModelResponse":
     """
