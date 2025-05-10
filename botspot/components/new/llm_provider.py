@@ -44,8 +44,8 @@ class LLMProviderSettings(BaseSettings):
     default_timeout: int = 30
     # If False, only friends and admins can use LLM features
     allow_everyone: bool = False
-
     skip_import_check: bool = False  # Skip import check for dependencies
+    drop_unsupported_params: bool = False
 
     class Config:
         env_prefix = "BOTSPOT_LLM_PROVIDER_"
@@ -1089,6 +1089,11 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
     if not settings.enabled:
         logger.info("LLM Provider component is disabled")
         return None
+
+    if settings.drop_unsupported_params:
+        import litellm
+
+        litellm.drop_params = True
 
     # Check if litellm is installed
     try:
