@@ -450,6 +450,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -581,6 +588,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -672,6 +686,13 @@ class LLMProvider:
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
+
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
 
         # Get full model name
         full_model_name = self._get_full_model_name(model)
@@ -772,6 +793,13 @@ class LLMProvider:
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
+
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
 
         # Get full model name
         full_model_name = self._get_full_model_name(model)
@@ -903,6 +931,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -990,6 +1025,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -1031,6 +1073,23 @@ class LLMProvider:
     # ---------------------------------------------
     # endregion Asynchronous Query Methods
     # ---------------------------------------------
+
+    @staticmethod
+    def _is_o_series_model(model_name: str) -> bool:
+        model_name = model_name.lower()
+        return any(
+            key in model_name
+            for key in [
+                "gpt-4o",
+                "o1",
+                "o3",
+                "o4",
+                "openai/gpt-4o",
+                "openai/o1",
+                "openai/o3",
+                "openai/o4",
+            ]
+        )
 
 
 # ---------------------------------------------
