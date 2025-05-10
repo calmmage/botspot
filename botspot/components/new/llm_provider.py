@@ -200,8 +200,6 @@ class LLMProvider:
         if attachments is None or not attachments:
             content = prompt
         else:
-            if not isinstance(attachments, list):
-                attachments = [attachments]
             content = [{"type": "text", "text": prompt}]
             for attachment in attachments:
                 if isinstance(attachment, Attachment):
@@ -254,8 +252,6 @@ class LLMProvider:
         if attachments is None or not attachments:
             content = prompt
         else:
-            if not isinstance(attachments, list):
-                attachments = [attachments]
             content = [{"type": "text", "text": prompt}]
             for attachment in attachments:
                 if isinstance(attachment, Attachment):
@@ -1149,15 +1145,15 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
                         f"❌ {lib_name} is not installed. `poetry add {lib_name}` to install it."
                     )
 
-                env_key = api_keys_env_names[lib_name]
-                # assert env_key is not None, f"Expected env key for {lib_name} but got None"
-                api_key = os.getenv(env_key)
+            env_key = api_keys_env_names[lib_name]
+            # assert env_key is not None, f"Expected env key for {lib_name} but got None"
+            api_key = os.getenv(env_key)
 
-                if api_key:
-                    logger.info(f" (✅ {env_key})")
-                    installed_libraries.append(lib_name)
-                else:
-                    logger.info(f" (❌ No {env_key})")
+            if api_key:
+                logger.info(f" (✅ {env_key})")
+                installed_libraries.append(lib_name)
+            else:
+                logger.info(f" (❌ No {env_key})")
 
         if not installed_libraries:
             keys = list(ai_libraries.keys())
