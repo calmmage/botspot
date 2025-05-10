@@ -57,43 +57,78 @@ class LLMProviderSettings(BaseSettings):
 # Model name mapping for shortcuts
 # This maps simple names to the provider-specific model names
 MODEL_NAME_SHORTCUTS = {
+    # -----------------------------------------------
+    # main models
+    # -----------------------------------------------
+
+    # Anthropic Models
+    "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # $0.80 per 1M input, $4.00 per 1M output
+    "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
+    "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
+
+    # OpenAI Models
+    # Cheap
+    "gpt-4o-mini": "openai/gpt-4o-mini",  # $0.15 per 1M input, $0.60 per 1M output
+    "o4-mini": "openai/o4-mini",  # $0.55 per 1M input, $2.20 per 1M output
+    "gpt-4.1-nano": "openai/gpt-4.1-nano",  # $0.10 per 1M input, $0.40 per 1M output (assumed)
+    # Mid
+    "gpt-4o": "openai/gpt-4o",  # $2.50 per 1M input, $10.00 per 1M output
+    "gpt-4.1": "openai/gpt-4.1",  # $5.00 per 1M input, $15.00 per 1M output (assumed)
+    # Max
+    "o3": "openai/o3",  # $15.00 per 1M input, $60.00 per 1M output
+    "gpt-4": "openai/gpt-4",  # $30.00 per 1M input, $60.00 per 1M output
+    "o1-pro": "openai/o1-pro",  # $20.00 per 1M input, $80.00 per 1M output (assumed)
+
+    # Google Models
+    "gemini-2.5-flash": "google/gemini-2.5-flash-preview-04-17",  # $0.15 per 1M input, $0.60 per 1M output (non-thinking)
+    "gemini-2.5-pro": "google/gemini-2.5-pro-preview-03-25",  # $1.25 per 1M input, $10.00 per 1M output
+    "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",  # Free tier (updated to gemini-2.5-pro-preview-05-06 on 2025-05-06 with same pricing as gemini-2.5-pro)
+
+    # xAI Models
+    "grok-2": "xai/grok-2",  # $5.00 per 1M input, $15.00 per 1M output
+    "grok-3": "xai/grok-3",  # Pricing not available
+
+    # -----------------------------------------------
+    # all other models
+    # -----------------------------------------------
     # Anthropic (Claude models)
     # Claude 3.7 Sonnet
-    "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
+    # "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
     "claude-3.7-sonnet": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
     "claude-3-7-sonnet-20250219": "anthropic/claude-3-7-sonnet-20250219",  # specific version
     # Claude 3.5 Models
-    "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # hardcoded: claude-3-5-haiku-20241022
+    # "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # hardcoded: claude-3-5-haiku-20241022
     "claude-3.5": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
-    "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
+    # "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
     "claude-3-5-sonnet-20241022": "anthropic/claude-3-5-sonnet-20241022",  # specific version
     "claude-3.5-sonnet-v1": "anthropic/claude-3-5-sonnet-20240620",
     "claude-3-5-sonnet-20240620": "anthropic/claude-3-5-sonnet-20240620",
     # OpenAI models
-    "gpt-4o": "openai/gpt-4o",
+    # "gpt-4o": "openai/gpt-4o",
     "o1": "openai/o1",
     # Google models
-    "gemini-2.5": "google/gemini-2.5-pro-max",
+    # "gemini-2.5": "google/gemini-2.5-pro-max",
     "gemini-2.5-max": "google/gemini-2.5-pro-max",
-    "gemini-2.0-pro": "google/gemini-2.0-pro-exp",
+    # "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",
+    # "gemini-2.0-pro": "google/gemini-2.0-pro-exp",
     "gemini-2.0": "google/gemini-2.0-pro-exp",
     # xAI models
-    "grok-2": "grok/grok-2",
+    # "grok-2": "grok/grok-2",
+    # "grok-3": "grok/grok-3",
     "gpt-4.5": "openai/gpt-4.5-preview",
     # Remaining models
     # OpenAI models (continued)
-    "gpt-3.5": "openai/gpt-3.5-turbo",
-    "gpt-4": "openai/gpt-4",
+    # "gpt-3.5": "openai/gpt-3.5-turbo",
+    # "gpt-4": "openai/gpt-4",
     "gpt-4-turbo": "openai/gpt-4-turbo-2024-04-09",
-    "gpt-4.5-preview": "openai/gpt-4.5-preview",
-    "gpt-4o-mini": "openai/gpt-4o-mini",
+    # "gpt-4.5-preview": "openai/gpt-4.5-preview",
+    # "gpt-4o-mini": "openai/gpt-4o-mini",
     "o1-mini": "openai/o1-mini",
     "o1-preview": "openai/o1-preview",
     "o3-mini": "openai/o3-mini",
     # Google models (continued)
-    "gemini-2.0-flash": "google/gemini-2.0-flash",
+    # "gemini-2.0-flash": "google/gemini-2.0-flash",
     "gemini-2.0-flash-exp": "google/gemini-2.0-flash-thinking-exp",
-    "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",
     "gemini-exp-1206": "google/gemini-exp-1206",
     # Cursor models
     "cursor-fast": "cursor/cursor-fast",
