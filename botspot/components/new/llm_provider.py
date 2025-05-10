@@ -60,12 +60,10 @@ MODEL_NAME_SHORTCUTS = {
     # -----------------------------------------------
     # main models
     # -----------------------------------------------
-
     # Anthropic Models
     "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # $0.80 per 1M input, $4.00 per 1M output
     "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
     "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
-
     # OpenAI Models
     # Cheap
     "gpt-4o-mini": "openai/gpt-4o-mini",  # $0.15 per 1M input, $0.60 per 1M output
@@ -78,16 +76,14 @@ MODEL_NAME_SHORTCUTS = {
     "o3": "openai/o3",  # $15.00 per 1M input, $60.00 per 1M output
     "gpt-4": "openai/gpt-4",  # $30.00 per 1M input, $60.00 per 1M output
     "o1-pro": "openai/o1-pro",  # $20.00 per 1M input, $80.00 per 1M output (assumed)
-
     # Google Models
     "gemini-2.5-flash": "google/gemini-2.5-flash-preview-04-17",  # $0.15 per 1M input, $0.60 per 1M output (non-thinking)
     "gemini-2.5-pro": "google/gemini-2.5-pro-preview-03-25",  # $1.25 per 1M input, $10.00 per 1M output
     "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",  # Free tier (updated to gemini-2.5-pro-preview-05-06 on 2025-05-06 with same pricing as gemini-2.5-pro)
-
     # xAI Models
     "grok-2": "xai/grok-2",  # $5.00 per 1M input, $15.00 per 1M output
+    "grok-3-mini": "xai/grok-3-mini-beta",
     "grok-3": "xai/grok-3",  # Pricing not available
-
     # -----------------------------------------------
     # all other models
     # -----------------------------------------------
@@ -1111,11 +1107,17 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
             "litellm is not installed. Run 'poetry add litellm' or 'pip install litellm'"
         )
     if not settings.skip_import_check:
+        to_check = [
+            "openai",
+            "anthropic",
+            "google-generativeai",
+            "xai_sdk",
+        ]
         ai_libraries = {
             "openai": "openai",  # poetry add openai -> import openai
             "anthropic": "anthropic",  # poetry add anthropic -> import anthropic
             "google-generativeai": "google.generativeai",  # poetry add google-generativeai -> import google.generativeai
-            "xai_sdk": "xai",  # poetry add xai_sdk -> import xai
+            # "xai_sdk": "xai",  # No such library
             # "huggingface": "transformers",  # poetry add huggingface -> import transformers
             # "cohere": "cohere",  # poetry add cohere -> import cohere
             # "mistralai": "mistralai",  # poetry add mistralai -> import mistralai
@@ -1135,25 +1137,27 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
         }
         # Check for specific libraries and report to the user
         installed_libraries = []
-        for lib_name, lib in ai_libraries.items():
-            try:
-                __import__(lib)
-                installed_libraries.append(lib_name)
-                msg = f"✅ {lib_name} is available."
-                # todo: check api key, if not -> print warning
-                env_key = api_keys_env_names.get(lib_name)
-                assert env_key is not None, f"Expected env key for {lib_name} but got None"
+        for lib_name in to_check:
+            if lib_name in ai_libraries:
+                lib = ai_libraries[lib_name]
+
+                try:
+                    __import__(lib)
+                    logger.info(f"✅ {lib_name} is available.")
+                except ImportError:
+                    logger.info(
+                        f"❌ {lib_name} is not installed. `poetry add {lib_name}` to install it."
+                    )
+
+                env_key = api_keys_env_names[lib_name]
+                # assert env_key is not None, f"Expected env key for {lib_name} but got None"
                 api_key = os.getenv(env_key)
 
                 if api_key:
-                    msg += f" (✅ {env_key})"
+                    logger.info(f" (✅ {env_key})")
+                    installed_libraries.append(lib_name)
                 else:
-                    msg += f" (⚠️ No {env_key})"
-                logger.info(msg)
-            except ImportError:
-                logger.info(
-                    f"❌ {lib_name} is not installed. `poetry add {lib_name}` to install it."
-                )
+                    logger.info(f" (❌ No {env_key})")
 
         if not installed_libraries:
             keys = list(ai_libraries.keys())
