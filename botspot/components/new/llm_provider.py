@@ -845,6 +845,42 @@ def get_llm_provider() -> LLMProvider:
     return deps.llm_provider
 
 
+async def aquery_llm_raw(
+    prompt: str,
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
+    **kwargs,
+) -> "ModelResponse":
+    """
+    Async raw query to the LLM - returns the complete response object.
+
+    This is a convenience function that uses the global LLM provider.
+
+    Args:
+        prompt: The text prompt to send to the LLM
+        user: User identifier for tracking usage and permissions
+        system_message: Optional system message to prepend
+        model: Optional model to use (defaults to provider default)
+        attachments: Optional list of attachments to include in the request
+        **kwargs: Additional arguments to pass to the LLM provider
+
+    Returns:
+        Raw response from the LLM with full metadata and usage stats
+    """
+    provider = get_llm_provider()
+    return await provider.aquery_llm_raw(
+        prompt=prompt,
+        user=user,
+        system_message=system_message,
+        model=model,
+        attachments=attachments,
+        **kwargs,
+    )
+
+
 async def aquery_llm_text(
     prompt: str,
     *,
@@ -870,7 +906,7 @@ async def aquery_llm_text(
     )
 
 
-async def astream_llm(
+async def aquery_llm_stream(
     prompt: str,
     *,
     user: Optional[Union[int, str]] = None,
@@ -907,6 +943,9 @@ async def astream_llm(
         yield chunk
 
 
+astream_llm = aquery_llm_stream
+
+
 async def aquery_llm_structured(
     prompt: str,
     output_schema: Type[T],
@@ -926,42 +965,6 @@ async def aquery_llm_structured(
     return await provider.aquery_llm_structured(
         prompt=prompt,
         output_schema=output_schema,
-        user=user,
-        system_message=system_message,
-        model=model,
-        attachments=attachments,
-        **kwargs,
-    )
-
-
-async def aquery_llm_raw(
-    prompt: str,
-    *,
-    user: Optional[Union[int, str]] = None,
-    system_message: Optional[str] = None,
-    model: Optional[str] = None,
-    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-    **kwargs,
-) -> "ModelResponse":
-    """
-    Async raw query to the LLM - returns the complete response object.
-
-    This is a convenience function that uses the global LLM provider.
-
-    Args:
-        prompt: The text prompt to send to the LLM
-        user: User identifier for tracking usage and permissions
-        system_message: Optional system message to prepend
-        model: Optional model to use (defaults to provider default)
-        attachments: Optional list of attachments to include in the request
-        **kwargs: Additional arguments to pass to the LLM provider
-
-    Returns:
-        Raw response from the LLM with full metadata and usage stats
-    """
-    provider = get_llm_provider()
-    return await provider.aquery_llm_raw(
-        prompt=prompt,
         user=user,
         system_message=system_message,
         model=model,
