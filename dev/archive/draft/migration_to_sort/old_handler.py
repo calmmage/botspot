@@ -297,7 +297,7 @@ def _check_pyrogram_tokens(self):
     # todo: update, rework self.config, make it per-user
     if not (self.config.api_id.get_secret_value() and self.config.api_hash.get_secret_value()):
         raise ValueError(
-            "Telegram api_id and api_hash must be provided for Pyrogram " "to download large files"
+            "Telegram api_id and api_hash must be provided for Pyrogram to download large files"
         )
 
 

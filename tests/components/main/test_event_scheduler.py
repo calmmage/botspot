@@ -48,12 +48,10 @@ class TestInitialize:
 
     def test_initialize_with_valid_timezone(self):
         """Test initialize with valid timezone"""
-        with patch(
-            "apscheduler.schedulers.asyncio.AsyncIOScheduler"
-        ) as mock_scheduler_class, patch(
-            "botspot.components.main.event_scheduler.logger"
-        ) as mock_logger:
-
+        with (
+            patch("apscheduler.schedulers.asyncio.AsyncIOScheduler") as mock_scheduler_class,
+            patch("botspot.components.main.event_scheduler.logger") as mock_logger,
+        ):
             mock_scheduler = MagicMock()
             mock_scheduler_class.return_value = mock_scheduler
 
@@ -72,10 +70,10 @@ class TestRunScheduler:
     @pytest.mark.asyncio
     async def test_run_scheduler_enabled(self):
         """Test run_scheduler when scheduler is enabled"""
-        with patch(
-            "botspot.core.dependency_manager.get_dependency_manager"
-        ) as mock_get_deps, patch("botspot.components.main.event_scheduler.logger") as mock_logger:
-
+        with (
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+            patch("botspot.components.main.event_scheduler.logger") as mock_logger,
+        ):
             # Setup mock scheduler
             mock_scheduler = MagicMock()
             mock_scheduler.timezone = "Europe/London"
@@ -97,10 +95,10 @@ class TestRunScheduler:
     @pytest.mark.asyncio
     async def test_run_scheduler_disabled(self):
         """Test run_scheduler when scheduler is disabled"""
-        with patch(
-            "botspot.core.dependency_manager.get_dependency_manager"
-        ) as mock_get_deps, patch("botspot.components.main.event_scheduler.logger") as mock_logger:
-
+        with (
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+            patch("botspot.components.main.event_scheduler.logger") as mock_logger,
+        ):
             # Setup dependency manager with no scheduler
             mock_deps = MagicMock()
             mock_deps.scheduler = None

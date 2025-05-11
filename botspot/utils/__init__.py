@@ -1,10 +1,10 @@
 # First import functions that have no dependencies on components or other utils
+from .chat_utils import typing_status
 from .easter_eggs import get_easter_egg, get_pong
+from .formatting_utils import markdown_to_html
 from .send_safe import answer_safe, reply_safe, send_safe
 from .unsorted import get_message_text, get_name, get_user, send_typing_status, strip_command
 from .user_ops import compare_users, is_admin, is_friend, to_user_record
-from .chat_utils import typing_status
-from .formatting_utils import markdown_to_html
 
 ...
 # Then import deps_getters which depends on component functions

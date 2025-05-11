@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botspot"
-version = "0.10.12"
+version = "0.10.15"
 description = ""
 authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
@@ -28,6 +28,7 @@ litellm = "^1.63"  # For LLM provider component
 motor = "^3.6.0"
 telethon = "^1.38.1"
 aioboto3 = "^14.1.0"
+mistune = "^3.1.3"
 # dependencies for extra features
 
 # Main

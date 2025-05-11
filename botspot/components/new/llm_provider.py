@@ -5,7 +5,17 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, Type, Union, Sequence
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Dict,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from aiogram.types import Chat, User
 from pydantic import BaseModel
@@ -22,7 +32,6 @@ from botspot.utils.user_ops import UserLike, compare_users_async
 MAX_ATTACHMENTS = defaultdict(lambda: 10)
 
 if TYPE_CHECKING:
-    from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
     from litellm.types.utils import ModelResponse
 
 
@@ -168,6 +177,9 @@ class LLMQueryParams:
 # region LLM Provider Implementation
 # ---------------------------------------------
 
+# Define a TypeVar for generic model types
+T = TypeVar("T", bound=BaseModel)
+
 
 class LLMProvider:
     """Main LLM Provider class for Botspot"""
@@ -183,58 +195,6 @@ class LLMProvider:
         if "/" in model:  # Already a full name
             return model
         return MODEL_NAME_SHORTCUTS.get(model, model)
-
-    def _prepare_messages(
-        self,
-        prompt: str,
-        system_message: Optional[str] = None,
-        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-    ) -> list:
-        """Prepare messages for the LLM request."""
-        messages = []
-
-        # Add system message if provided
-        if system_message:
-            messages.append({"role": "system", "content": system_message})
-
-        if attachments is None or not attachments:
-            content = prompt
-        else:
-            content = [{"type": "text", "text": prompt}]
-            for attachment in attachments:
-                if isinstance(attachment, Attachment):
-                    file_stream = asyncio.run(download_telegram_file(attachment))
-                    file_bytes = file_stream.read()
-                else:
-                    file_bytes = attachment
-                # assert isinstance(file, BinaryIO)
-                assert isinstance(file_bytes, bytes)
-
-                encoded_file = base64.b64encode(file_bytes).decode("utf-8")
-                # todo: figure out the proper way to include mime type - for now, do hardcoded as it worked before
-
-                if isinstance(attachment, Attachment):
-                    format = get_attachment_format(attachment)
-                    image_url = f"data:{format};base64,{encoded_file}"
-                else:
-                    # todo: check if this even works
-                    # todo: figure out to provide mime type here - need to pass with the bytes somehow / as a file. BinaryIO?
-                    logger.warning(
-                        f"received non-telegram file as attachment: {attachment}, using without mime type"
-                    )
-                    image_url = f"base64,{encoded_file}"
-
-                # todo: so far, only claude-3.5 worked. Need to research why gpt-4o didn't..
-                content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": image_url,
-                    }
-                )
-        # Add user prompt
-        messages.append({"role": "user", "content": content})
-
-        return messages
 
     async def _aprepare_messages(
         self,
@@ -286,10 +246,6 @@ class LLMProvider:
         messages.append({"role": "user", "content": content})
 
         return messages
-
-    # ---------------------------------------------
-    # region Synchronous Query Methods
-    # ---------------------------------------------
 
     async def _check_user_allowed(self, user: Optional[UserLike]) -> bool:
         """
@@ -375,7 +331,7 @@ class LLMProvider:
             # Use in-memory storage
             self.usage_stats[user_key] += tokens
 
-    def query_llm_raw(
+    async def _prepare_request(
         self,
         prompt: str,
         *,
@@ -385,32 +341,17 @@ class LLMProvider:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
-        max_retries: int = 2,
         structured_output_schema: Optional[Type[BaseModel]] = None,
         attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-        **extra_kwargs,
-    ) -> "ModelResponse | CustomStreamWrapper":
+    ) -> Dict[str, Any]:
         """
-        Raw query to the LLM - returns the complete response object.
+        Prepare common parameters for LLM requests.
 
-        Args:
-            prompt: The text prompt to send to the model
-            user: Optional user ID for access control and usage tracking
-            system_message: Optional system message for the model
-            model: Model name to use (can be a shortcut)
-            temperature: Temperature for generation
-            max_tokens: Maximum tokens to generate
-            timeout: Request timeout
-            max_retries: Number of times to retry failed requests
-            structured_output_schema: Optional Pydantic model for structured output
-            attachments: Optional list of attachments to include in the request
-            **extra_kwargs: Additional arguments to pass to the LLM
+        This centralizes the parameter preparation logic for all query methods.
 
         Returns:
-            Raw response from the LLM
+            Dictionary with processed parameters for the request
         """
-        from litellm import completion
-
         from botspot.core.dependency_manager import get_dependency_manager
 
         deps = get_dependency_manager()
@@ -425,314 +366,48 @@ class LLMProvider:
             user = deps.botspot_settings.single_user_mode.user
         elif not deps.botspot_settings.single_user_mode.enabled and user is None:
             # If not in single_user_mode and no user provided, raise exception
-            from botspot.core.errors import LLMProviderError
-
-            raise LLMProviderError("user is required when not in single_user_mode")
+            raise ValueError("user is required when not in single_user_mode")
 
         # Check if user is allowed to use LLM
-        if not asyncio.run(self._check_user_allowed(user)):
+        if not await self._check_user_allowed(user):
             chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
             if chat_id:
-                asyncio.run(
-                    send_safe(
-                        chat_id,
-                        "You are not allowed to use LLM features. If you know the bot owner personally, "
-                        "you can ask them to add you as a friend for unlimited usage.",
-                    )
+                await send_safe(
+                    chat_id,
+                    "You are not allowed to use LLM features. If you know the bot owner personally, "
+                    "you can ask them to add you as a friend for unlimited usage.",
                 )
-            from botspot.core.errors import LLMPermissionError
-
-            raise LLMPermissionError(f"User {user} is not allowed to use LLM features")
+            raise PermissionError(f"User {user} is not allowed to use LLM features")
 
         # Get model parameters with defaults
-        model = model or self.settings.default_model
+        model_name = model or self.settings.default_model
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
         # O-series models only support temperature=1
-        if self._is_o_series_model(model) and temperature != 1:
+        if self._is_o_series_model(model_name) and temperature != 1:
             logger.warning(
-                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+                f"O-series model '{model_name}' only supports temperature=1. Overriding temperature {temperature} -> 1."
             )
             temperature = 1
 
         # Get full model name
-        full_model_name = self._get_full_model_name(model)
+        model = self._get_full_model_name(model_name)
 
         # Prepare messages
-        messages = self._prepare_messages(prompt, system_message, attachments)
+        messages = await self._aprepare_messages(prompt, system_message, attachments)
 
-        # Additional parameters
-        params = {
+        return {
+            "model": model,
+            "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "request_timeout": timeout,
-            "num_retries": max_retries,
-            **extra_kwargs,
+            "timeout": timeout,
+            "user": user,
+            "prompt": prompt,
+            "structured_output_schema": structured_output_schema,
         }
-
-        # Add structured output if needed
-        if structured_output_schema:
-            params["response_format"] = structured_output_schema
-
-        logger.debug(f"Querying LLM with model {full_model_name}")
-
-        # Make the actual API call
-        response = completion(model=full_model_name, messages=messages, **params)
-
-        # Track usage asynchronously (approximate tokens used)
-        token_estimate = len(prompt) // 4 + max_tokens
-        asyncio.run(self._track_usage(user, model, token_estimate))
-
-        return response
-
-    def query_llm_text(
-        self,
-        prompt: str,
-        *,
-        user: Optional[UserLike] = None,
-        system_message: Optional[str] = None,
-        model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        timeout: Optional[float] = None,
-        max_retries: int = 2,
-        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-        **extra_kwargs,
-    ) -> str:
-        """
-        Query the LLM and return just the text response.
-
-        Arguments are the same as query_llm_raw but returns a string.
-        """
-        from litellm.types.utils import ModelResponse, StreamingChoices
-
-        response = self.query_llm_raw(
-            prompt=prompt,
-            user=user,
-            system_message=system_message,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
-            max_retries=max_retries,
-            attachments=attachments,
-            **extra_kwargs,
-        )
-        assert isinstance(response, ModelResponse), "Expected ModelResponse"
-        choice = response.choices[0]
-        assert not isinstance(choice, StreamingChoices)
-        message = choice.message
-        # assert isinstance(message, LLMMessage), "Expected Message"
-        content = message.content
-        assert content is not None, "Expected non-None content from LLM response"
-        return content
-
-    def query_llm_stream(
-        self,
-        prompt: str,
-        *,
-        user: Optional[UserLike] = None,
-        system_message: Optional[str] = None,
-        model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        timeout: Optional[float] = None,
-        max_retries: int = 2,
-        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-        **extra_kwargs,
-    ) -> Generator[str, None, None]:
-        """
-        Stream text chunks from the LLM.
-
-        Arguments are the same as query_llm_raw but returns a generator of text chunks.
-        """
-        import asyncio
-
-        from litellm import completion
-        from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
-
-        from botspot.core.dependency_manager import get_dependency_manager
-
-        deps = get_dependency_manager()
-
-        # Check if in single_user_mode with no user provided
-        if (
-            deps.botspot_settings.single_user_mode.enabled
-            and user is None
-            and not self.settings.allow_everyone
-        ):
-            # Assume it's the single user
-            user = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
-            # If not in single_user_mode and no user provided, raise exception
-            raise ValueError("user is required when not in single_user_mode")
-
-        # Check if user is allowed to use LLM
-        if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
-            if chat_id:
-                asyncio.run(
-                    send_safe(
-                        chat_id,
-                        "You are not allowed to use LLM features. If you know the bot owner personally, "
-                        "you can ask them to add you as a friend for unlimited usage.",
-                    )
-                )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
-
-        # Get model parameters with defaults
-        model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
-        max_tokens = max_tokens or self.settings.default_max_tokens
-        timeout = timeout or self.settings.default_timeout
-
-        # O-series models only support temperature=1
-        if self._is_o_series_model(model) and temperature != 1:
-            logger.warning(
-                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
-            )
-            temperature = 1
-
-        # Get full model name
-        full_model_name = self._get_full_model_name(model)
-
-        # Prepare messages
-        messages = self._prepare_messages(prompt, system_message, attachments)
-
-        # Track usage at the start (approximate tokens)
-        token_estimate = len(prompt) // 4 + max_tokens
-        asyncio.run(self._track_usage(user, model, token_estimate))
-
-        # Make the actual API call with streaming
-        response = completion(
-            model=full_model_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            request_timeout=timeout,
-            num_retries=max_retries,
-            stream=True,
-            **extra_kwargs,
-        )
-        assert isinstance(response, CustomStreamWrapper), "Expected ModelResponseStream"
-
-        for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
-
-    def query_llm_structured[T: BaseModel](
-        self,
-        prompt: str,
-        output_schema: Type[T],
-        *,
-        user: Optional[UserLike] = None,
-        system_message: Optional[str] = None,
-        model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        timeout: Optional[float] = None,
-        max_retries: int = 2,
-        attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-        **extra_kwargs,
-    ) -> T:
-        """
-        Query LLM with structured output.
-
-        Args:
-            output_schema: A Pydantic model class defining the structure
-            Other arguments same as query_llm_raw
-
-        Returns:
-            An instance of the provided Pydantic model
-        """
-        import asyncio
-
-        from litellm import completion
-        from litellm.types.utils import ModelResponse, StreamingChoices
-
-        from botspot.core.dependency_manager import get_dependency_manager
-
-        deps = get_dependency_manager()
-
-        # Check if in single_user_mode with no user provided
-        if (
-            deps.botspot_settings.single_user_mode.enabled
-            and user is None
-            and not self.settings.allow_everyone
-        ):
-            # Assume it's the single user
-            user = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
-            # If not in single_user_mode and no user provided, raise exception
-            raise ValueError("user is required when not in single_user_mode")
-
-        # Check if user is allowed to use LLM
-        if not asyncio.run(self._check_user_allowed(user)):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
-            if chat_id:
-                asyncio.run(
-                    send_safe(
-                        chat_id,
-                        "You are not allowed to use LLM features. If you know the bot owner personally, "
-                        "you can ask them to add you as a friend for unlimited usage.",
-                    )
-                )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
-
-        # Get model parameters with defaults
-        model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
-        max_tokens = max_tokens or self.settings.default_max_tokens
-        timeout = timeout or self.settings.default_timeout
-
-        # O-series models only support temperature=1
-        if self._is_o_series_model(model) and temperature != 1:
-            logger.warning(
-                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
-            )
-            temperature = 1
-
-        # Get full model name
-        full_model_name = self._get_full_model_name(model)
-
-        # Prepare messages and add structured output instructions
-        enhanced_system = system_message or ""
-        enhanced_system += (
-            "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
-        )
-
-        messages = self._prepare_messages(prompt, enhanced_system, attachments)
-
-        # Make the API call
-        response = completion(
-            model=full_model_name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            request_timeout=timeout,
-            num_retries=max_retries,
-            response_format=output_schema,
-            **extra_kwargs,
-        )
-
-        # Track usage (approximate tokens)
-        assert isinstance(response, ModelResponse), "Expected ModelResponse"
-        choice = response.choices[0]
-        assert not isinstance(choice, StreamingChoices)
-        content = choice.message.content
-        assert content is not None, "Expected non-None content from LLM response"
-        token_estimate = len(prompt) // 4 + len(content)
-        asyncio.run(self._track_usage(user, model, token_estimate))
-
-        # Parse the response into the Pydantic model
-        result_json = json.loads(content)
-        return output_schema(**result_json)
-
-    # ---------------------------------------------
-    # endregion Synchronous Query Methods
-    # ---------------------------------------------
 
     # ---------------------------------------------
     # region Asynchronous Query Methods
@@ -756,82 +431,65 @@ class LLMProvider:
         """
         Async raw query to the LLM - returns the complete response object.
 
-        Args are the same as query_llm_raw but using async/await.
+        Args:
+            prompt: The text prompt to send to the LLM
+            user: User identifier for tracking usage and permissions
+            system_message: Optional system message to prepend
+            model: Optional model to use (defaults to provider default)
+            temperature: Optional temperature setting (0.0-1.0)
+            max_tokens: Optional maximum tokens in the response
+            timeout: Optional timeout in seconds
+            max_retries: Number of retries on failure
+            structured_output_schema: Optional Pydantic model for structured output
+            attachments: Optional list of attachments to include in the request
+            **extra_kwargs: Additional arguments to pass to the LLM provider
+
+        Returns:
+            Raw response from the LLM with full metadata and usage stats
         """
         from litellm import acompletion
         from litellm.types.utils import ModelResponse
 
-        from botspot.core.dependency_manager import get_dependency_manager
+        # Prepare common parameters
+        params = await self._prepare_request(
+            prompt=prompt,
+            user=user,
+            system_message=system_message,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            structured_output_schema=structured_output_schema,
+            attachments=attachments,
+        )
 
-        deps = get_dependency_manager()
-
-        # Check if in single_user_mode with no user provided
-        if (
-            deps.botspot_settings.single_user_mode.enabled
-            and user is None
-            and not self.settings.allow_everyone
-        ):
-            # Assume it's the single user
-            user = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
-            # If not in single_user_mode and no user provided, raise exception
-            raise ValueError("user is required when not in single_user_mode")
-
-        # Check if user is allowed to use LLM
-        if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
-            if chat_id:
-                await send_safe(
-                    chat_id,
-                    "You are not allowed to use LLM features. If you know the bot owner personally, "
-                    "you can ask them to add you as a friend for unlimited usage.",
-                )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
-
-        # Get model parameters with defaults
-        model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
-        max_tokens = max_tokens or self.settings.default_max_tokens
-        timeout = timeout or self.settings.default_timeout
-
-        # O-series models only support temperature=1
-        if self._is_o_series_model(model) and temperature != 1:
-            logger.warning(
-                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
-            )
-            temperature = 1
-
-        # Get full model name
-        full_model_name = self._get_full_model_name(model)
-
-        # Prepare messages
-        messages = await self._aprepare_messages(prompt, system_message, attachments)
-
-        # Additional parameters
-        params = {
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "request_timeout": timeout,
+        # Additional parameters for the API call
+        api_params = {
+            "temperature": params["temperature"],
+            "max_tokens": params["max_tokens"],
+            "request_timeout": params["timeout"],
             "num_retries": max_retries,
             **extra_kwargs,
         }
 
         # Add structured output if needed
-        if structured_output_schema:
-            params["response_format"] = structured_output_schema
+        if params["structured_output_schema"]:
+            api_params["response_format"] = params["structured_output_schema"]
 
-        logger.debug(f"Async querying LLM with model {full_model_name}")
+        logger.debug(f"Async querying LLM with model {params['model_name']}")
 
         # Make the actual API call
-        response = await acompletion(model=full_model_name, messages=messages, **params)
+        response = await acompletion(
+            model=params["model_name"], messages=params["messages"], **api_params
+        )
 
         # Track usage asynchronously (approximate tokens used)
-        token_estimate = len(prompt) // 4 + max_tokens
-        await self._track_usage(user, model, token_estimate)
+        token_estimate = len(params["prompt"]) // 4 + params["max_tokens"]
+        await self._track_usage(params["user"], params["model"], token_estimate)
 
-        assert isinstance(
-            response, ModelResponse
-        ), "Expected ModelResponse but got CustomStreamWrapper"
+        # Check for the correct response type
+        assert isinstance(response, ModelResponse), f"Unknown response type: {type(response)}"
+
         return response
 
     async def aquery_llm_text(
@@ -853,7 +511,7 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns a string.
         """
-        from litellm.types.utils import ModelResponse, StreamingChoices
+        from litellm.types.utils import Choices, Message
 
         response = await self.aquery_llm_raw(
             prompt=prompt,
@@ -867,14 +525,16 @@ class LLMProvider:
             attachments=attachments,
             **extra_kwargs,
         )
-        assert isinstance(response, ModelResponse), "Expected ModelResponse"
+
+        # Extract content with assertions for proper structure
+        assert isinstance(response, Message)
+
         choice = response.choices[0]
-        assert choice is not None and not isinstance(
-            choice, StreamingChoices
-        ), "Expected ModelResponse but got CustomStreamWrapper"
-        content = choice.message.content
-        assert content is not None, "Expected non-None content from LLM response"
-        return content
+        # Ensure we're dealing with a non-streaming choice that has a message attribute
+        assert isinstance(choice, Choices), f"Expected Choices but got {type(choice)}"
+        assert choice.message.content is not None, "Message content is None"
+
+        return choice.message.content
 
     async def aquery_llm_stream(
         self,
@@ -897,74 +557,51 @@ class LLMProvider:
         """
         from litellm import acompletion
         from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+        from litellm.types.utils import StreamingChoices
 
-        from botspot.core.dependency_manager import get_dependency_manager
-
-        deps = get_dependency_manager()
-
-        # Check if in single_user_mode with no user provided
-        if (
-            deps.botspot_settings.single_user_mode.enabled
-            and user is None
-            and not self.settings.allow_everyone
-        ):
-            # Assume it's the single user
-            user = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
-            # If not in single_user_mode and no user provided, raise exception
-            raise ValueError("user is required when not in single_user_mode")
-
-        # Check if user is allowed to use LLM
-        if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
-            if chat_id:
-                await send_safe(
-                    chat_id,
-                    "You are not allowed to use LLM features. If you know the bot owner personally, "
-                    "you can ask them to add you as a friend for unlimited usage.",
-                )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
-
-        # Get model parameters with defaults
-        model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
-        max_tokens = max_tokens or self.settings.default_max_tokens
-        timeout = timeout or self.settings.default_timeout
-
-        # O-series models only support temperature=1
-        if self._is_o_series_model(model) and temperature != 1:
-            logger.warning(
-                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
-            )
-            temperature = 1
-
-        # Get full model name
-        full_model_name = self._get_full_model_name(model)
-
-        # Prepare messages
-        messages = await self._aprepare_messages(prompt, system_message, attachments)
-
-        # Track usage at the start (approximate tokens)
-        token_estimate = len(prompt) // 4 + max_tokens
-        await self._track_usage(user, model, token_estimate)
-
-        # Make the actual API call with streaming
-        response = await acompletion(
-            model=full_model_name,
-            messages=messages,
+        # Prepare common parameters
+        params = await self._prepare_request(
+            prompt=prompt,
+            user=user,
+            system_message=system_message,
+            model=model,
             temperature=temperature,
             max_tokens=max_tokens,
-            request_timeout=timeout,
+            timeout=timeout,
+            attachments=attachments,
+        )
+
+        # Track usage at the start (approximate tokens)
+        token_estimate = len(params["prompt"]) // 4 + params["max_tokens"]
+        await self._track_usage(params["user"], params["model"], token_estimate)
+
+        # Make the actual API call with streaming
+        stream_response = await acompletion(
+            model=params["model_name"],
+            messages=params["messages"],
+            temperature=params["temperature"],
+            max_tokens=params["max_tokens"],
+            request_timeout=params["timeout"],
             num_retries=max_retries,
             stream=True,
             **extra_kwargs,
         )
-        assert isinstance(response, CustomStreamWrapper)
-        async for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
 
-    async def aquery_llm_structured[T: BaseModel](
+        # Ensure we got a streaming response
+        assert isinstance(
+            stream_response, CustomStreamWrapper
+        ), f"Expected streaming response but got: {type(stream_response)}"
+
+        async for chunk in stream_response:
+            choice = chunk.choices[0]
+            assert isinstance(
+                choice, StreamingChoices
+            ), f"Expected StreamChoices but got {type(choice)}"
+            assert choice.delta.content is not None, "Message content is None"
+
+            yield choice.delta.content
+
+    async def aquery_llm_structured(
         self,
         prompt: str,
         output_schema: Type[T],
@@ -977,7 +614,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-        **extra_kwargs,
+        **kwargs,
     ) -> T:
         """
         Async query LLM with structured output.
@@ -989,85 +626,39 @@ class LLMProvider:
         Returns:
             An instance of the provided Pydantic model
         """
-        from litellm import acompletion
-        from litellm.types.utils import ModelResponse, StreamingChoices
+        from litellm.types.utils import Choices
 
-        from botspot.core.dependency_manager import get_dependency_manager
-
-        deps = get_dependency_manager()
-
-        # Check if in single_user_mode with no user provided
-        if (
-            deps.botspot_settings.single_user_mode.enabled
-            and user is None
-            and not self.settings.allow_everyone
-        ):
-            # Assume it's the single user
-            user = deps.botspot_settings.single_user_mode.user
-        elif not deps.botspot_settings.single_user_mode.enabled and user is None:
-            # If not in single_user_mode and no user provided, raise exception
-            raise ValueError("user is required when not in single_user_mode")
-
-        # Check if user is allowed to use LLM
-        if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
-            if chat_id:
-                await send_safe(
-                    chat_id,
-                    "You are not allowed to use LLM features. If you know the bot owner personally, "
-                    "you can ask them to add you as a friend for unlimited usage.",
-                )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
-
-        # Get model parameters with defaults
-        model = model or self.settings.default_model
-        temperature = temperature if temperature is not None else self.settings.default_temperature
-        max_tokens = max_tokens or self.settings.default_max_tokens
-        timeout = timeout or self.settings.default_timeout
-
-        # O-series models only support temperature=1
-        if self._is_o_series_model(model) and temperature != 1:
-            logger.warning(
-                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
-            )
-            temperature = 1
-
-        # Get full model name
-        full_model_name = self._get_full_model_name(model)
-
-        # Prepare messages and add structured output instructions
+        # Prepare enhanced system message with structured output instructions
         enhanced_system = system_message or ""
-        enhanced_system += (
+        if not enhanced_system.endswith(
             "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
-        )
+        ):
+            enhanced_system += (
+                "\nYou MUST respond with a valid JSON object that conforms to the specified schema."
+            )
 
-        messages = await self._aprepare_messages(prompt, system_message, attachments)
-
-        # Make the API call
-        response = await acompletion(
-            model=full_model_name,
-            messages=messages,
+        # Use the raw query with the structured output schema
+        response = await self.aquery_llm_raw(
+            prompt=prompt,
+            user=user,
+            system_message=enhanced_system,
+            model=model,
             temperature=temperature,
             max_tokens=max_tokens,
-            request_timeout=timeout,
-            num_retries=max_retries,
-            response_format=output_schema,
-            **extra_kwargs,
+            timeout=timeout,
+            max_retries=max_retries,
+            structured_output_schema=output_schema,
+            attachments=attachments,
+            **kwargs,
         )
 
-        # Track usage (approximate tokens)
-        assert isinstance(response, ModelResponse)
         choice = response.choices[0]
-        assert not isinstance(choice, StreamingChoices)
-        content = choice.message.content
-
-        assert content is not None, "Expected non-None content from LLM response"
-        token_estimate = len(prompt) // 4 + len(content)
-        await self._track_usage(user, model, token_estimate)
+        assert isinstance(choice, Choices), f"Expected Choices but got {type(choice)}"
+        assert choice.message.content is not None, "Message content is None"
 
         # Parse the response into the Pydantic model
-        result_text = content
-        result_json = json.loads(result_text)
+        content = choice.message.content
+        result_json = json.loads(content)
         return output_schema(**result_json)
 
     # ---------------------------------------------
@@ -1076,6 +667,7 @@ class LLMProvider:
 
     @staticmethod
     def _is_o_series_model(model_name: str) -> bool:
+        """Check if the model is an O-series model that only supports temperature=1."""
         model_name = model_name.lower()
         return any(
             key in model_name
@@ -1210,7 +802,6 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
                     )
 
             env_key = api_keys_env_names[lib_name]
-            # assert env_key is not None, f"Expected env key for {lib_name} but got None"
             api_key = os.getenv(env_key)
 
             if api_key:
@@ -1254,8 +845,7 @@ def get_llm_provider() -> LLMProvider:
     return deps.llm_provider
 
 
-# Convenience functions for direct use
-def query_llm_text(
+async def aquery_llm_raw(
     prompt: str,
     *,
     user: Optional[Union[int, str]] = None,
@@ -1263,34 +853,9 @@ def query_llm_text(
     model: Optional[str] = None,
     attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
     **kwargs,
-) -> str:
+) -> "ModelResponse":
     """
-    Query the LLM and return the text response.
-
-    This is a convenience function that uses the global LLM provider.
-    """
-    provider = get_llm_provider()
-    return provider.query_llm_text(
-        prompt=prompt,
-        user=user,
-        system_message=system_message,
-        model=model,
-        attachments=attachments,
-        **kwargs,
-    )
-
-
-def query_llm_raw(
-    prompt: str,
-    *,
-    user: Optional[Union[int, str]] = None,
-    system_message: Optional[str] = None,
-    model: Optional[str] = None,
-    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-    **kwargs,
-) -> "ModelResponse | CustomStreamWrapper":
-    """
-    Raw query to the LLM - returns the complete response object.
+    Async raw query to the LLM - returns the complete response object.
 
     This is a convenience function that uses the global LLM provider.
 
@@ -1306,47 +871,8 @@ def query_llm_raw(
         Raw response from the LLM with full metadata and usage stats
     """
     provider = get_llm_provider()
-    return provider.query_llm_raw(
+    return await provider.aquery_llm_raw(
         prompt=prompt,
-        user=user,
-        system_message=system_message,
-        model=model,
-        attachments=attachments,
-        **kwargs,
-    )
-
-
-def query_llm_structured(
-    prompt: str,
-    output_schema: Type[BaseModel],
-    *,
-    user: Optional[Union[int, str]] = None,
-    system_message: Optional[str] = None,
-    model: Optional[str] = None,
-    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-    **kwargs,
-) -> BaseModel:
-    """
-    Query LLM with structured output.
-
-    This is a convenience function that uses the global LLM provider.
-
-    Args:
-        prompt: The text prompt to send to the LLM
-        output_schema: A Pydantic model class defining the structure
-        user: User identifier for tracking usage and permissions
-        system_message: Optional system message to prepend
-        model: Optional model to use (defaults to provider default)
-        attachments: Optional list of attachments to include in the request
-        **kwargs: Additional arguments to pass to the LLM provider
-
-    Returns:
-        An instance of the provided Pydantic model
-    """
-    provider = get_llm_provider()
-    return provider.query_llm_structured(
-        prompt=prompt,
-        output_schema=output_schema,
         user=user,
         system_message=system_message,
         model=model,
@@ -1380,7 +906,7 @@ async def aquery_llm_text(
     )
 
 
-async def astream_llm(
+async def aquery_llm_stream(
     prompt: str,
     *,
     user: Optional[Union[int, str]] = None,
@@ -1417,7 +943,10 @@ async def astream_llm(
         yield chunk
 
 
-async def aquery_llm_structured[T: BaseModel](
+astream_llm = aquery_llm_stream
+
+
+async def aquery_llm_structured(
     prompt: str,
     output_schema: Type[T],
     *,
@@ -1431,59 +960,11 @@ async def aquery_llm_structured[T: BaseModel](
     Async query LLM with structured output.
 
     This is a convenience function that uses the global LLM provider.
-
-    Args:
-        prompt: The text prompt to send to the LLM
-        output_schema: A Pydantic model class defining the structure
-        user: User identifier for tracking usage and permissions
-        system_message: Optional system message to prepend
-        model: Optional model to use (defaults to provider default)
-        attachments: Optional list of attachments to include in the request
-        **kwargs: Additional arguments to pass to the LLM provider
-
-    Returns:
-        An instance of the provided Pydantic model
     """
     provider = get_llm_provider()
     return await provider.aquery_llm_structured(
         prompt=prompt,
         output_schema=output_schema,
-        user=user,
-        system_message=system_message,
-        model=model,
-        attachments=attachments,
-        **kwargs,
-    )
-
-
-async def aquery_llm_raw(
-    prompt: str,
-    *,
-    user: Optional[Union[int, str]] = None,
-    system_message: Optional[str] = None,
-    model: Optional[str] = None,
-    attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-    **kwargs,
-) -> "ModelResponse":
-    """
-    Async raw query to the LLM - returns the complete response object.
-
-    This is a convenience function that uses the global LLM provider.
-
-    Args:
-        prompt: The text prompt to send to the LLM
-        user: User identifier for tracking usage and permissions
-        system_message: Optional system message to prepend
-        model: Optional model to use (defaults to provider default)
-        attachments: Optional list of attachments to include in the request
-        **kwargs: Additional arguments to pass to the LLM provider
-
-    Returns:
-        Raw response from the LLM with full metadata and usage stats
-    """
-    provider = get_llm_provider()
-    return await provider.aquery_llm_raw(
-        prompt=prompt,
         user=user,
         system_message=system_message,
         model=model,
@@ -1537,7 +1018,6 @@ async def get_llm_usage_stats(user: Optional[UserLike] = None) -> dict:
 # endregion Utils
 # ---------------------------------------------
 
-
 if __name__ == "__main__":
     import asyncio
 
@@ -1558,7 +1038,6 @@ if __name__ == "__main__":
         user_id = message.from_user.id
         provider = get_llm_provider()
 
-        # 1. Basic text query
         response = await aquery_llm_text(
             prompt=prompt, user=user_id, model="claude-3.5", temperature=0.7
         )

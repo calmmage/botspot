@@ -1,11 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from botspot.components.new.s3_storage import (
-    S3StorageSettings,
-    S3StorageProvider,
-    initialize,
-)
+import pytest
+
+from botspot.components.new.s3_storage import S3StorageProvider, S3StorageSettings, initialize
 
 
 @pytest.fixture
@@ -13,9 +10,7 @@ def mock_aioboto3():
     """Mock aioboto3 for testing."""
     with patch("aioboto3.Session") as mock_session:
         mock_client = AsyncMock()
-        mock_session.return_value.client.return_value.__aenter__.return_value = (
-            mock_client
-        )
+        mock_session.return_value.client.return_value.__aenter__.return_value = mock_client
         yield mock_client
 
 
@@ -45,9 +40,7 @@ async def test_upload_file(s3_provider, mock_aioboto3):
 
     await s3_provider.upload_file(key, content)
 
-    mock_aioboto3.put_object.assert_called_once_with(
-        Bucket="test-bucket", Key=key, Body=content
-    )
+    mock_aioboto3.put_object.assert_called_once_with(Bucket="test-bucket", Key=key, Body=content)
 
 
 async def test_download_file(s3_provider, mock_aioboto3):
@@ -80,9 +73,7 @@ async def test_list_files(s3_provider, mock_aioboto3):
     files = ["test/file1.txt", "test/file2.txt"]
 
     mock_paginator = AsyncMock()
-    mock_paginator.paginate.return_value = [
-        {"Contents": [{"Key": key} for key in files]}
-    ]
+    mock_paginator.paginate.return_value = [{"Contents": [{"Key": key} for key in files]}]
     mock_aioboto3.get_paginator.return_value = mock_paginator
 
     result = []
@@ -125,7 +116,6 @@ def test_initialize_disabled():
     settings = S3StorageSettings(enabled=False)
     provider = initialize(settings)
     assert provider is None
-
 
 
 def test_initialize_success(s3_settings, mock_aioboto3):

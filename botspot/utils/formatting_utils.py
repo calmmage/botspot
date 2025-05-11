@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from loguru import logger
 
@@ -17,7 +18,6 @@ TELEGRAM_HTML_TAGS = {
 
 try:
     import mistune
-
     from mistune.renderers.html import HTMLRenderer
 
     class TelegramHTMLRenderer(HTMLRenderer):
@@ -36,9 +36,9 @@ try:
         def block_code(self, code, info=None):
             """Render code blocks with language support."""
             if info:
-                return f'<pre language="{info}">{code}</pre>'
+                return f'<pre language="{info}">{code}</pre>\n'
             # return f'<code>{code}</code>'
-            return f"<pre>{code}</pre>"
+            return f"<pre>{code}</pre>\n"
 
         # def block_quote(self, text):
         #     """Render blockquotes as code blocks."""
@@ -72,9 +72,19 @@ try:
             logger.debug(f"Converting image: {alt} -> {url}")
             return f'<a href="{url}">{alt}</a>'
 
-        def heading(self, text, level):
+        def heading(self, text: str, level: int, **attrs: Any) -> str:
             """Render headings as bold text."""
-            return f"<b>{text}</b>\n\n"
+            if attrs:
+                logger.warning(f"Heading attributes are not supported: {attrs}")
+            if level == 1:
+                return f"<b>{text.upper()}</b>\n\n"
+            elif level == 2:
+                return f"<b>{text}</b>\n\n"
+            elif level == 3:
+                return f"<b>{text}</b>\n"
+            elif level == 4:
+                return f"{text}\n"
+            return f"{text}\n"
 
         def paragraph(self, text):
             """Render paragraphs as plain text with newlines."""
@@ -88,14 +98,28 @@ try:
             """Render horizontal rules as newlines."""
             return "\n"
 
-        def list(self, text, ordered, **attrs):
+        def list(self, text: str, ordered: bool, **attrs: Any) -> str:
             """Render lists as plain text with newlines."""
-            return f"{text}\n"
+
+            if attrs:
+                logger.warning(f"Heading attributes are not supported: {attrs}")
+            lines = text.split("\n")
+            if ordered:
+                # Split into lines and enumerate starting from 1
+                # Filter out empty lines and enumerate
+                numbered = [f"{i}. {line}" for i, line in enumerate(lines, 1) if line.strip()]
+                return "\n".join(numbered) + "\n"
+            else:
+                unordered = [f"• {line}" for line in lines if line.strip()]
+                return "\n".join(unordered) + "\n"
 
         def list_item(self, text, **attrs):
             """Render list items as plain text with bullet points."""
-            bullet = "• "
-            return f"{bullet}{text}\n"
+            if attrs:
+                logger.warning(f"Heading attributes are not supported: {attrs}")
+            return f"{text}\n"
+
+    html_pattern = re.compile(r"<[a-zA-Z][^>]*>|</[a-zA-Z][^>]*>")
 
     def is_html(text: str) -> bool:
         """Check if text contains HTML tags, ignoring tags inside code blocks."""
@@ -121,7 +145,8 @@ try:
             parts.append("".join(current_part))
 
         # Check for HTML tags only in non-code parts
-        html_pattern = re.compile(r"<[^>]+>")
+        # Use a more specific pattern that requires a valid HTML tag format
+        # This will avoid matching mathematical expressions like "2 < 3"
         return any(bool(html_pattern.search(part)) for part in parts)
 
     def markdown_to_html(text: str) -> str:
