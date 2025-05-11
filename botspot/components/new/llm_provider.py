@@ -1020,7 +1020,6 @@ async def get_llm_usage_stats(user: Optional[UserLike] = None) -> dict:
 # endregion Utils
 # ---------------------------------------------
 
-
 if __name__ == "__main__":
     import asyncio
 
@@ -1041,7 +1040,6 @@ if __name__ == "__main__":
         user_id = message.from_user.id
         provider = get_llm_provider()
 
-        # 1. Basic text query
         response = await aquery_llm_text(
             prompt=prompt, user=user_id, model="claude-3.5", temperature=0.7
         )
