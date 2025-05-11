@@ -48,7 +48,10 @@ class TestIsHTML:
 
     def test_telegram_supported_tags(self):
         """Test that all Telegram supported tags are detected"""
-        text = "<b>bold</b> <i>italic</i> <u>underline</u> <s>strike</s> <code>code</code> <pre>block</pre> <a href='link'>link</a>"
+        text = (
+            "<b>bold</b> <i>italic</i> <u>underline</u> <s>strike</s>"
+            " <code>code</code> <pre>block</pre> <a href='link'>link</a>"
+        )
         assert is_html(text)
 
 
@@ -112,10 +115,10 @@ class TestMarkdownToHTML:
         expected = '<a href="https://example.com/image.jpg">Alt text</a>\n'
         assert markdown_to_html(markdown) == expected
 
-    def test_hashtag_removal(self):
+    def test_basic_text_render(self):
         """Test that hashtags are converted to plain text"""
         markdown = "This is a #hashtag test"
-        expected = "This is a hashtag test\n"
+        expected = "This is a #hashtag test\n"
         assert markdown_to_html(markdown) == expected
 
     def test_complex_markdown(self):

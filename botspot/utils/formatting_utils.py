@@ -30,8 +30,7 @@ try:
 
         def text(self, text):
             """Render text."""
-            # Convert hashtags to plain text by removing the # symbol
-            return re.sub(r"#(\w+)", r"\1", text)
+            return text
 
         def block_code(self, code, info=None):
             """Render code blocks with language support."""
