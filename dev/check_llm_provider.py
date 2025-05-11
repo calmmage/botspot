@@ -1,9 +1,7 @@
 import asyncio
-from pydantic import BaseModel
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    pass
+from pydantic import BaseModel
+
 
 # Your user ID
 USER_ID = 291560340
@@ -14,9 +12,9 @@ MODEL = "gpt-4.1-nano"
 async def test_llm_provider():
     """Test all LLM provider functions."""
     from botspot.llm_provider import (
-        aquery_llm_text,
         aquery_llm_raw,
         aquery_llm_structured,
+        aquery_llm_text,
         astream_llm,
     )
 
@@ -29,12 +27,16 @@ async def test_llm_provider():
         "Hello, what's the weather like?", user=USER_ID, model=MODEL
     )
     # Handle the response safely
-    content = (
-        raw_response.choices[0].message.content
-        if hasattr(raw_response.choices[0], "message")
-        else "No content"
-    )
-    usage = raw_response.usage.total_tokens if hasattr(raw_response, "usage") else "Unknown"
+    try:
+        content = raw_response.choices[0].message.content
+    except (AttributeError, IndexError):
+        content = "No content"
+
+    try:
+        usage = raw_response.usage.total_tokens
+    except AttributeError:
+        usage = "Unknown"
+
     print(f"Response content: {content}")
     print(f"Token usage: {usage}")
 
@@ -62,8 +64,8 @@ async def test_llm_provider():
 
 
 if __name__ == "__main__":
-    from botspot.core.bot_manager import BotManager
     from botspot.components.new.llm_provider import LLMProviderSettings
+    from botspot.core.bot_manager import BotManager
 
     # Create LLM provider settings with allow_everyone=True
     llm_settings = LLMProviderSettings(enabled=True, allow_everyone=True)
