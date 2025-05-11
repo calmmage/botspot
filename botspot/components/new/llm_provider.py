@@ -44,8 +44,8 @@ class LLMProviderSettings(BaseSettings):
     default_timeout: int = 30
     # If False, only friends and admins can use LLM features
     allow_everyone: bool = False
-
     skip_import_check: bool = False  # Skip import check for dependencies
+    drop_unsupported_params: bool = False
 
     class Config:
         env_prefix = "BOTSPOT_LLM_PROVIDER_"
@@ -77,9 +77,9 @@ MODEL_NAME_SHORTCUTS = {
     "gpt-4": "openai/gpt-4",  # $30.00 per 1M input, $60.00 per 1M output
     "o1-pro": "openai/o1-pro",  # $20.00 per 1M input, $80.00 per 1M output (assumed)
     # Google Models
-    "gemini-2.5-flash": "google/gemini-2.5-flash-preview-04-17",  # $0.15 per 1M input, $0.60 per 1M output (non-thinking)
-    "gemini-2.5-pro": "google/gemini-2.5-pro-preview-03-25",  # $1.25 per 1M input, $10.00 per 1M output
-    "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",  # Free tier (updated to gemini-2.5-pro-preview-05-06 on 2025-05-06 with same pricing as gemini-2.5-pro)
+    "gemini-2.5-flash": "gemini/gemini-2.5-flash-preview-04-17",  # $0.15 per 1M input, $0.60 per 1M output (non-thinking)
+    "gemini-2.5-pro": "gemini/gemini-2.5-pro-preview-03-25",  # $1.25 per 1M input, $10.00 per 1M output
+    "gemini-2.5-exp": "gemini/gemini-2.5-pro-exp-03-25",  # Free tier (updated to gemini-2.5-pro-preview-05-06 on 2025-05-06 with same pricing as gemini-2.5-pro)
     # xAI Models
     "grok-2": "xai/grok-2",  # $5.00 per 1M input, $15.00 per 1M output
     "grok-3-mini": "xai/grok-3-mini-beta",
@@ -103,11 +103,11 @@ MODEL_NAME_SHORTCUTS = {
     # "gpt-4o": "openai/gpt-4o",
     "o1": "openai/o1",
     # Google models
-    # "gemini-2.5": "google/gemini-2.5-pro-max",
-    "gemini-2.5-max": "google/gemini-2.5-pro-max",
-    # "gemini-2.5-exp": "google/gemini-2.5-pro-exp-03-25",
-    # "gemini-2.0-pro": "google/gemini-2.0-pro-exp",
-    "gemini-2.0": "google/gemini-2.0-pro-exp",
+    # "gemini-2.5": "gemini/gemini-2.5-pro-max",
+    "gemini-2.5-max": "gemini/gemini-2.5-pro-max",
+    # "gemini-2.5-exp": "gemini/gemini-2.5-pro-exp-03-25",
+    # "gemini-2.0-pro": "gemini/gemini-2.0-pro-exp",
+    "gemini-2.0": "gemini/gemini-2.0-pro-exp",
     # xAI models
     # "grok-2": "grok/grok-2",
     # "grok-3": "grok/grok-3",
@@ -123,9 +123,9 @@ MODEL_NAME_SHORTCUTS = {
     "o1-preview": "openai/o1-preview",
     "o3-mini": "openai/o3-mini",
     # Google models (continued)
-    # "gemini-2.0-flash": "google/gemini-2.0-flash",
-    "gemini-2.0-flash-exp": "google/gemini-2.0-flash-thinking-exp",
-    "gemini-exp-1206": "google/gemini-exp-1206",
+    # "gemini-2.0-flash": "gemini/gemini-2.0-flash",
+    "gemini-2.0-flash-exp": "gemini/gemini-2.0-flash-thinking-exp",
+    "gemini-exp-1206": "gemini/gemini-exp-1206",
     # Cursor models
     "cursor-fast": "cursor/cursor-fast",
     "cursor-small": "cursor/cursor-small",
@@ -450,6 +450,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -581,6 +588,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -672,6 +686,13 @@ class LLMProvider:
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
+
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
 
         # Get full model name
         full_model_name = self._get_full_model_name(model)
@@ -772,6 +793,13 @@ class LLMProvider:
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
+
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
 
         # Get full model name
         full_model_name = self._get_full_model_name(model)
@@ -903,6 +931,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -990,6 +1025,13 @@ class LLMProvider:
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
+        # O-series models only support temperature=1
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
         # Get full model name
         full_model_name = self._get_full_model_name(model)
 
@@ -1031,6 +1073,23 @@ class LLMProvider:
     # ---------------------------------------------
     # endregion Asynchronous Query Methods
     # ---------------------------------------------
+
+    @staticmethod
+    def _is_o_series_model(model_name: str) -> bool:
+        model_name = model_name.lower()
+        return any(
+            key in model_name
+            for key in [
+                "gpt-4o",
+                "o1",
+                "o3",
+                "o4",
+                "openai/gpt-4o",
+                "openai/o1",
+                "openai/o3",
+                "openai/o4",
+            ]
+        )
 
 
 # ---------------------------------------------
@@ -1089,6 +1148,11 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
     if not settings.enabled:
         logger.info("LLM Provider component is disabled")
         return None
+
+    if settings.drop_unsupported_params:
+        import litellm
+
+        litellm.drop_params = True
 
     # Check if litellm is installed
     try:
