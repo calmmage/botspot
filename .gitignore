@@ -214,3 +214,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /.cursorindexingignore
+
+**/.claude/settings.local.json
