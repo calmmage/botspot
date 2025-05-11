@@ -4,6 +4,7 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from pydantic_settings import BaseSettings
 
+from botspot import answer_safe, send_safe
 from botspot.utils.easter_eggs import get_easter_egg
 from botspot.utils.internal import get_logger
 
@@ -69,20 +70,18 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
             response += f"\nHere, take this instead: \n{get_easter_egg()}"
 
     if event.update.message:
-        await event.update.message.answer(response)
+        await answer_safe(event.update.message, response)
 
     # send the report to the developer
     if settings.developer_chat_id and (not isinstance(error, BotspotError) or error.report_to_dev):
         logger.debug(f"Sending error report to the developer: {settings.developer_chat_id}")
-        error_description = f"Error processing message:"
+        error_description = "Error processing message:"
         for k, v in error_data.items():
             if k == "traceback" and isinstance(error, BotspotError) and not error.include_traceback:
                 continue
             error_description += f"\n{k}: {v}"
         # force parse_mode to None to avoid HTML tags issues in the message
-        await bot.send_message(
-            chat_id=settings.developer_chat_id, text=error_description, parse_mode=None
-        )
+        await send_safe(chat_id=settings.developer_chat_id, text=error_description)
 
 
 def setup_dispatcher(dp: Dispatcher):  # settings: ErrorHandlerSettings = None
