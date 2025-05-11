@@ -17,7 +17,6 @@ TELEGRAM_HTML_TAGS = {
 
 try:
     import mistune
-
     from mistune.renderers.html import HTMLRenderer
 
     class TelegramHTMLRenderer(HTMLRenderer):

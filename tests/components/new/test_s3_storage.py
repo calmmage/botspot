@@ -1,11 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from botspot.components.new.s3_storage import (
-    S3StorageSettings,
-    S3StorageProvider,
-    initialize,
-)
+import pytest
+
+from botspot.components.new.s3_storage import S3StorageProvider, S3StorageSettings, initialize
 
 
 @pytest.fixture
