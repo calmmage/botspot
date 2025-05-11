@@ -1,5 +1,6 @@
 import asyncio
 
+from litellm import Choices
 from pydantic import BaseModel
 
 
@@ -28,12 +29,13 @@ async def test_llm_provider():
     )
     # Handle the response safely
     try:
+        assert isinstance(raw_response.choices[0], Choices)
         content = raw_response.choices[0].message.content
     except (AttributeError, IndexError):
         content = "No content"
 
     try:
-        usage = raw_response.usage.total_tokens
+        usage = raw_response.usage.total_tokens  # type: ignore # pyright: ignore
     except AttributeError:
         usage = "Unknown"
 

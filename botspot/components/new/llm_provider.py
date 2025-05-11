@@ -15,7 +15,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 from aiogram.types import Chat, User
@@ -449,7 +448,6 @@ class LLMProvider:
             Raw response from the LLM with full metadata and usage stats
         """
         from litellm import acompletion
-        from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
         from litellm.types.utils import ModelResponse
 
         # Prepare common parameters
@@ -490,15 +488,9 @@ class LLMProvider:
         await self._track_usage(params["user"], params["model"], token_estimate)
 
         # Check for the correct response type
-        if not isinstance(response, ModelResponse):
-            # For streaming, handle differently
-            if isinstance(response, CustomStreamWrapper):
-                # This should never happen when not streaming
-                raise TypeError("Received streaming response when not expecting one")
-            else:
-                raise TypeError(f"Unknown response type: {type(response)}")
+        assert isinstance(response, ModelResponse), f"Unknown response type: {type(response)}"
 
-        return cast("ModelResponse", response)
+        return response
 
     async def aquery_llm_text(
         self,
@@ -519,7 +511,7 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns a string.
         """
-        from litellm.types.utils import Choices
+        from litellm.types.utils import Choices, Message
 
         response = await self.aquery_llm_raw(
             prompt=prompt,
@@ -534,28 +526,15 @@ class LLMProvider:
             **extra_kwargs,
         )
 
-        # Safely extract content from the response
-        try:
-            if not response.choices:
-                raise ValueError("No choices in model response")
+        # Extract content with assertions for proper structure
+        assert isinstance(response, Message)
 
-            choice = response.choices[0]
-            # Verify it's a non-streaming choice
-            if not isinstance(choice, Choices):
-                raise ValueError(f"Expected Choices but got {type(choice)}")
+        choice = response.choices[0]
+        # Ensure we're dealing with a non-streaming choice that has a message attribute
+        assert isinstance(choice, Choices), f"Expected Choices but got {type(choice)}"
+        assert choice.message.content is not None, "Message content is None"
 
-            message = choice.message
-            if not message:
-                raise ValueError("No message in response choice")
-
-            content = message.content
-            if content is None:
-                raise ValueError("Message content is None")
-
-            return content
-        except (AttributeError, IndexError) as e:
-            # Return error details to help with debugging type issues
-            raise ValueError(f"Failed to extract text from LLM response: {e}")
+        return choice.message.content
 
     async def aquery_llm_stream(
         self,
@@ -578,6 +557,7 @@ class LLMProvider:
         """
         from litellm import acompletion
         from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+        from litellm.types.utils import StreamingChoices
 
         # Prepare common parameters
         params = await self._prepare_request(
@@ -608,22 +588,18 @@ class LLMProvider:
         )
 
         # Ensure we got a streaming response
-        if not isinstance(stream_response, CustomStreamWrapper):
-            raise TypeError(f"Expected streaming response but got: {type(stream_response)}")
+        assert isinstance(
+            stream_response, CustomStreamWrapper
+        ), f"Expected streaming response but got: {type(stream_response)}"
 
         async for chunk in stream_response:
-            try:
-                if (
-                    chunk.choices
-                    and chunk.choices[0].delta
-                    and hasattr(chunk.choices[0].delta, "content")
-                ):
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        yield content
-            except (AttributeError, IndexError) as e:
-                # Log but continue with the stream
-                logger.warning(f"Error extracting content from stream chunk: {e}")
+            choice = chunk.choices[0]
+            assert isinstance(
+                choice, StreamingChoices
+            ), f"Expected StreamChoices but got {type(choice)}"
+            assert choice.delta.content is not None, "Message content is None"
+
+            yield choice.delta.content
 
     async def aquery_llm_structured(
         self,
@@ -638,7 +614,7 @@ class LLMProvider:
         timeout: Optional[float] = None,
         max_retries: int = 2,
         attachments: Optional[Sequence[Union[Attachment, bytes]]] = None,
-        **extra_kwargs,
+        **kwargs,
     ) -> T:
         """
         Async query LLM with structured output.
@@ -673,32 +649,17 @@ class LLMProvider:
             max_retries=max_retries,
             structured_output_schema=output_schema,
             attachments=attachments,
-            **extra_kwargs,
+            **kwargs,
         )
 
-        # Extract content safely
-        try:
-            if not response.choices:
-                raise ValueError("No choices in model response")
+        choice = response.choices[0]
+        assert isinstance(choice, Choices), f"Expected Choices but got {type(choice)}"
+        assert choice.message.content is not None, "Message content is None"
 
-            choice = response.choices[0]
-            # Verify it's a non-streaming choice
-            if not isinstance(choice, Choices):
-                raise ValueError(f"Expected Choices but got {type(choice)}")
-
-            message = choice.message
-            if not message:
-                raise ValueError("No message in response choice")
-
-            content = message.content
-            if content is None:
-                raise ValueError("Message content is None")
-
-            # Parse the response into the Pydantic model
-            result_json = json.loads(content)
-            return output_schema(**result_json)
-        except (AttributeError, IndexError, json.JSONDecodeError) as e:
-            raise ValueError(f"Failed to parse structured output from LLM response: {e}")
+        # Parse the response into the Pydantic model
+        content = choice.message.content
+        result_json = json.loads(content)
+        return output_schema(**result_json)
 
     # ---------------------------------------------
     # endregion Asynchronous Query Methods
@@ -841,7 +802,6 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
                     )
 
             env_key = api_keys_env_names[lib_name]
-            # assert env_key is not None, f"Expected env key for {lib_name} but got None"
             api_key = os.getenv(env_key)
 
             if api_key:
