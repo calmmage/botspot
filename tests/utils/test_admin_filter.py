@@ -30,6 +30,7 @@ def non_admin_user():
     user = MagicMock(spec=User)
     user.id = 67890
     user.username = "regular_user"
+    user.is_bot = False
     return user
 
 
@@ -37,6 +38,19 @@ def non_admin_user():
 def mock_message(non_admin_user):
     message = MagicMock(spec=Message)
     message.from_user = non_admin_user
+
+    # Add service message attributes with None as default values
+    message.pinned_message = None
+    message.new_chat_members = None
+    message.left_chat_member = None
+    message.new_chat_title = None
+    message.new_chat_photo = None
+    message.delete_chat_photo = None
+    message.group_chat_created = None
+    message.supergroup_chat_created = None
+    message.channel_chat_created = None
+    message.message_auto_delete_timer_changed = None
+
     return message
 
 
