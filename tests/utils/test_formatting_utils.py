@@ -31,6 +31,26 @@ class TestIsHTML:
         """Test that an empty string is not detected as HTML"""
         assert not is_html("")
 
+    def test_complex_math_expressions(self):
+        """Test that complex mathematical expressions with angle brackets are not detected as HTML"""
+        text = "For all x, if x < y and y > z then x < z. Also, 3 <= 4 and 5 >= 4."
+        assert not is_html(text)
+
+    def test_xml_like_syntax(self):
+        """Test that XML-like syntax is correctly detected as HTML"""
+        text = 'This is <custom-tag attr="value">content</custom-tag>'
+        assert is_html(text)
+
+    def test_incomplete_tags(self):
+        """Test that incomplete tags are not detected as HTML"""
+        text = "This is an incomplete tag: < not closed"
+        assert not is_html(text)
+
+    def test_telegram_supported_tags(self):
+        """Test that all Telegram supported tags are detected"""
+        text = "<b>bold</b> <i>italic</i> <u>underline</u> <s>strike</s> <code>code</code> <pre>block</pre> <a href='link'>link</a>"
+        assert is_html(text)
+
 
 class TestMarkdownToHTML:
     def test_already_html(self):

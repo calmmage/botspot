@@ -74,6 +74,8 @@ try:
 
         def heading(self, text: str, level: int, **attrs: Any) -> str:
             """Render headings as bold text."""
+            if attrs:
+                logger.warning(f"Heading attributes are not supported: {attrs}")
             if level == 1:
                 return f"<b>{text.upper()}</b>\n\n"
             elif level == 2:
@@ -98,6 +100,9 @@ try:
 
         def list(self, text: str, ordered: bool, **attrs: Any) -> str:
             """Render lists as plain text with newlines."""
+
+            if attrs:
+                logger.warning(f"Heading attributes are not supported: {attrs}")
             lines = text.split("\n")
             if ordered:
                 # Split into lines and enumerate starting from 1
@@ -110,9 +115,11 @@ try:
 
         def list_item(self, text, **attrs):
             """Render list items as plain text with bullet points."""
-            # bullet = "• "
-            # return f"{bullet}{text}\n"
+            if attrs:
+                logger.warning(f"Heading attributes are not supported: {attrs}")
             return f"{text}\n"
+
+    html_pattern = re.compile(r"<[a-zA-Z][^>]*>|</[a-zA-Z][^>]*>")
 
     def is_html(text: str) -> bool:
         """Check if text contains HTML tags, ignoring tags inside code blocks."""
@@ -138,7 +145,8 @@ try:
             parts.append("".join(current_part))
 
         # Check for HTML tags only in non-code parts
-        html_pattern = re.compile(r"<[^>]+>")
+        # Use a more specific pattern that requires a valid HTML tag format
+        # This will avoid matching mathematical expressions like "2 < 3"
         return any(bool(html_pattern.search(part)) for part in parts)
 
     def markdown_to_html(text: str) -> str:
