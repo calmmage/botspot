@@ -35,10 +35,7 @@ async def help_handler(message: Message) -> None:
     """Basic help command handler."""
     await send_safe(
         message,
-        f"This is {app.name}.\n\n"
-        f"Commands:\n"
-        f"/add <text> - Add a new item\n"
-        f"/list - List all items",
+        f"This is {app.name}.\n\nCommands:\n/add <text> - Add a new item\n/list - List all items",
     )
 
 
@@ -61,7 +58,7 @@ async def add_item_handler(message: Message) -> None:
             await send_safe(message.chat.id, f"Added new item: {text}")
         else:
             await send_safe(message.chat.id, "Failed to add item. Please try again.")
-    except Exception as e:
+    except Exception:
         await send_safe(message.chat.id, "Error adding item to database. Please try again later.")
         raise
 
@@ -83,7 +80,7 @@ async def list_items_handler(message: Message) -> None:
             response += f"{i}. {item['text']}\n"
 
         await send_safe(message.chat.id, response)
-    except Exception as e:
+    except Exception:
         await send_safe(
             message.chat.id,
             "Error retrieving items from database. Please try again later.",

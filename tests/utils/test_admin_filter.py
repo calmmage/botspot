@@ -66,9 +66,13 @@ class TestAdminFilter:
     async def test_no_user(self, mock_message):
         """Test handling message with no from_user"""
         # Setup dependency manager
-        with patch(
-            "botspot.core.dependency_manager.DependencyManager.is_initialized", return_value=True
-        ), patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
+        with (
+            patch(
+                "botspot.core.dependency_manager.DependencyManager.is_initialized",
+                return_value=True,
+            ),
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+        ):
             # Set message.from_user to None
             mock_message.from_user = None
 

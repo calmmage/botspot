@@ -51,13 +51,9 @@ class TestSendWithParseModeCallback:
         chat_id = 12345
         text = "Test message"
 
-        await _send_with_parse_mode_fallback(
-            mock_bot, chat_id, text, parse_mode=ParseMode.HTML
-        )
+        await _send_with_parse_mode_fallback(mock_bot, chat_id, text, parse_mode=ParseMode.HTML)
 
-        mock_bot.send_message.assert_called_once_with(
-            chat_id, text, parse_mode=ParseMode.HTML
-        )
+        mock_bot.send_message.assert_called_once_with(chat_id, text, parse_mode=ParseMode.HTML)
 
     @pytest.mark.asyncio
     async def test_fallback_on_error(self, mock_bot):
@@ -71,9 +67,7 @@ class TestSendWithParseModeCallback:
             MagicMock(spec=Message),
         ]
 
-        await _send_with_parse_mode_fallback(
-            mock_bot, chat_id, text, parse_mode=ParseMode.HTML
-        )
+        await _send_with_parse_mode_fallback(mock_bot, chat_id, text, parse_mode=ParseMode.HTML)
 
         # Check that it was called twice
         assert mock_bot.send_message.call_count == 2

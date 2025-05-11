@@ -540,11 +540,10 @@ class TestInitialization:
 
     def test_initialize_success(self):
         """Test successful initialization."""
-        with patch(
-            "botspot.core.dependency_manager.get_dependency_manager"
-        ) as mock_get_deps, patch(
-            "botspot.components.qol.bot_commands_menu.add_command"
-        ) as mock_add_command:
+        with (
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+            patch("botspot.components.qol.bot_commands_menu.add_command") as mock_add_command,
+        ):
             # Set up mock dependencies with MongoDB enabled
             mock_deps = MagicMock()
             mock_deps.botspot_settings.mongo_database.enabled = True

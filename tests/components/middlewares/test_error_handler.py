@@ -45,16 +45,14 @@ class TestErrorHandler:
     @pytest.mark.asyncio
     async def test_error_handler_with_message(self):
         """Test error handler when update includes a message"""
-        with patch(
-            "botspot.core.dependency_manager.get_dependency_manager"
-        ) as mock_get_deps, patch(
-            "botspot.utils.easter_eggs.get_easter_egg"
-        ) as mock_get_easter_egg, patch(
-            "botspot.components.middlewares.error_handler.logger"
-        ) as mock_logger, patch(
-            "botspot.components.middlewares.error_handler.traceback.format_exc"
-        ) as mock_format_exc:
-
+        with (
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+            patch("botspot.utils.easter_eggs.get_easter_egg") as mock_get_easter_egg,
+            patch("botspot.components.middlewares.error_handler.logger") as mock_logger,
+            patch(
+                "botspot.components.middlewares.error_handler.traceback.format_exc"
+            ) as mock_format_exc,
+        ):
             # Setup dependency manager
             mock_deps = MagicMock()
             mock_settings = MagicMock()
@@ -108,7 +106,7 @@ class TestErrorHandler:
                         "error": str(event.exception),
                         "traceback": "Mock traceback content",
                     }
-                    error_description = f"Error processing message:"
+                    error_description = "Error processing message:"
                     for k, v in error_data.items():
                         error_description += f"\n{k}: {v}"
                     await bot.send_message(
@@ -144,14 +142,13 @@ class TestErrorHandler:
     @pytest.mark.asyncio
     async def test_error_handler_without_message(self):
         """Test error handler when update does not include a message"""
-        with patch(
-            "botspot.core.dependency_manager.get_dependency_manager"
-        ) as mock_get_deps, patch(
-            "botspot.components.middlewares.error_handler.logger"
-        ) as mock_logger, patch(
-            "botspot.components.middlewares.error_handler.traceback.format_exc"
-        ) as mock_format_exc:
-
+        with (
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+            patch("botspot.components.middlewares.error_handler.logger") as mock_logger,
+            patch(
+                "botspot.components.middlewares.error_handler.traceback.format_exc"
+            ) as mock_format_exc,
+        ):
             # Setup dependency manager
             mock_deps = MagicMock()
             mock_settings = MagicMock()
@@ -190,7 +187,7 @@ class TestErrorHandler:
                         "error": str(event.exception),
                         "traceback": "Mock traceback content",
                     }
-                    error_description = f"Error processing message:"
+                    error_description = "Error processing message:"
                     for k, v in error_data.items():
                         error_description += f"\n{k}: {v}"
                     await bot.send_message(
@@ -222,16 +219,14 @@ class TestErrorHandler:
     @pytest.mark.asyncio
     async def test_error_handler_without_developer_chat(self):
         """Test error handler when developer chat ID is not set"""
-        with patch(
-            "botspot.core.dependency_manager.get_dependency_manager"
-        ) as mock_get_deps, patch(
-            "botspot.utils.easter_eggs.get_easter_egg"
-        ) as mock_get_easter_egg, patch(
-            "botspot.components.middlewares.error_handler.logger"
-        ) as mock_logger, patch(
-            "botspot.components.middlewares.error_handler.traceback.format_exc"
-        ) as mock_format_exc:
-
+        with (
+            patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps,
+            patch("botspot.utils.easter_eggs.get_easter_egg") as mock_get_easter_egg,
+            patch("botspot.components.middlewares.error_handler.logger") as mock_logger,
+            patch(
+                "botspot.components.middlewares.error_handler.traceback.format_exc"
+            ) as mock_format_exc,
+        ):
             # Setup dependency manager
             mock_deps = MagicMock()
             mock_settings = MagicMock()

@@ -11,7 +11,6 @@ load_dotenv()
 
 
 async def test_parse_mode():
-
     TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
         raise ValueError("BOT_TOKEN environment variable is not set")

@@ -34,23 +34,23 @@ async def help_handler(message: Message) -> None:
     is_admin = await app.is_admin(message.from_user.id)
 
     base_commands = (
-        f"Commands:\n"
-        f"/start - Register and get welcome message\n"
-        f"/me - Show your profile info\n"
-        f"/stats - Show user statistics\n"
-        f"/help - Show this help message"
+        "Commands:\n"
+        "/start - Register and get welcome message\n"
+        "/me - Show your profile info\n"
+        "/stats - Show user statistics\n"
+        "/help - Show this help message"
     )
 
     admin_commands = (
-        f"\n\nAdmin commands:\n"
-        f"/make_admin <user_id> - Promote user to admin\n"
-        f"/make_friend <user_id> - Set user as friend\n"
-        f"/make_regular <user_id> - Set user as regular"
+        "\n\nAdmin commands:\n"
+        "/make_admin <user_id> - Promote user to admin\n"
+        "/make_friend <user_id> - Set user as friend\n"
+        "/make_regular <user_id> - Set user as regular"
     )
 
     await send_safe(
         message.chat.id,
-        f"This is {app.name}.\n\n" f"{base_commands}" f"{admin_commands if is_admin else ''}",
+        f"This is {app.name}.\n\n{base_commands}{admin_commands if is_admin else ''}",
     )
 
 

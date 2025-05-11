@@ -27,7 +27,7 @@ parser.add_argument(
 parser.add_argument(
     "--target-path",
     default=None,
-    help="Path to save the downloaded file. " "Generates a temporary path if not provided.",
+    help="Path to save the downloaded file. Generates a temporary path if not provided.",
 )
 parser.add_argument("--token", default=os.getenv("TELEGRAM_BOT_TOKEN"))
 parser.add_argument("--api-id", default=os.getenv("TELEGRAM_BOT_API_ID"))
