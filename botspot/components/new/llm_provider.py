@@ -70,6 +70,9 @@ MODEL_NAME_SHORTCUTS = {
     # main models
     # -----------------------------------------------
     # Anthropic Models
+    "claude-3-5-haiku": "anthropic/claude-3-5-haiku-latest",  # $0.80 per 1M input, $4.00 per 1M output
+    "claude-3-5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
+    "claude-3-7": "anthropic/claude-3-7-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
     "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # $0.80 per 1M input, $4.00 per 1M output
     "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
     "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
@@ -104,10 +107,11 @@ MODEL_NAME_SHORTCUTS = {
     # Claude 3.5 Models
     # "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # hardcoded: claude-3-5-haiku-20241022
     "claude-3.5": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
+    "claude-3-5": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
     # "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # hardcoded: claude-3-5-sonnet-20241022
     "claude-3-5-sonnet-20241022": "anthropic/claude-3-5-sonnet-20241022",  # specific version
     "claude-3.5-sonnet-v1": "anthropic/claude-3-5-sonnet-20240620",
-    "claude-3-5-sonnet-20240620": "anthropic/claude-3-5-sonnet-20240620",
+    "claude-3.5-sonnet-20240620": "anthropic/claude-3-5-sonnet-20240620",
     # OpenAI models
     # "gpt-4o": "openai/gpt-4o",
     "o1": "openai/o1",
