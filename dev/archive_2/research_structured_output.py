@@ -17,12 +17,10 @@ warn_once()
 warn_once()
 warn_once()
 # %%
-import litellm
 
 # %%
 print(1)
 # %%
-import langchain
 
 # %%
 from dotenv import load_dotenv
