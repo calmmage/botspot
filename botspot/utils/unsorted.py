@@ -1,9 +1,12 @@
 from io import BytesIO
-from typing import BinaryIO, Dict, List, Union
+from typing import BinaryIO, Dict, List, Optional, Union
 
 from aiogram.enums import ChatAction
-from aiogram.types import Audio, Document, Message, PhotoSize, Video, Voice
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Audio, Document, Message, PhotoSize, Video, VideoNote, Voice
 from loguru import logger
+
+from botspot.utils.user_ops import UserLike
 
 
 def get_user(message: Message, forward_priority=False) -> str:
@@ -11,7 +14,9 @@ def get_user(message: Message, forward_priority=False) -> str:
         user = message.forward_from
     else:
         user = message.from_user
-    return user.username or user.id
+    # todo: use User Record instead?
+    assert user is not None
+    return user.username or str(user.id)
 
 
 def get_name(message: Message, forward_priority=False) -> str:
@@ -129,7 +134,7 @@ def strip_command(text: str):
     return text
 
 
-Attachment = Union[PhotoSize, Document, Video, Audio, Voice]
+Attachment = Union[PhotoSize, Document, Video, Audio, Voice, VideoNote]
 
 
 # for getting attachment format for llm query attachment
@@ -153,7 +158,6 @@ def get_attachment_format(attachment: Attachment) -> str:
 
 
 def get_message_attachments(message: Message) -> List[Attachment]:
-    # todo: figure out how to get all attachment types
     attachments = []
     if message.photo:
         attachments.append(message.photo[-1])
@@ -165,6 +169,17 @@ def get_message_attachments(message: Message) -> List[Attachment]:
         attachments.append(message.audio)
     if message.voice:
         attachments.append(message.voice)
+    if hasattr(message, "video_note") and message.video_note:
+        attachments.append(message.video_note)
+    # Optionally add more types for completeness
+    # if hasattr(message, 'animation') and message.animation:
+    #     attachments.append(message.animation)
+    # if hasattr(message, 'sticker') and message.sticker:
+    #     attachments.append(message.sticker)
+    # if hasattr(message, 'contact') and message.contact:
+    #     attachments.append(message.contact)
+    # if hasattr(message, 'location') and message.location:
+    #     attachments.append(message.location)
     return attachments
 
 
@@ -172,12 +187,21 @@ def is_telegram_attachment(attachment: Attachment) -> bool:
     return not isinstance(attachment, BinaryIO)
 
 
-async def download_telegram_file(attachment: Attachment) -> BinaryIO:
+async def download_telegram_file(
+    attachment: Attachment,
+    message: Optional[Message] = None,
+    user: Optional[UserLike] = None,
+    state: Optional[FSMContext] = None,
+) -> BinaryIO:
     try:
         return await _download_telegram_file_aiogram(attachment)
-    except:
-        logger.error(f"Failed to download file {attachment.file_id} with aiogram, trying telethon")
-        return await _download_telegram_file_telethon(attachment)
+    except Exception as e:
+        logger.error(
+            f"Failed to download file {getattr(attachment, 'file_id', None)} with aiogram, trying telethon: {e}"
+        )
+        return await _download_telegram_file_telethon(
+            attachment, message=message, user=user, state=state
+        )
 
 
 async def _download_telegram_file_aiogram(attachment: Attachment) -> BinaryIO:
@@ -203,5 +227,48 @@ async def _download_telegram_file_aiogram(attachment: Attachment) -> BinaryIO:
     return file_bytes
 
 
-async def _download_telegram_file_telethon(attachment: Attachment) -> BinaryIO:
-    raise NotImplementedError("Telethon downloading is not implemented")
+async def _download_telegram_file_telethon(
+    attachment: Attachment,
+    message: Message,
+    user: Optional[UserLike] = None,
+    state: Optional[FSMContext] = None,
+):  #  chat_id=None, message_id=None) -> BinaryIO:
+    from botspot.utils.deps_getters import get_telethon_client
+
+    if user is not None:
+        from botspot import to_user_record
+
+        user_id = to_user_record(user).user_id
+    else:
+        user_id = None
+
+    client = await get_telethon_client(user_id=user_id, state=state)
+
+    chat_id = message.chat.id
+    message_id = message.message_id
+
+    logger.info(
+        f"Trying to download with telethon: chat_id={chat_id}, message_id={message_id}, attachment={attachment}"
+    )
+
+    # Try to fetch the message from Telethon
+    telethon_message = await client.get_messages(chat_id, ids=message_id)
+    if telethon_message is None:
+        raise ValueError("Could not resolve message for telethon download.")
+
+    file_data = await client.download_media(message, file=BytesIO())
+    if isinstance(file_data, BytesIO):
+        file_data.seek(0)
+        logger.info(
+            f"Downloaded file to BytesIO using telethon, size={file_data.getbuffer().nbytes}"
+        )
+        return file_data
+    elif isinstance(file_data, str):
+        with open(file_data, "rb") as f:
+            data = BytesIO(f.read())
+        logger.info(
+            f"Downloaded file to disk using telethon, loaded to BytesIO, size={data.getbuffer().nbytes}"
+        )
+        return data
+    else:
+        raise RuntimeError(f"Telethon download_media returned unexpected type: {type(file_data)}")
