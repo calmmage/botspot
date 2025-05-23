@@ -7,8 +7,6 @@ from aiogram.types import TelegramObject, Update
 from loguru import logger
 from pydantic_settings import BaseSettings
 
-from botspot.utils import compare_users, send_safe, to_user_record
-
 
 class SingleUserModeSettings(BaseSettings):
     enabled: bool = False
@@ -51,6 +49,7 @@ async def single_user_mode_middleware(
     data: Dict[str, Any],
 ) -> Any:
     from botspot.core.dependency_manager import get_dependency_manager
+    from botspot.utils import compare_users, send_safe, to_user_record
 
     deps = get_dependency_manager()
     settings = deps.botspot_settings.single_user_mode

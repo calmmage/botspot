@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
+    from botspot.components.middlewares.simple_user_cache import SimpleUserCache
 
 
 class DependencyManager(metaclass=Singleton):
@@ -45,6 +46,7 @@ class DependencyManager(metaclass=Singleton):
         self._chat_fetcher = None
         self._auto_archive = None
         self._s3_storage = None
+        self._simple_user_cache = None
         self.__dict__.update(kwargs)
 
     @property
@@ -182,6 +184,14 @@ class DependencyManager(metaclass=Singleton):
     @s3_storage.setter
     def s3_storage(self, value: Optional["S3StorageProvider"]):
         self._s3_storage = value
+
+    @property
+    def simple_user_cache(self) -> Optional["SimpleUserCache"]:
+        return self._simple_user_cache
+
+    @simple_user_cache.setter
+    def simple_user_cache(self, value: Optional["SimpleUserCache"]):
+        self._simple_user_cache = value
 
     @classmethod
     def is_initialized(cls) -> bool:

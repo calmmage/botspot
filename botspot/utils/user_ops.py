@@ -202,12 +202,23 @@ def get_user_record(user_key: Union[str, int]) -> UserRecord:
     if not isinstance(user_key, str):
         raise ValueError(f"Invalid user_key type: {type(user_key)}")
 
+    from botspot.utils.deps_getters import get_simple_user_cache
+
+    uc = get_simple_user_cache()
     if user_key.startswith("+"):
         return UserRecord(phone=user_key)
     if user_key.isdigit():
-        return UserRecord(user_id=int(user_key))
+        try:
+            ur = uc.get_user(int(user_key))
+            return UserRecord(user_id=ur.user_id, username=ur.username)
+        except:
+            return UserRecord(user_id=int(user_key))
     if user_key.startswith("@"):
-        return UserRecord(username=user_key.lstrip("@"))
+        try:
+            ur = uc.get_user_by_username(user_key.lstrip("@"))
+            return UserRecord(username=ur.username, user_id=ur.user_id)
+        except:
+            return UserRecord(username=user_key.lstrip("@"))
     return UserRecord(username=user_key)
 
 
