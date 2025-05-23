@@ -130,3 +130,15 @@ raise BotspotError(
     user_message="Please use DD/MM/YYYY format" # message that will be shown to user
 )
 ```
+
+# Examples to add
+
+- [ ] Telethon manager
+  - [ ] setup telethon command
+  - [ ] how to enable auto-setup
+  - [ ] Safety with multi-user mode
+  - [ ] Can I download files while not authorised?
+- [ ] Download files / media attachments
+    `from botspot.utils.unsorted import Attachment, download_telegram_file, get_attachment_format`
+  - [ ] bot client
+  - [ ] telethon client
