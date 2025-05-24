@@ -35,7 +35,7 @@ class TestGetUser:
         result = get_user(message)
 
         # Verify
-        assert result == 123456789
+        assert result == "123456789"
 
     def test_get_user_from_forward(self):
         """Test getting username from forwarded message"""
@@ -69,7 +69,7 @@ class TestGetUser:
         result = get_user(message, forward_priority=True)
 
         # Verify
-        assert result == 987654321
+        assert result == "987654321"
 
 
 class TestGetName:
