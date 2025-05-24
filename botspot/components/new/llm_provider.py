@@ -946,6 +946,29 @@ async def aquery_llm_stream(
     ):
         yield chunk
 
+async def aquery_llm_structured(
+    prompt: str,
+    output_schema: Type[BaseModel],
+    *,
+    user: Optional[Union[int, str]] = None,
+    system_message: Optional[str] = None,
+    model: Optional[str] = None,
+    **kwargs,
+) -> BaseModel:
+    """
+    Async query the LLM with structured output.
+
+    This is a convenience function that uses the global LLM provider.
+    """
+    provider = get_llm_provider()
+    return await provider.aquery_llm_structured(
+        prompt=prompt,
+        output_schema=output_schema,
+        user=user,
+        system_message=system_message,
+        model=model,
+        **kwargs,
+    )
 
 astream_llm = aquery_llm_stream
 
