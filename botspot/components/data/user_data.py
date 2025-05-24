@@ -8,7 +8,6 @@ from aiogram.types import Message, TelegramObject
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
-from botspot.utils import compare_users
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
@@ -75,6 +74,8 @@ class UserManager(Generic[UserT]):
     # todo: add functionality for searching users - by name etc.
     async def add_user(self, user: UserT) -> bool:
         """Add or update user"""
+        from botspot.utils import compare_users
+
         # Set user type based on settings
         if any([compare_users(user, friend) for friend in self.settings.admins]):
             user.user_type = UserType.ADMIN

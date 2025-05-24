@@ -12,7 +12,7 @@ from botspot.components.data import mongo_database, user_data
 from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
 from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
-from botspot.components.middlewares import error_handler
+from botspot.components.middlewares import error_handler, simple_user_cache
 from botspot.components.new import (
     auto_archive,
     chat_binder,
@@ -81,6 +81,8 @@ class BotManager(metaclass=Singleton):
             s3_provider = s3_storage.initialize(self.settings.s3_storage)
             self.deps.s3_storage = s3_provider
 
+        self.deps.simple_user_cache = simple_user_cache.initialize()
+
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
         # Remove global bot check - each component handles its own requirements
@@ -134,3 +136,5 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.auto_archive.enabled:
             auto_archive.setup_dispatcher(dp)
+
+        simple_user_cache.setup_dispatcher(dp)

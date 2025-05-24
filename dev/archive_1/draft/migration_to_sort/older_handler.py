@@ -254,7 +254,7 @@ async def chat_message_handler(self, message: types.Message):
     Replace with your own implementation
     """
     message_text = await self._extract_message_text(message)
-    self.logger.info(f"Received message", user=message.from_user.username, data=message_text)
+    self.logger.info("Received message", user=message.from_user.username, data=message_text)
     if self._multi_message_mode:
         self.messages_stack[message.chat.id].append(message)
     else:
@@ -307,7 +307,7 @@ async def process_messages_stack(self, chat_id):
     data = await self._extract_stacked_messages_data(chat_id)
     response = f"Message parsed: {json.dumps(data)}"
 
-    self.logger.info(f"Messages processed, clearing stack")
+    self.logger.info("Messages processed, clearing stack")
     self.messages_stack[chat_id] = []
     return response
 

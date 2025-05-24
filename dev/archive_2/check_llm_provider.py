@@ -3,7 +3,6 @@ import asyncio
 from litellm import Choices
 from pydantic import BaseModel
 
-
 # Your user ID
 USER_ID = 291560340
 # Model to use for testing

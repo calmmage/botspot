@@ -20,10 +20,10 @@ async def _process_voice_message(message, parallel=None):
     # extract and parse message with whisper api
     # todo: use smart filters for voice messages?
     if message.audio:
-        logger.debug(f"Detected audio message")
+        logger.debug("Detected audio message")
         file_desc = message.audio
     elif message.voice:
-        logger.debug(f"Detected voice message")
+        logger.debug("Detected voice message")
         file_desc = message.voice
     else:
         raise ValueError("No audio file detected")
