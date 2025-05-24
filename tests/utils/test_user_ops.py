@@ -82,35 +82,66 @@ class TestToUserRecord:
 class TestGetUserRecord:
     def test_phone_number(self):
         """Test creating UserRecord from phone number"""
-        phone = "+12345678901"
-        result = get_user_record(phone)
-        assert result.phone == phone
-        assert result.user_id is None
-        assert result.username is None
+        with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
+            # Setup minimal mock for the cache functionality
+            mock_deps = MagicMock()
+            mock_cache = MagicMock()
+            mock_deps.simple_user_cache = mock_cache
+            mock_get_deps.return_value = mock_deps
+            
+            phone = "+12345678901"
+            result = get_user_record(phone)
+            assert result.phone == phone
+            assert result.user_id is None
+            assert result.username is None
 
     def test_numeric_string(self):
         """Test creating UserRecord from numeric string (treated as user_id)"""
-        user_id_str = "12345"
-        result = get_user_record(user_id_str)
-        assert result.user_id == 12345
-        assert result.username is None
-        assert result.phone is None
+        with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
+            # Setup minimal mock for the cache functionality
+            mock_deps = MagicMock()
+            mock_cache = MagicMock()
+            mock_cache.get_user.side_effect = Exception("User not found")
+            mock_deps.simple_user_cache = mock_cache
+            mock_get_deps.return_value = mock_deps
+            
+            user_id_str = "12345"
+            result = get_user_record(user_id_str)
+            assert result.user_id == 12345
+            assert result.username is None
+            assert result.phone is None
 
     def test_username_with_at(self):
         """Test creating UserRecord from username with @ prefix"""
-        username = "@test_user"
-        result = get_user_record(username)
-        assert result.username == "test_user"  # @ should be stripped
-        assert result.user_id is None
-        assert result.phone is None
+        with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
+            # Setup minimal mock for the cache functionality
+            mock_deps = MagicMock()
+            mock_cache = MagicMock()
+            mock_cache.get_user_by_username.side_effect = Exception("User not found")
+            mock_deps.simple_user_cache = mock_cache
+            mock_get_deps.return_value = mock_deps
+            
+            username = "@test_user"
+            result = get_user_record(username)
+            assert result.username == "test_user"  # @ should be stripped
+            assert result.user_id is None
+            assert result.phone is None
 
     def test_username_without_at(self):
         """Test creating UserRecord from username without @ prefix"""
-        username = "test_user"
-        result = get_user_record(username)
-        assert result.username == username
-        assert result.user_id is None
-        assert result.phone is None
+        with patch("botspot.core.dependency_manager.get_dependency_manager") as mock_get_deps:
+            # Setup minimal mock for the cache functionality
+            mock_deps = MagicMock()
+            mock_cache = MagicMock()
+            mock_cache.get_user_by_username.side_effect = Exception("User not found")
+            mock_deps.simple_user_cache = mock_cache
+            mock_get_deps.return_value = mock_deps
+            
+            username = "test_user"
+            result = get_user_record(username)
+            assert result.username == username
+            assert result.user_id is None
+            assert result.phone is None
 
 
 class TestCompareUsers:
