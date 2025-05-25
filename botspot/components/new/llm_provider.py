@@ -49,7 +49,7 @@ class LLMProviderSettings(BaseSettings):
     enabled: bool = False
     default_model: str = "claude-3.7"  # Default model to use (maps to claude-3-7-sonnet-latest)
     default_temperature: float = 0.7
-    default_max_tokens: int = 1000
+    default_max_tokens: int = 1024
     default_timeout: int = 30
     # If False, only friends and admins can use LLM features
     allow_everyone: bool = False
@@ -76,7 +76,7 @@ MODEL_NAME_SHORTCUTS = {
     "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # $0.80 per 1M input, $4.00 per 1M output
     "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
     "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
-    "claude-4": "anthropic/claude-4-sonnet-latest",  # $3 per 1M input, $15 per 1M output
+    "claude-4": "anthropic/claude-sonnet-4-20250514",  # $3 per 1M input, $15 per 1M output
     # OpenAI Models
     # Cheap
     "gpt-4o-mini": "openai/gpt-4o-mini",  # $0.15 per 1M input, $0.60 per 1M output
@@ -104,8 +104,8 @@ MODEL_NAME_SHORTCUTS = {
     # Claude 3.7 Sonnet
     # "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
     "claude-3.7-sonnet": "anthropic/claude-3-7-sonnet-latest",  # hardcoded: claude-3-7-sonnet-20250219
-    "claude-4-sonnet": "anthropic/claude-4-sonnet-latest",  # $3 per 1M input, $15 per 1M output
-    "claude-4-opus": "anthropic/claude-4-opus-latest",  # $15 per 1M input, $75 per 1M output
+    "claude-4-sonnet": "anthropic/claude-sonnet-4-20250514",  # $3 per 1M input, $15 per 1M output
+    "claude-4-opus": "anthropic/claude-4-opus-20250514",  # $15 per 1M input, $75 per 1M output
     "claude-3-7-sonnet-20250219": "anthropic/claude-3-7-sonnet-20250219",  # specific version
     # Claude 3.5 Models
     # "claude-3.5-haiku": "anthropic/claude-3-5-haiku-latest",  # hardcoded: claude-3-5-haiku-20241022
@@ -483,15 +483,15 @@ class LLMProvider:
         if params["structured_output_schema"]:
             api_params["response_format"] = params["structured_output_schema"]
 
-        logger.debug(f"Async querying LLM with model {params['model_name']}")
+        logger.debug(f"Async querying LLM with model {params['model']}")
 
         # Make the actual API call
         response = await acompletion(
-            model=params["model_name"], messages=params["messages"], **api_params
+            model=params["model"], messages=params["messages"], **api_params
         )
 
         # Track usage asynchronously (approximate tokens used)
-        token_estimate = len(params["prompt"]) // 4 + params["max_tokens"]
+        token_estimate = (len(params["prompt"]) + len(response.choices[0].message.content)) // 4
         await self._track_usage(params["user"], params["model"], token_estimate)
 
         # Check for the correct response type
@@ -518,7 +518,7 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns a string.
         """
-        from litellm.types.utils import Choices, Message
+        from litellm.types.utils import Choices, ModelResponse
 
         response = await self.aquery_llm_raw(
             prompt=prompt,
@@ -534,7 +534,7 @@ class LLMProvider:
         )
 
         # Extract content with assertions for proper structure
-        assert isinstance(response, Message)
+        assert isinstance(response, ModelResponse)
 
         choice = response.choices[0]
         # Ensure we're dealing with a non-streaming choice that has a message attribute
