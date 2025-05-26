@@ -679,14 +679,9 @@ class LLMProvider:
         return any(
             key in model_name
             for key in [
-                "gpt-4o",
                 "o1",
                 "o3",
                 "o4",
-                "openai/gpt-4o",
-                "openai/o1",
-                "openai/o3",
-                "openai/o4",
             ]
         )
 
