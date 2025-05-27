@@ -47,7 +47,7 @@ class LLMProviderSettings(BaseSettings):
     """Settings for the LLM Provider component."""
 
     enabled: bool = False
-    default_model: str = "claude-3.7"  # Default model to use (maps to claude-3-7-sonnet-latest)
+    default_model: str = "claude-4"  # Default model to use (maps to claude-3-7-sonnet-latest)
     default_temperature: float = 0.7
     default_max_tokens: int = 1024
     default_timeout: int = 30
