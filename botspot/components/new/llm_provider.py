@@ -47,7 +47,7 @@ class LLMProviderSettings(BaseSettings):
     """Settings for the LLM Provider component."""
 
     enabled: bool = False
-    default_model: str = "claude-3.7"  # Default model to use (maps to claude-3-7-sonnet-latest)
+    default_model: str = "claude-4"  # Default model to use (maps to claude-3-7-sonnet-latest)
     default_temperature: float = 0.7
     default_max_tokens: int = 1024
     default_timeout: int = 30
@@ -81,10 +81,11 @@ MODEL_NAME_SHORTCUTS = {
     # Cheap
     "gpt-4o-mini": "openai/gpt-4o-mini",  # $0.15 per 1M input, $0.60 per 1M output
     "o4-mini": "openai/o4-mini",  # $0.55 per 1M input, $2.20 per 1M output
-    "gpt-4.1-nano": "openai/gpt-4.1-nano",  # $0.10 per 1M input, $0.40 per 1M output (assumed)
+    "gpt-4.1-nano": "openai/gpt-4.1-nano",  # $0.10 per 1M input, $0.40 per 1M output
+    "gpt-4.1-mini": "openai/gpt-4.1-mini",  # $0.40 per 1M input, $1.60 per 1M output
     # Mid
     "gpt-4o": "openai/gpt-4o",  # $2.50 per 1M input, $10.00 per 1M output
-    "gpt-4.1": "openai/gpt-4.1",  # $5.00 per 1M input, $15.00 per 1M output (assumed)
+    "gpt-4.1": "openai/gpt-4.1",  # $2.00 per 1M input, 8.00 per 1M output (assumed)
     # Max
     "o3": "openai/o3",  # $15.00 per 1M input, $60.00 per 1M output
     "gpt-4": "openai/gpt-4",  # $30.00 per 1M input, $60.00 per 1M output
@@ -679,14 +680,9 @@ class LLMProvider:
         return any(
             key in model_name
             for key in [
-                "gpt-4o",
                 "o1",
                 "o3",
                 "o4",
-                "openai/gpt-4o",
-                "openai/o1",
-                "openai/o3",
-                "openai/o4",
             ]
         )
 
