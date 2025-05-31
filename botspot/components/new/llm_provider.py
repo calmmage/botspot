@@ -21,8 +21,8 @@ from aiogram.types import Chat, User
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+
 from botspot.utils.internal import get_logger
-from botspot.utils.send_safe import send_safe
 from botspot.utils.unsorted import Attachment, download_telegram_file, get_attachment_format
 from botspot.utils.user_ops import UserLike, compare_users_async
 
@@ -361,6 +361,7 @@ class LLMProvider:
             Dictionary with processed parameters for the request
         """
         from botspot.core.dependency_manager import get_dependency_manager
+        from botspot.core.errors import LLMPermissionError
 
         deps = get_dependency_manager()
 
@@ -378,14 +379,20 @@ class LLMProvider:
 
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
-            chat_id = int(user) if isinstance(user, (int, str)) and str(user).isdigit() else None
-            if chat_id:
-                await send_safe(
-                    chat_id,
-                    "You are not allowed to use LLM features. If you know the bot owner personally, "
-                    "you can ask them to add you as a friend for unlimited usage.",
-                )
-            raise PermissionError(f"User {user} is not allowed to use LLM features")
+            # Get admin contact info for user message
+            user_message = "You don't have access to AI features"
+            if deps.botspot_settings.admins and len(deps.botspot_settings.admins) > 0:
+                if len(deps.botspot_settings.admins) > 1:
+                    admin_contact = "admins (@" + ", @".join(deps.botspot_settings.admins) + ")"
+                else:
+                    admin_contact = "admin @" + deps.botspot_settings.admins[0]
+                user_message += f", please write to {admin_contact} to request access"
+            raise LLMPermissionError(
+                message=f"User {user} is not allowed to use LLM features",
+                user_message=user_message,
+                report_to_dev=True,
+                include_traceback=False,
+            )
 
         # Get model parameters with defaults
         model_name = model or self.settings.default_model
