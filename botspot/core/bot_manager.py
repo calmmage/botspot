@@ -17,6 +17,7 @@ from botspot.components.new import (
     auto_archive,
     chat_binder,
     chat_fetcher,
+    contact_manager,
     llm_provider,
     queue_manager,
     s3_storage,
@@ -67,6 +68,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.llm_provider.enabled:
             self.deps.llm_provider = llm_provider.initialize(self.settings.llm_provider)
+            
+        if self.settings.contact_manager.enabled:
+            self.deps.contact_manager = contact_manager.initialize(self.settings.contact_manager)
 
         if self.settings.queue_manager.enabled:
             self.deps.queue_manager = queue_manager.initialize(self.settings.queue_manager)
@@ -127,6 +131,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.llm_provider.enabled:
             llm_provider.setup_dispatcher(dp)
+            
+        if self.settings.contact_manager.enabled:
+            contact_manager.setup_dispatcher(dp)
 
         if self.settings.queue_manager.enabled:
             queue_manager.setup_dispatcher(dp)

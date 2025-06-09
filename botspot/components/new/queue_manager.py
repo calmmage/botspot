@@ -88,6 +88,110 @@ class Queue(Generic[T]):
         doc = self.enrich_item(item, user_id)
         await self.collection.insert_one(doc)
 
+    async def update_record(self, record_id: Any, data: Dict[str, Any]) -> bool:
+        """
+        Update a record by its ID.
+        
+        Args:
+            record_id: The record ID to update
+            data: Dictionary containing the fields to update
+            
+        Returns:
+            True if update was successful, False otherwise
+        """
+        try:
+            # Update timestamp if enabled
+            if self.use_timestamp:
+                data["timestamp"] = datetime.now()
+                
+            # Update the document
+            result = await self.collection.update_one(
+                {"_id": record_id},
+                {"$set": data}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"Error updating record: {e}")
+            return False
+
+    async def find(self, query: Dict[str, Any], user_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """
+        Find a single record matching the given query.
+        
+        Args:
+            query: MongoDB query dictionary
+            user_id: Optional user ID to filter by
+            
+        Returns:
+            The record as a dictionary if found, None otherwise
+        """
+        try:
+            if not self.single_user_mode and user_id is None:
+                from botspot.core.errors import QueuePermissionError
+                raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
+            
+            if user_id is not None:
+                query["user_id"] = user_id
+                
+            return await self.collection.find_one(query)
+        except Exception as e:
+            logger.error(f"Error finding record: {e}")
+            return None
+
+    async def find_many(self, query: Dict[str, Any], user_id: Optional[int] = None, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Find multiple records matching the given query.
+        
+        Args:
+            query: MongoDB query dictionary
+            user_id: Optional user ID to filter by
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of records as dictionaries
+        """
+        try:
+            if not self.single_user_mode and user_id is None:
+                from botspot.core.errors import QueuePermissionError
+                raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
+            
+            if user_id is not None:
+                query["user_id"] = user_id
+                
+            cursor = self.collection.find(query)
+            if limit is not None:
+                cursor = cursor.limit(limit)
+            return await cursor.to_list(length=limit)
+        except Exception as e:
+            logger.error(f"Error finding records: {e}")
+            return []
+
+    async def delete_record(self, record_id: Any, user_id: Optional[int] = None) -> bool:
+        """
+        Delete a record by its ID.
+        
+        Args:
+            record_id: The record ID to delete
+            user_id: Optional user ID to verify ownership
+            
+        Returns:
+            True if deletion was successful, False otherwise
+        """
+        try:
+            if not self.single_user_mode and user_id is None:
+                from botspot.core.errors import QueuePermissionError
+                raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
+            
+            query = {"_id": record_id}
+            if user_id is not None:
+                query["user_id"] = user_id
+                
+            result = await self.collection.delete_one(query)
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"Error deleting record: {e}")
+            return False
+
     async def get_items(
         self,
         user_id: Optional[int] = None,
@@ -122,6 +226,41 @@ class Queue(Generic[T]):
         if limit is not None:
             cursor = cursor.limit(limit)
         return await cursor.to_list(length=limit)
+
+    async def get_random_record(self, user_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """
+        Get a random record from the queue.
+        
+        Args:
+            user_id: Optional user ID to filter by
+            
+        Returns:
+            A random record as a dictionary, or None if no records found
+        """
+        try:
+            if not self.single_user_mode and user_id is None:
+                from botspot.core.errors import QueuePermissionError
+                raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
+            
+            # Build the pipeline
+            pipeline = []
+            
+            # Add user filter if needed
+            if user_id is not None:
+                pipeline.append({"$match": {"user_id": user_id}})
+                
+            # Add sample stage to get a random document
+            pipeline.append({"$sample": {"size": 1}})
+            
+            # Execute the aggregation
+            cursor = self.collection.aggregate(pipeline)
+            async for doc in cursor:
+                return doc
+                
+            return None
+        except Exception as e:
+            logger.error(f"Error getting random record: {e}")
+            return None
 
 
 class QueueManager:
