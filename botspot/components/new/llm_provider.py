@@ -383,9 +383,13 @@ class LLMProvider:
             user_message = "You don't have access to AI features"
             if deps.botspot_settings.admins and len(deps.botspot_settings.admins) > 0:
                 if len(deps.botspot_settings.admins) > 1:
-                    admin_contact = "admins (@" + ", @".join(deps.botspot_settings.admins) + ")"
+                    admin_contact = (
+                        "admins (@"
+                        + ", @".join(a.lstrip("@") for a in deps.botspot_settings.admins)
+                        + ")"
+                    )
                 else:
-                    admin_contact = "admin @" + deps.botspot_settings.admins[0]
+                    admin_contact = "admin @" + deps.botspot_settings.admins[0].lstrip("@")
                 user_message += f", please write to {admin_contact} to request access"
             raise LLMPermissionError(
                 message=f"User {user} is not allowed to use LLM features",
