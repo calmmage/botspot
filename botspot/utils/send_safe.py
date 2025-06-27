@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile, Chat, Message, User
+from aiogram.exceptions import TelegramBadRequest
 from loguru import logger
 
 from botspot.utils.text_utils import MAX_TELEGRAM_MESSAGE_LENGTH, escape_md, split_long_message
@@ -404,6 +405,40 @@ async def answer_safe(
         cleanup_timeout=cleanup_timeout,
         **kwargs,
     )
+
+
+async def delete_safe(
+    message: Message,
+    deps: Optional["DependencyManager"] = None,
+    **kwargs: Any,
+) -> None:
+    """Delete a message with safe deletion"""
+    try:
+        await message.delete()
+    except TelegramBadRequest as e:
+        # Error processing message:
+        # user: None
+        # timestamp: 2025-06-11_14-26-56
+        # error: Telegram server says - Bad Request: message can't be deleted for everyone
+        # traceback:
+        #   File "/app/outstanding_items_bot/routers/router_triage.py", line 159, in handle_triage_callback
+        #     await callback_query.message.delete()
+        #   File "/usr/local/lib/python3.12/site-packages/aiogram/methods/base.py", line 84, in emit
+        #     return await bot(self)
+        #            ^^^^^^^^^^^^^^^
+        #   File "/usr/local/lib/python3.12/site-packages/aiogram/client/bot.py", line 478, in __call__
+        #     return await self.session(self, method, timeout=request_timeout)
+        #            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        #   File "/usr/local/lib/python3.12/site-packages/aiogram/client/session/base.py", line 254, in __call__
+        #     return cast(TelegramType, await middleware(bot, method))
+        #                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        #   File "/usr/local/lib/python3.12/site-packages/aiogram/client/session/aiohttp.py", line 185, in make_request
+        #     response = self.check_response(
+        #                ^^^^^^^^^^^^^^^^^^^^
+        #   File "/usr/local/lib/python3.12/site-packages/aiogram/client/session/base.py", line 120, in check_response
+        #     raise TelegramBadRequest(method=method, message=description)
+        # aiogram.exceptions.TelegramBadRequest: Telegram server says - Bad Request: message can't be deleted for everyone
+        logger.warning(f"Failed to delete message: {e}")
 
 
 if __name__ == "__main__":

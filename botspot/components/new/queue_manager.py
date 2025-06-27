@@ -5,8 +5,9 @@ logger = get_logger()
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+from bson import ObjectId
 
 # Placeholder for database connection (adjust as needed)
 
@@ -23,11 +24,13 @@ class QueueManagerSettings(BaseSettings):
 
 
 class QueueItem(BaseModel):
+    id: Optional[ObjectId] = Field(default=None, alias="_id")
     data: str
 
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
+        allow_population_by_field_name = True
 
 
 T = TypeVar("T", bound=QueueItem)
@@ -86,7 +89,8 @@ class Queue(Generic[T]):
 
             raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
         doc = self.enrich_item(item, user_id)
-        await self.collection.insert_one(doc)
+        # Use by_alias for MongoDB compatibility
+        await self.collection.insert_one(item.model_dump(by_alias=True, exclude_none=True))
 
     async def get_items(
         self,
@@ -106,6 +110,7 @@ class Queue(Generic[T]):
         if limit is not None:
             cursor = cursor.limit(limit)
         items = await cursor.to_list(length=limit)
+        # Use model_validate to load MongoDB docs into Pydantic models
         return [self.item_model.model_validate(item) for item in items]
 
     async def get_records(
@@ -123,6 +128,65 @@ class Queue(Generic[T]):
             cursor = cursor.limit(limit)
         return await cursor.to_list(length=limit)
 
+    async def update_item(self, item: T):
+        """Update an item in the queue by its id."""
+        assert item.id is not None, "Item must have an id to update."
+        await self.collection.update_one(
+            {"_id": item.id}, {"$set": item.model_dump(by_alias=True, exclude_none=True)}
+        )
+
+    async def delete_item(self, item_id: ObjectId):
+        """Delete an item from the queue by its id."""
+        await self.collection.delete_one({"_id": item_id})
+
+    async def mark_done(self, item_id: ObjectId):
+        """Mark an item as done. Only if use_done is enabled."""
+        assert self.use_done, "mark_done requires use_done to be enabled."
+        await self.collection.update_one({"_id": item_id}, {"$set": {"done": True}})
+
+    async def set_priority(self, item_id: ObjectId, priority: int):
+        """Set the priority of an item. Only if use_priority is enabled."""
+        assert self.use_priority, "set_priority requires use_priority to be enabled."
+        await self.collection.update_one({"_id": item_id}, {"$set": {"priority": priority}})
+
+    async def mark_undone(self, item_id: ObjectId):
+        """Mark an item as not done (undone). Only if use_done is enabled."""
+        assert self.use_done, "mark_undone requires use_done to be enabled."
+        await self.collection.update_one({"_id": item_id}, {"$set": {"done": False}})
+
+    async def pop(
+        self, user_id: Optional[int] = None, extra_filters: Optional[dict] = None
+    ) -> Optional[T]:
+        """Pop an item from the queue (fetch and return, but do not remove).
+        - If use_done: only non-done items
+        - If use_priority: by priority
+        - Otherwise: random
+        - extra_filters: additional query filters to apply
+        """
+        query = {}
+        if user_id:
+            query["user_id"] = user_id
+        if self.use_done:
+            query["done"] = False
+        if extra_filters:
+            query.update(extra_filters)
+        cursor = self.collection.find(query)
+        if self.use_priority:
+            cursor = cursor.sort("priority", -1)  # Highest priority first
+        elif not self.use_priority:
+            # Random order: sample one
+            docs = await cursor.to_list(length=None)
+            import random
+
+            if not docs:
+                return None
+            doc = random.choice(docs)
+            return self.item_model.model_validate(doc)
+        doc = await cursor.to_list(length=1)
+        if not doc:
+            return None
+        return self.item_model.model_validate(doc[0])
+
 
 class QueueManager:
     def __init__(self, settings: QueueManagerSettings, single_user_mode: Optional[bool] = None):
@@ -132,8 +196,6 @@ class QueueManager:
         self.db = get_database()  # Fetch MongoDB database instance
         self.queues: Dict[str, Queue] = {}
         if single_user_mode is None:
-            from botspot.core.dependency_manager import get_dependency_manager
-
             single_user_mode = not self.settings.enabled
         self.single_user_mode = single_user_mode
 
@@ -210,6 +272,8 @@ def initialize(settings: QueueManagerSettings) -> QueueManager:
         raise ConfigurationError("MongoDB is required for queue_manager component")
 
     single_user_mode = deps.botspot_settings.single_user_mode.enabled
+    logger.info(f"Queue Manager initialized with {single_user_mode=}")
+
     return QueueManager(settings, single_user_mode=single_user_mode)
 
 

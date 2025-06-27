@@ -113,8 +113,10 @@ class UserManager(Generic[UserT]):
     def users_collection(self) -> "AsyncIOMotorCollection":
         return self.db[self.collection]
 
-    async def get_users(self, query: dict = {}) -> list[UserT]:
+    async def get_users(self, query: Optional[dict] = None) -> list[UserT]:
         """Get all users matching the query"""
+        if query is None:
+            query = {}
         data = await self.users_collection.find(query).to_list()
         return [self.user_class(**item) for item in data]
 
@@ -188,9 +190,27 @@ class UserManager(Generic[UserT]):
         """
         # Update admins
         if self.settings.admins:
+            # Convert usernames to user IDs
+            admin_ids = []
+            for admin in self.settings.admins:
+                if admin.startswith("@"):
+                    username = admin[1:]  # Remove the '@' prefix
+                    user = await self.users_collection.find_one({"username": username})
+                    if user and "user_id" in user:
+                        admin_ids.append(user["user_id"])
+                        logger.info(f"Mapped username {admin} to user_id {user['user_id']}")
+                    else:
+                        logger.warning(f"Could not find user_id for username {admin}")
+                else:
+                    # Assume it's already a user_id
+                    try:
+                        admin_ids.append(int(admin))
+                    except ValueError:
+                        logger.warning(f"Invalid user_id format in admin list: {admin}")
+
             # Promote current admins
             result = await self.users_collection.update_many(
-                {"user_id": {"$in": list(self.settings.admins)}},
+                {"user_id": {"$in": admin_ids}},
                 {"$set": {"user_type": UserType.ADMIN}},
             )
             if result.modified_count:
@@ -199,7 +219,7 @@ class UserManager(Generic[UserT]):
             # Demote former admins
             result = await self.users_collection.update_many(
                 {
-                    "user_id": {"$nin": list(self.settings.admins)},
+                    "user_id": {"$nin": admin_ids},
                     "user_type": UserType.ADMIN,
                 },
                 {"$set": {"user_type": UserType.REGULAR}},
@@ -372,7 +392,7 @@ def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
     )
 
 
-def get_user_manager():
+def get_user_manager() -> UserManager:
     """Get UserManager instance from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
 
