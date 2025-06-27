@@ -30,7 +30,7 @@ class QueueItem(BaseModel):
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
-        allow_population_by_field_name = True
+        validate_by_name = True
 
 
 T = TypeVar("T", bound=QueueItem)
@@ -59,7 +59,7 @@ class Queue(Generic[T]):
 
     @property
     def projection(self):
-        projection = {"_id": 0}
+        projection = {}
         if not self.use_timestamp:
             projection["timestamp"] = 0
         if not self.use_priority:
