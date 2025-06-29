@@ -1,125 +1,74 @@
-[tool.poetry]
+[project]
 name = "botspot"
-version = "0.10.26"
+version = "0.10.28"
 description = ""
-authors = ["Petr Lavrov <petr.b.lavrov@gmail.com>"]
 readme = "README.md"
-packages=[
-    { include = "botspot", from = "." },
+authors = [
+    {name = "Petr Lavrov", email = "me@petrlavrov.com"},
+]
+requires-python = "<4.0,>=3.12"
+dependencies = [
+    "calmlib @ git+https://github.com/calmmage/calmlib.git@main",
+    "loguru>=0.7",
+    "toml>=0.10",
+    "python-dotenv",
+    "aiogram>=3.19",
+    "pydantic-settings<3.0.0,>=2.6.0",
+    "pydantic<3.0,>=2.10",
 ]
 
-
-[tool.poetry.dependencies]
-python = ">=3.12,<4.0"
-calmlib = { git = "https://github.com/calmmage/calmlib.git", branch = "main" }
-loguru = ">=0.7"
-# for parsing version
-toml = ">=0.10"
-python-dotenv = "*"
-aiogram = ">=3.19"
-pydantic-settings = "^2.6.0"
-pydantic = "^2.10"
-
-[tool.poetry.group.extras.dependencies]
-apscheduler = "^3.10.4"
-pymongo = ">=4.9"
-litellm = "^1.63"  # For LLM provider component
-motor = "^3.6.0"
-telethon = "^1.38.1"
-aioboto3 = "^14.1.0"
-mistune = "^3.1.3"
-# dependencies for extra features
-
-# Main
-## Pydantic
-#pydantic = ">=2"            # Data validation and settings management
-#pydantic-settings = ">=2"   # Pydantic settings management
-
-# git ops
-#PyGithub = "*"              # GitHub API client
-#gitpython = "*"             # Git repository interface
-
-# api
-#fastapi = "*"               # High-performance API framework
-#httpx = "*"                 # Async HTTP client
-
-# cli
-#click = "*"                 # CLI creation toolkit
-#typer = "*"                 # Easy CLI building
-
-# data, databases
-#pymongo = "*"                 # MongoDB client
-#mongoengine = "*"            # MongoDB ORM
-#PyDrive = "*"                # Google Drive API client
-#protobuf = "*"               # Protocol buffers
-#dropbox = "*"                # Dropbox API client
-
-# utils
-#pytz = "*"                  # Timezone definitions
-#retry = "*"                 # Retry decorator
-#nltk = "*"                  # Natural language toolkit
-#easydict = ">=1.10"         # Easy access to dict keys - dotdict
-#pydub = ">=0.25"             # Audio manipulation
-#apscheduler = ">=3"         # Scheduling library
-#pyperclip = "*"              # Copying to clipboard
-#aiolimiter = ">=1.1"         # Async rate limiting
-#deepl = ">=1.18"             # DeepL API client
-
-# LLM, GPT, AI
-#tiktoken = ">=0.7"            # Tokenization for OpenAI models
-#openai = ">=1.45"             # OpenAI API client
-#langchain = ">=0.3"            # Language model framework
-#langchain-openai = ">=0.2"     # OpenAI integration for LangChain
-#langchain-community = "*"      # Community extensions for LangChain
-#langchain-anthropic = ">=0.2"  # Anthropic integration for LangChain
-#langfuse = "*"                 # Language model analytics
-#assemblyai = "*"              # Speech-to-text API
-# Advanced Whisper model
-#whisperx = { git = "https://github.com/m-bain/whisperX.git", branch = "main" }
-
-# Misc
-#ipykernel = "*"             # IPython kernel
-#ipywidgets = "*"            # Interactive widgets for Jupyter
-#joblib = "*"                # Lightweight pipelining
-#paramiko = "*"              # SSH2 protocol library
-#scp = "*"                   # Secure copy
-#pymorphy2 = "*"             # Morphological analyzer
-
-[tool.poetry.group.test.dependencies]
-pytest = "^8.3.5"
-pytest-asyncio = "^0.25.3"
-pytest-mock = "^3.14.0"
-pytest-cov = "^6.0.0"
-#pytest-mongodb = "*"
-vulture = "^2.14"
-pyupgrade = "^3.19.1"
-pyright = "^1.1.399"
-ruff = "^0.11.5"
-isort = "^6.0.1"
-
-[tool.poetry.group.docs.dependencies]
-#mkdocs = ">=1.6"
-
-[tool.poetry.group.dev.dependencies]
-# dev / research utils
-jupyter = ">=1.0.0"          # Interactive notebooks
-#jupyter-nbextensions-configurator = "*"
-#jupyter_contrib_nbextensions = "*"
-black = ">=24.0.0"           # Code formatter
-pre-commit = ">=3.8.0"       # Pre-commit hooks
-tqdm = "*"                   # Progress bars
-
-## data analysis, research
-#pandas = ">=2.0.0"          # Data manipulation and analysis
-#seaborn = "*"               # Statistical data visualization
-#bokeh = "*"                 # Interactive visualizations
-#matplotlib = "*"            # Plotting library
-#numpy = "*"                 # Numerical computing
-pyright = "^1.1.396"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Allows to install dependencies directly from github - e.g. my personal libraries
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# Define package properly
+[tool.hatch.build.targets.wheel]
+packages = ["botspot"]
+
+[dependency-groups]
+
+extras = [
+    "apscheduler<4.0.0,>=3.10.4",
+    "pymongo>=4.9",
+    "litellm<2.0,>=1.63",
+    "motor<4.0.0,>=3.6.0",
+    "telethon<2.0.0,>=1.38.1",
+    "aioboto3<15.0.0,>=14.1.0",
+    "mistune<4.0.0,>=3.1.3",
+]
+test = [
+    "pytest>=8.3.5",
+    "isort<7.0.0,>=6.0.0",
+    "vulture<3.0,>=2.14",
+    "pytest-cov<7.0.0,>=6.1.1",
+    "pytest-asyncio<2.0.0,>=1.0.0",
+    "pytest-mock<4.0.0,>=3.14.1",
+    #pytest-mongodb = "*"
+    "pyupgrade<4.0.0,>=3.20.0",
+    "pyright<2.0.0,>=1.1.401",
+    "ruff<1.0.0,>=0.11.12",
+]
+docs = [
+    #mkdocs = ">=1.6"
+]
+dev = [
+    "jupyter>=1.0.0",
+    "pre-commit>=3.8.0",
+    "tqdm",
+    #jupyter-nbextensions-configurator = "*"
+    #jupyter_contrib_nbextensions = "*"
+
+    ## data analysis, research
+    #pandas = ">=2.0.0"          # Data manipulation and analysis
+    #seaborn = "*"               # Statistical data visualization
+    #bokeh = "*"                 # Interactive visualizations
+    #matplotlib = "*"            # Plotting library
+    #numpy = "*"                 # Numerical computing
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -153,11 +102,11 @@ exclude_lines = [
 fail_under = 49
 show_missing = true
 
+[tool.ruff]
+line-length = 100
+
 [template]
 version = "0.3.0"  # optimize pyproject dependencies
 url = "https://github.com/calmmage/python-project-template.git"
 author = "Petr Lavrov <petrlavrov@calmmage.com>"
 description = "A template for creating a bot using calmapp and bot-lib"
-
-[tool.ruff]
-line-length = 100

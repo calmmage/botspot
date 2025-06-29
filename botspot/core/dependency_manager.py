@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher
 
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.errors import BotspotError
+from botspot.utils.deps_getters import get_dependency_manager
 from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
@@ -13,13 +14,13 @@ if TYPE_CHECKING:
 
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
+    from botspot.components.middlewares.simple_user_cache import SimpleUserCache
     from botspot.components.new.auto_archive import AutoArchive
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
-    from botspot.components.middlewares.simple_user_cache import SimpleUserCache
 
 
 class DependencyManager(metaclass=Singleton):
@@ -198,7 +199,4 @@ class DependencyManager(metaclass=Singleton):
         return cls in cls._instances
 
 
-def get_dependency_manager() -> DependencyManager:
-    if not DependencyManager.is_initialized():
-        raise ValueError("Dependency manager is not initialized")
-    return DependencyManager()
+__all__ = ["DependencyManager", "get_dependency_manager"]

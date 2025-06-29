@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.types import BufferedInputFile, Chat, Message, User
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import BufferedInputFile, Chat, Message, User
 from loguru import logger
 
 from botspot.utils.text_utils import MAX_TELEGRAM_MESSAGE_LENGTH, escape_md, split_long_message
