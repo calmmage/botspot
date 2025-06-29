@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 from aiogram import Bot, F, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InaccessibleMessage, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -444,6 +445,12 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
     new_text = f"{callback_query.message.text}\n\nSelected: {choice}"
     try:
         await callback_query.message.edit_text(new_text)
+    except TelegramBadRequest as e:
+        if "message to edit not found" in e.message:
+            # This can happen if the message was deleted or edited by another process
+            logger.debug("Message was cleaned up, skipping edit")
+        else:
+            logger.warning(f"Failed to edit message after choice selection: {e}")
     except Exception as e:
         logger.warning(f"Failed to edit message after choice selection: {e}")
 
