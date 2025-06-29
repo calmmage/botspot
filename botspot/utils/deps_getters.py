@@ -7,15 +7,13 @@ This module compiles all the getter functions from their respective component fi
 
 from typing import TYPE_CHECKING, Optional
 
-from botspot.core.dependency_manager import get_dependency_manager, BotspotSettings
-
 # Import component getters
 from botspot.components.data.mongo_database import get_database, get_mongo_client
 from botspot.components.data.user_data import get_user_manager
 from botspot.components.main.event_scheduler import get_scheduler
-from botspot.components.middlewares.simple_user_cache import get_simple_user_cache
 from botspot.components.main.single_user_mode import get_single_user, is_single_user_mode_enabled
 from botspot.components.main.telethon_manager import get_telethon_manager
+from botspot.components.middlewares.simple_user_cache import get_simple_user_cache
 from botspot.components.new.chat_binder import get_chat_binder
 from botspot.components.new.chat_fetcher import get_chat_fetcher
 from botspot.components.new.llm_provider import get_llm_provider
@@ -27,6 +25,17 @@ if TYPE_CHECKING:
     from aiogram import Bot, Dispatcher
     from aiogram.fsm.context import FSMContext
     from telethon import TelegramClient
+
+    from botspot.core.bot_manager import BotspotSettings
+    from botspot.core.dependency_manager import DependencyManager
+
+
+def get_dependency_manager() -> "DependencyManager":
+    from botspot.core.dependency_manager import DependencyManager
+
+    if not DependencyManager.is_initialized():
+        raise ValueError("Dependency manager is not initialized")
+    return DependencyManager()
 
 
 # Core getters for bot and dispatcher
@@ -87,7 +96,7 @@ def get_s3_storage() -> Optional[S3StorageProvider]:
     return get_dependency_manager().s3_storage
 
 
-def get_botspot_settings() -> BotspotSettings:
+def get_botspot_settings() -> "BotspotSettings":
     from botspot.core.dependency_manager import get_dependency_manager
 
     return get_dependency_manager().botspot_settings

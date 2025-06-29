@@ -1,7 +1,7 @@
-from typing import Optional, Any, Awaitable, Callable, Dict
-from pydantic import BaseModel
+from typing import Any, Awaitable, Callable, Dict, Optional
 
-from aiogram.types import Update, Message
+from aiogram.types import Message, Update
+from pydantic import BaseModel
 
 
 class SimpleUserRecord(BaseModel):

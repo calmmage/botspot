@@ -21,7 +21,6 @@ from aiogram.types import Chat, User
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
-
 from botspot.utils.internal import get_logger
 from botspot.utils.unsorted import Attachment, download_telegram_file, get_attachment_format
 from botspot.utils.user_ops import UserLike, compare_users_async
