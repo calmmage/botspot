@@ -70,8 +70,7 @@ class Queue(Generic[T]):
             projection["user_id"] = 0
         return projection
 
-    def enrich_item(self, item: T, user_id: Optional[int] = None) -> dict:
-        doc = item.model_dump()
+    def enrich_doc(self, doc: dict, user_id: Optional[int] = None) -> dict:
         # doc["queue_id"] = self.key
         if self.use_timestamp:
             doc["timestamp"] = datetime.now()
@@ -88,9 +87,15 @@ class Queue(Generic[T]):
             from botspot.core.errors import QueuePermissionError
 
             raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
-        doc = self.enrich_item(item, user_id)
-        # Use by_alias for MongoDB compatibility
-        await self.collection.insert_one(item.model_dump(by_alias=True, exclude_none=True))
+
+        # Todo: do I need the mode="json" here?
+        doc = item.model_dump(by_alias=True, exclude_none=True)
+        logger.debug(f"Item before enrichment: {doc}")
+
+        mongo_doc = self.enrich_doc(doc, user_id)
+        logger.debug(f"Adding item to the queue: {mongo_doc}")
+
+        await self.collection.insert_one(mongo_doc)
 
     async def get_items(
         self,

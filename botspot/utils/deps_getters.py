@@ -7,6 +7,8 @@ This module compiles all the getter functions from their respective component fi
 
 from typing import TYPE_CHECKING, Optional
 
+from botspot.core.dependency_manager import get_dependency_manager, BotspotSettings
+
 # Import component getters
 from botspot.components.data.mongo_database import get_database, get_mongo_client
 from botspot.components.data.user_data import get_user_manager
@@ -85,6 +87,12 @@ def get_s3_storage() -> Optional[S3StorageProvider]:
     return get_dependency_manager().s3_storage
 
 
+def get_botspot_settings() -> BotspotSettings:
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    return get_dependency_manager().botspot_settings
+
+
 # Re-export all for convenience
 __all__ = [
     "get_bot",
@@ -101,4 +109,6 @@ __all__ = [
     "get_llm_provider",
     "get_s3_storage",
     "get_simple_user_cache",
+    "get_dependency_manager",
+    "get_botspot_settings",
 ]

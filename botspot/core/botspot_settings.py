@@ -26,6 +26,11 @@ from botspot.utils.send_safe import SendSafeSettings
 
 
 class BotspotSettings(BaseSettings):
+    debug: bool = Field(
+        default=False,
+        description="Enable debug mode",
+    )
+
     admins_str: str = Field(
         default="",
         description="Comma-separated list of admin usernames (e.g., '@abc,@def')",
