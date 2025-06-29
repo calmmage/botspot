@@ -88,8 +88,8 @@ class Queue(Generic[T]):
 
             raise QueuePermissionError("user_id is required unless single_user_mode is enabled")
 
-        # Todo: do I need the mode="json" here?
-        doc = item.model_dump(by_alias=True, exclude_none=True)
+        # Use mode="json" to serialize enums and other non-BSON types correctly
+        doc = item.model_dump(by_alias=True, exclude_none=True, mode="json")
         logger.debug(f"Item before enrichment: {doc}")
 
         mongo_doc = self.enrich_doc(doc, user_id)
