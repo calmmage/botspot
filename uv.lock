@@ -391,7 +391,7 @@ docs = []
 extras = [
     { name = "aioboto3", specifier = ">=14.1.0,<15.0.0" },
     { name = "apscheduler", specifier = ">=3.10.4,<4.0.0" },
-    { name = "calmlib", git = "https://github.com/calmmage/calmmage.git?subdirectory=calmlib&rev=main" },
+    { name = "calmlib", git = "https://github.com/calmmage/calmmage.git?subdirectory=src%2Fcalmlib" },
     { name = "litellm", specifier = ">=1.63,<2.0" },
     { name = "mistune", specifier = ">=3.1.3,<4.0.0" },
     { name = "motor", specifier = ">=3.6.0,<4.0.0" },
@@ -413,7 +413,7 @@ test = [
 [[package]]
 name = "calmlib"
 version = "1.1.3"
-source = { git = "https://github.com/calmmage/calmmage.git?subdirectory=calmlib&rev=main#8aac025449eabc8e76b9d863a5558935d9b44271" }
+source = { git = "https://github.com/calmmage/calmmage.git?subdirectory=src%2Fcalmlib#d93b393e76c07af9741b3c1cd0dcedba519f3fb8" }
 dependencies = [
     { name = "deprecated" },
     { name = "litellm" },
