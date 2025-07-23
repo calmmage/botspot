@@ -38,7 +38,7 @@ extras = [
     "telethon<2.0.0,>=1.38.1",
     "aioboto3<15.0.0,>=14.1.0",
     "mistune<4.0.0,>=3.1.3",
-    "calmlib @ git+https://github.com/calmmage/calmmage.git#subdirectory=src/calmlib",
+    "calmlib @ git+https://github.com/calmmage/calmmage.git#subdirectory=calmlib",
 ]
 test = [
     "pytest>=8.3.5",
