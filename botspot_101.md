@@ -131,6 +131,14 @@ raise BotspotError(
 )
 ```
 
+# Admin and Developer Tools, 
+```python
+from botspot.utils.admin_filter import AdminFilter
+@bot_commands_menu.add_command("admin_dashboard", visibility=Visibility.ADMIN_ONLY)
+@router.message(AdminFilter())
+...
+```
+
 # Examples to add
 
 - [ ] Telethon manager
