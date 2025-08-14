@@ -8,18 +8,6 @@ authors = [
 ]
 requires-python = "<4.0,>=3.12"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-# Allows to install dependencies directly from github - e.g. my personal libraries
-[tool.hatch.metadata]
-allow-direct-references = true
-
-# Define package properly
-[tool.hatch.build.targets.wheel]
-packages = ["botspot"]
-
 dependencies = [
     "loguru>=0.7",
     "toml>=0.10",
@@ -70,6 +58,18 @@ dev = [
     #matplotlib = "*"            # Plotting library
     #numpy = "*"                 # Numerical computing
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Allows to install dependencies directly from github - e.g. my personal libraries
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# Define package properly
+[tool.hatch.build.targets.wheel]
+packages = ["botspot"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
