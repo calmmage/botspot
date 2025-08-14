@@ -1,6 +1,6 @@
 [project]
 name = "botspot"
-version = "0.10.31"
+version = "0.10.32"
 description = ""
 readme = "README.md"
 authors = [
@@ -28,6 +28,7 @@ extras = [
     "aioboto3<15.0.0,>=14.1.0",
     "mistune<4.0.0,>=3.1.3",
     "calmlib @ git+https://github.com/calmmage/calmlib.git@main",
+    "pyrogram @ git+https://github.com/KurimuzonAkuma/pyrogram.git@master",
 ]
 test = [
     "pytest>=8.3.5",

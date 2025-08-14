@@ -29,14 +29,15 @@ def to_user_record(user: UserLike) -> UserRecord:
 
     if isinstance(user, UserRecord):
         return user
-    if isinstance(user, AiogramUser):
+    elif isinstance(user, AiogramUser):
+        assert not isinstance(user, (str, int))
         return UserRecord(
             user_id=user.id,
             username=user.username,
             # first_name=user.first_name,
             # last_name=user.last_name,
         )
-    if isinstance(user, User):
+    elif isinstance(user, User):
         return UserRecord(
             user_id=user.user_id,
             username=user.username,
@@ -182,8 +183,9 @@ async def get_user_record_enriched(user_key: Union[str, int]) -> UserRecord:
             #     record.phone = user.phone
 
         return record
-
-    return await _user_record_cache.get_or_set(user_key, _get_record)
+    result = await _user_record_cache.get_or_set(user_key, _get_record)
+    assert isinstance(result, UserRecord)
+    return result
 
 
 def get_user_record(user_key: Union[str, int]) -> UserRecord:
@@ -205,17 +207,20 @@ def get_user_record(user_key: Union[str, int]) -> UserRecord:
     from botspot.utils.deps_getters import get_simple_user_cache
 
     uc = get_simple_user_cache()
+    assert uc is not None
     if user_key.startswith("+"):
         return UserRecord(phone=user_key)
     if user_key.isdigit():
         try:
             ur = uc.get_user(int(user_key))
+            assert ur is not None
             return UserRecord(user_id=ur.user_id, username=ur.username)
         except:
             return UserRecord(user_id=int(user_key))
     if user_key.startswith("@"):
         try:
             ur = uc.get_user_by_username(user_key.lstrip("@"))
+            assert ur is not None
             return UserRecord(username=ur.username, user_id=ur.user_id)
         except:
             return UserRecord(username=user_key.lstrip("@"))
