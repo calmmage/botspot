@@ -1,0 +1,75 @@
+site_name: Botspot
+site_description: Modern Telegram bot framework with components and middleware
+site_url: https://calmmage.github.io/botspot/
+repo_url: https://github.com/calmmage/botspot
+repo_name: calmmage/botspot
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            merge_init_into_class: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Components:
+    - Overview: components/index.md
+    - Data: components/data.md
+    - Features: components/features.md
+    - Main: components/main.md
+    - Middlewares: components/middlewares.md
+    - QoL: components/qol.md
+  - API Reference:
+    - Core: api/core.md
+    - Components: api/components.md
+    - Utils: api/utils.md
+  - Examples: examples.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
