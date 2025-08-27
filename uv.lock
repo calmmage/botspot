@@ -1309,14 +1309,14 @@ wheels = [
 
 [[package]]
 name = "jupyter-lsp"
-version = "2.2.6"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jupyter-server" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/3d/40bdb41b665d3302390ed1356cebd5917c10769d1f190ee4ca595900840e/jupyter_lsp-2.2.6.tar.gz", hash = "sha256:0566bd9bb04fd9e6774a937ed01522b555ba78be37bebef787c8ab22de4c0361", size = 48948, upload-time = "2025-07-18T21:35:19.885Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/5a/9066c9f8e94ee517133cd98dba393459a16cd48bba71a82f16a65415206c/jupyter_lsp-2.3.0.tar.gz", hash = "sha256:458aa59339dc868fb784d73364f17dbce8836e906cd75fd471a325cba02e0245", size = 54823, upload-time = "2025-08-27T17:47:34.671Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/7c/12f68daf85b469b4896d5e4a629baa33c806d61de75ac5b39d8ef27ec4a2/jupyter_lsp-2.2.6-py3-none-any.whl", hash = "sha256:283783752bf0b459ee7fa88effa72104d87dd343b82d5c06cf113ef755b15b6d", size = 69371, upload-time = "2025-07-18T21:35:16.585Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/60/1f6cee0c46263de1173894f0fafcb3475ded276c472c14d25e0280c18d6d/jupyter_lsp-2.3.0-py3-none-any.whl", hash = "sha256:e914a3cb2addf48b1c7710914771aaf1819d46b2e5a79b0f917b5478ec93f34f", size = 76687, upload-time = "2025-08-27T17:47:33.15Z" },
 ]
 
 [[package]]
