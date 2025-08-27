@@ -43,7 +43,9 @@ test = [
     "ruff<1.0.0,>=0.11.12",
 ]
 docs = [
-    #mkdocs = ">=1.6"
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
 ]
 dev = [
     "jupyter>=1.0.0",
