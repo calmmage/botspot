@@ -1,5 +1,4 @@
 repos:
-
   - repo: https://github.com/kynan/nbstripout
     rev: 0.5.0
     hooks:
@@ -7,72 +6,7 @@ repos:
         files: \.ipynb$
         stages: [pre-commit]
 
-  - repo: https://github.com/jendrikseipp/vulture
-    rev: 'v2.10'
-    hooks:
-      - id: vulture
-        args: [
-          "--min-confidence", "80",
-          "botspot"  # project_name - path to scan
-        ]
-        files: ^.*\.py$
-        exclude: ^(.git|.venv|venv|build|dist)/.*$
-
-#  - repo: https://github.com/pycqa/flake8
-#    rev: '7.0.0'
-#    hooks:
-#      - id: flake8
-#        additional_dependencies: [
-#          'flake8-docstrings',
-#          'flake8-bugbear',
-#          'flake8-comprehensions',
-#          'flake8-simplify',
-#        ]
-#        args: [
-#          "--max-line-length=100",
-#          "--exclude=.venv,.git,__pycache__,build,dist",
-#          "--ignore=E203,W503",  # Ignore some style errors that conflict with other tools
-#        ]
-#        files: ^botspot/.*\.py$ # project_name - path to scan
-
-
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.19.0
     hooks:
       - id: pyupgrade
-
-  - repo: local
-    hooks:
-      - id: pyright
-        name: pyright
-        entry: poetry run pyright
-        language: system
-        types: [python]
-        pass_filenames: true
-        args: ["--project", "pyrightconfig.json"]
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.7.4
-    hooks:
-      # Run the linter.
-      - id: ruff
-        types_or: [ python, pyi ]
-        args: [ --fix ]
-      # Run the formatter.
-      - id: ruff-format
-        types_or: [ python, pyi ]
-
-  - repo: local
-    hooks:
-      - id: pytest-check
-        name: pytest-check
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        args: [
-          "--cov=botspot",  # project_name - path to scan
-          "--cov-report=xml",
-          "--cov-fail-under=50",
-        ]

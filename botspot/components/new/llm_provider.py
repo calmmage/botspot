@@ -771,67 +771,28 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
         raise ImportError(
             "litellm is not installed. Run 'poetry add litellm' or 'pip install litellm'"
         )
+    # Check for API keys
     if not settings.skip_import_check:
-        to_check = [
-            "openai",
-            "anthropic",
-            "google-generativeai",
-            "xai_sdk",
-        ]
-        ai_libraries = {
-            "openai": "openai",  # poetry add openai -> import openai
-            "anthropic": "anthropic",  # poetry add anthropic -> import anthropic
-            "google-generativeai": "google.generativeai",  # poetry add google-generativeai -> import google.generativeai
-            # "xai_sdk": "xai",  # No such library
-            # "huggingface": "transformers",  # poetry add huggingface -> import transformers
-            # "cohere": "cohere",  # poetry add cohere -> import cohere
-            # "mistralai": "mistralai",  # poetry add mistralai -> import mistralai
-            # "deepseek": "deepseek",  # poetry add deepseek -> import deepseek
-            # "fireworks-ai": "fireworks",  # poetry add fireworks-ai -> import fireworks
-        }
         api_keys_env_names = {
-            "openai": "OPENAI_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY",
-            "google-generativeai": "GEMINI_API_KEY",
-            "xai_sdk": "XAI_API_KEY",
-            "huggingface": "HUGGINGFACE_TOKEN",
-            "cohere": "COHERE_API_KEY",
-            "mistralai": "MISTRAL_API_KEY",
-            "deepseek": "DEEPSEEK_API_KEY",
-            "fireworks-ai": "FIREWORKS_API_KEY",
+            "OpenAI": "OPENAI_API_KEY",
+            "Anthropic": "ANTHROPIC_API_KEY", 
+            "Google/Gemini": "GEMINI_API_KEY",
+            "xAI/Grok": "XAI_API_KEY",
         }
-        # Check for specific libraries and report to the user
-        installed_libraries = []
-        for lib_name in to_check:
-            if lib_name in ai_libraries:
-                lib = ai_libraries[lib_name]
-
-                try:
-                    __import__(lib)
-                    logger.info(f"✅ {lib_name} is available.")
-                except ImportError:
-                    logger.info(
-                        f"❌ {lib_name} is not installed. `poetry add {lib_name}` to install it."
-                    )
-
-            env_key = api_keys_env_names[lib_name]
+        
+        available_keys = []
+        for provider_name, env_key in api_keys_env_names.items():
             api_key = os.getenv(env_key)
-
             if api_key:
-                logger.info(f" (✅ {env_key})")
-                installed_libraries.append(lib_name)
+                logger.debug(f"✅ {provider_name} API key found ({env_key})")
+                available_keys.append(provider_name)
             else:
-                logger.info(f" (❌ No {env_key})")
-
-        if not installed_libraries:
-            keys = list(ai_libraries.keys())
-            logger.error(
-                "At least one of the required libraries (openai, anthropic, gemini) must be installed.\n"
-                f"None of the required libraries {keys} are installed."
-            )
-            raise ImportError(
-                f"At least one of the required libraries {keys} must be installed.\n"
-                "set BOTSPOT_LLM_PROVIDER_SKIP_IMPORT_CHECK=1 to skip this check or install the required libraries."
+                logger.debug(f"⚠️ {provider_name} API key not found ({env_key})")
+                
+        if not available_keys:
+            logger.warning(
+                "No API keys found. You'll need to set at least one API key to use LLM features.\n"
+                "Set one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, XAI_API_KEY"
             )
 
     logger.info("Initializing LLM Provider component")

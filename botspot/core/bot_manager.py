@@ -37,7 +37,7 @@ class BotManager(metaclass=Singleton):
     ):
         self.settings = BotspotSettings(**kwargs)
         logger.info(f"Using Botspot version {__version__}")
-        logger.info(
+        logger.debug(
             f"Initializing BotManager with config: {self.settings.model_dump_json(indent=2)}"
         )
         self.deps = DependencyManager(
