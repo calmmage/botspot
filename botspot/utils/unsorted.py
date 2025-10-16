@@ -4,9 +4,8 @@ from typing import BinaryIO, Dict, List, Optional, Union
 from aiogram.enums import ChatAction
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Audio, Document, Message, PhotoSize, Video, VideoNote, Voice
-from loguru import logger
-
 from botspot.utils.user_ops import UserLike
+from loguru import logger
 
 
 def get_user(message: Message, forward_priority=False) -> str:
@@ -272,3 +271,5 @@ async def _download_telegram_file_telethon(
         return data
     else:
         raise RuntimeError(f"Telethon download_media returned unexpected type: {type(file_data)}")
+
+

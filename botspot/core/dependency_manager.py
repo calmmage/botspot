@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
 from aiogram import Bot, Dispatcher
-
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.errors import BotspotError
 from botspot.utils.deps_getters import get_dependency_manager
@@ -9,9 +8,7 @@ from botspot.utils.internal import Singleton
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from motor.motor_asyncio import AsyncIOMotorClient  # noqa: F401
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
-
+    from botspot.components.data.access_control import AccessControl
     from botspot.components.data.user_data import UserManager
     from botspot.components.main.telethon_manager import TelethonManager
     from botspot.components.middlewares.simple_user_cache import SimpleUserCache
@@ -21,6 +18,10 @@ if TYPE_CHECKING:
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
+    from motor.motor_asyncio import (
+        AsyncIOMotorClient,  # noqa: F401
+        AsyncIOMotorDatabase,  # noqa: F401
+    )
 
 
 class DependencyManager(metaclass=Singleton):
@@ -48,6 +49,7 @@ class DependencyManager(metaclass=Singleton):
         self._auto_archive = None
         self._s3_storage = None
         self._simple_user_cache = None
+        self._access_control = None
         self.__dict__.update(kwargs)
 
     @property
@@ -193,6 +195,14 @@ class DependencyManager(metaclass=Singleton):
     @simple_user_cache.setter
     def simple_user_cache(self, value: Optional["SimpleUserCache"]):
         self._simple_user_cache = value
+
+    @property
+    def access_control(self) -> Optional["AccessControl"]:
+        return self._access_control
+
+    @access_control.setter
+    def access_control(self, value: Optional["AccessControl"]):
+        self._access_control = value
 
     @classmethod
     def is_initialized(cls) -> bool:
