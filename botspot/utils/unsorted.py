@@ -4,9 +4,8 @@ from typing import BinaryIO, Dict, List, Optional, Union
 from aiogram.enums import ChatAction
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Audio, Document, Message, PhotoSize, Video, VideoNote, Voice
-from loguru import logger
-
 from botspot.utils.user_ops import UserLike
+from loguru import logger
 
 
 def get_user(message: Message, forward_priority=False) -> str:
@@ -272,3 +271,195 @@ async def _download_telegram_file_telethon(
         return data
     else:
         raise RuntimeError(f"Telethon download_media returned unexpected type: {type(file_data)}")
+
+
+
+async def get_username_from_message(
+        chat_id: int,
+        state: FSMContext,
+        prompt: str = "Please send the username or forward a message from that user:",
+        cleanup: bool = False,
+        timeout: Optional[int] = None,
+        max_retries: int = 3,
+) -> Optional[str]:
+    """
+    Get username from user with multiple input methods.
+
+    Supports:
+    1. Text message with @username, username, or user ID
+    2. Forwarded message (extracts from forward_from)
+    3. Retry logic for invalid inputs
+
+    Args:
+        chat_id: Chat ID to send prompt to
+        state: FSM context for state management
+        prompt: Prompt message to show user
+        cleanup: Whether to cleanup messages after interaction
+        timeout: Timeout in seconds (None for no timeout)
+        max_retries: Maximum number of retry attempts
+
+    Returns:
+        Username (with @ prefix for usernames, plain for user IDs) or None if failed
+
+    Examples:
+        >>> username = await get_username_from_message(chat_id, state)
+        >>> # User can:
+        >>> # 1. Send: "@john" or "john" or "123456789"
+        >>> # 2. Forward a message from john
+        >>> # Result: "@john" or "123456789"
+    """
+    for attempt in range(max_retries):
+        from botspot.components.features.user_interactions import ask_user_raw
+        # Ask user for username or forward
+        logger.info(
+            f"Asking for username (attempt {attempt + 1}/{max_retries})..."
+        )
+        response_message: Optional[Message] = await ask_user_raw(
+            chat_id=chat_id,
+            question=prompt,
+            state=state,
+            cleanup=cleanup,
+            timeout=timeout,
+        )
+
+        if response_message is None:
+            logger.warning("No response received from user")
+            return None
+
+        # Try to extract username from response
+        username = _extract_username_from_message(response_message)
+
+        if username:
+            logger.info(f"Successfully extracted username: {username}")
+            return username
+
+        # Failed to extract, retry with more specific prompt
+        if attempt < max_retries - 1:
+            prompt = (
+                "❌ Could not extract username. Please try again:\n"
+                "- Send username: @john or john\n"
+                "- Send user ID: 123456789\n"
+                "- Forward a message from that user"
+            )
+        else:
+            logger.warning(
+                f"Failed to extract username after {max_retries} attempts"
+            )
+            return None
+
+    return None
+
+
+def _extract_username_from_message(message: Message) -> Optional[str]:
+    """
+    Extract username from a message.
+
+    Supports:
+    1. Forwarded message -> extract from forward_from
+    2. Text message -> parse @username, username, or user ID
+
+    Args:
+        message: Message to extract username from
+
+    Returns:
+        Username with @ prefix (for usernames) or plain (for user IDs), or None if failed
+    """
+    # Method 1: Extract from forwarded message
+    if message.forward_from:
+        # Message forwarded from a user
+        user = message.forward_from
+
+        if user.username:
+            username = f"@{user.username}"
+            logger.info(
+                f"Extracted username from forwarded message: {username}"
+            )
+            return username
+        elif user.id:
+            # No username, use user ID
+            user_id = str(user.id)
+            logger.info(
+                f"Extracted user ID from forwarded message: {user_id}"
+            )
+            return user_id
+        else:
+            logger.warning(
+                "Forwarded message from user without username or ID"
+            )
+            return None
+
+    # Method 2: Extract from text message
+    if message.text:
+        text = message.text.strip()
+
+        # Check if it's a valid username or user ID
+        if text.startswith("@"):
+            # Username with @ prefix
+            username = text
+            logger.info(f"Extracted username from text: {username}")
+            return username
+        elif text.isdigit():
+            # User ID
+            user_id = text
+            logger.info(f"Extracted user ID from text: {user_id}")
+            return user_id
+        else:
+            # Username without @ prefix
+            username = f"@{text}"
+            logger.info(
+                f"Extracted username from text (added @ prefix): {username}"
+            )
+            return username
+
+    logger.warning("Could not extract username from message")
+    return None
+
+
+async def get_username_from_command_or_dialog(
+        message: Message,
+        state: FSMContext,
+        cleanup: bool = False,
+        prompt: str = "Please send the username or forward a message from that user:",
+        timeout: Optional[int] = None,
+) -> Optional[str]:
+    """
+    Get username either from command arguments or via interactive dialog.
+
+    First tries to extract from command text (e.g., /add_friend @john),
+    if not found, asks user interactively.
+
+    Args:
+        message: Original command message
+        state: FSM context
+        cleanup: Whether to cleanup messages
+        prompt: Prompt for interactive dialog
+        timeout: Timeout for interactive dialog
+
+    Returns:
+        Username or None if failed
+    """
+    # Try to get from command arguments first
+    if message.text:
+        parts = message.text.split(maxsplit=1)
+        if len(parts) >= 2:
+            # Username provided in command
+            username_text = parts[1].strip()
+
+            # Normalize
+            if username_text.startswith("@"):
+                return username_text
+            elif username_text.isdigit():
+                return username_text
+            else:
+                return f"@{username_text}"
+
+    # No username in command, ask interactively
+    logger.info("No username in command, asking user interactively")
+    return await get_username_from_message(
+        chat_id=message.chat.id,
+        state=state,
+        prompt=prompt,
+        cleanup=cleanup,
+        timeout=timeout,
+    )
+
