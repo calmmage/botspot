@@ -271,5 +271,3 @@ async def _download_telegram_file_telethon(
         return data
     else:
         raise RuntimeError(f"Telethon download_media returned unexpected type: {type(file_data)}")
-
-
