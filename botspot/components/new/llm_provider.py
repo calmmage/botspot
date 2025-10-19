@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import json
-import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,12 +17,15 @@ from typing import (
 )
 
 from aiogram.types import Chat, User
+from botspot.utils.internal import get_logger
+from botspot.utils.unsorted import (
+    Attachment,
+    download_telegram_file,
+    get_attachment_format,
+)
+from botspot.utils.user_ops import UserLike, compare_users_async
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-
-from botspot.utils.internal import get_logger
-from botspot.utils.unsorted import Attachment, download_telegram_file, get_attachment_format
-from botspot.utils.user_ops import UserLike, compare_users_async
 
 # todo: check max attachments for different models
 # from botspot.utils.unsorted import download_telegram_file
@@ -398,7 +400,20 @@ class LLMProvider:
             )
 
         # Get model parameters with defaults
-        model_name = model or self.settings.default_model
+        if model is None:
+            # Try to auto-select based on available API keys
+            from botspot.utils.llm_key_check import get_fallback_model
+            
+            fallback = get_fallback_model()
+            if fallback:
+                model_name = fallback
+                logger.warning(f"No model specified, auto-selecting {model_name} based on available API keys")
+            else:
+                model_name = self.settings.default_model
+                logger.warning(f"No API keys available, using default model {model_name} (may fail)")
+        else:
+            model_name = model
+            
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
@@ -496,10 +511,31 @@ class LLMProvider:
 
         logger.debug(f"Async querying LLM with model {params['model']}")
 
-        # Make the actual API call
-        response = await acompletion(
-            model=params["model"], messages=params["messages"], **api_params
-        )
+        # Make the actual API call with fallback retry
+        try:
+            response = await acompletion(
+                model=params["model"], messages=params["messages"], **api_params
+            )
+        except Exception as e:
+            # Check if this is an API key error and we can retry with a different model
+            from botspot.utils.llm_key_check import get_fallback_model, is_api_key_error
+            
+            if is_api_key_error(e):
+                fallback_model = get_fallback_model()
+                if fallback_model and fallback_model != model:
+                    logger.warning(f"API key error with {model}, retrying with {fallback_model}: {str(e)}")
+                    
+                    # Get full model name for fallback
+                    fallback_full = self._get_full_model_name(fallback_model)
+                    
+                    # Retry with fallback model
+                    response = await acompletion(
+                        model=fallback_full, messages=params["messages"], **api_params
+                    )
+                else:
+                    raise  # No fallback available, re-raise original error
+            else:
+                raise  # Not an API key error, re-raise original error
 
         # Track usage asynchronously (approximate tokens used)
         token_estimate = (len(params["prompt"]) + len(response.choices[0].message.content)) // 4
@@ -712,7 +748,6 @@ def setup_dispatcher(dp):
     from aiogram import Router
     from aiogram.filters import Command
     from aiogram.types import Message
-
     from botspot.utils.admin_filter import AdminFilter
 
     router = Router(name="llm_provider")
@@ -771,25 +806,15 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
         raise ImportError(
             "litellm is not installed. Run 'poetry add litellm' or 'pip install litellm'"
         )
-    # Check for API keys
+    # Check for API keys 
     if not settings.skip_import_check:
-        api_keys_env_names = {
-            "OpenAI": "OPENAI_API_KEY",
-            "Anthropic": "ANTHROPIC_API_KEY", 
-            "Google/Gemini": "GEMINI_API_KEY",
-            "xAI/Grok": "XAI_API_KEY",
-        }
+        from botspot.utils.llm_key_check import get_available_providers
         
-        available_keys = []
-        for provider_name, env_key in api_keys_env_names.items():
-            api_key = os.getenv(env_key)
-            if api_key:
-                logger.debug(f"✅ {provider_name} API key found ({env_key})")
-                available_keys.append(provider_name)
-            else:
-                logger.debug(f"⚠️ {provider_name} API key not found ({env_key})")
-                
-        if not available_keys:
+        available_providers = get_available_providers()
+        
+        if available_providers:
+            logger.debug(f"✅ Available LLM providers: {', '.join(available_providers)}")
+        else:
             logger.warning(
                 "No API keys found. You'll need to set at least one API key to use LLM features.\n"
                 "Set one of: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, XAI_API_KEY"
@@ -1013,7 +1038,7 @@ if __name__ == "__main__":
         provider = get_llm_provider()
 
         response = await aquery_llm_text(
-            prompt=prompt, user=user_id, model="claude-3.5", temperature=0.7
+            prompt=prompt, user=user_id, model="claude-4-sonnet", temperature=0.7
         )
         print(f"Basic text response: {response}")
 

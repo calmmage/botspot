@@ -15,13 +15,15 @@ except PackageNotFoundError:
     del toml, Path, path
 
 from . import commands_menu, llm_provider, trial_mode, user_data, user_interactions
-from .components.data import mongo_database
-from .components.features import multi_forward_handler
-from .components.main import event_scheduler, single_user_mode, telethon_manager
-from .components.main.single_user_mode import get_single_user, is_single_user_mode_enabled
+from .components.data import access_control, mongo_database
+from .components.data.access_control import add_friend, get_friends, remove_friend
+from .components.main import event_scheduler, telethon_manager
+from .components.main.single_user_mode import (
+    get_single_user,
+    is_single_user_mode_enabled,
+)
 from .components.middlewares import error_handler
 from .components.new import chat_fetcher, llm_provider
-from .components.qol import bot_commands_menu, bot_info, print_bot_url
 from .core import get_dependency_manager
 from .utils import (
     answer_safe,
@@ -66,6 +68,7 @@ __all__ = [
     "event_scheduler",
     ## data
     "mongo_database",
+    "access_control",
     # no need to expose
     ## main
     # "single_user_mode",
@@ -80,6 +83,10 @@ __all__ = [
     # Chat Fetcher
     "chat_fetcher",
     "get_chat_fetcher",
+    # Access Control (Friends/Admins)
+    "get_friends",
+    "add_friend",
+    "remove_friend",
     # utils
     "get_dependency_manager",
     "get_bot",

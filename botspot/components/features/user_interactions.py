@@ -414,6 +414,8 @@ async def ask_user_choice_raw(
 
 async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSMContext):
     assert callback_query.data is not None
+    assert callback_query.from_user is not None
+    logger.info(f"Received choice callback: {callback_query.data} from {callback_query.from_user}")
     if not callback_query.data.startswith("choice_"):
         return
 

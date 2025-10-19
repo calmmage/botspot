@@ -5,13 +5,16 @@ BotManager class is responsible for setting up the bot, dispatcher etc.
 from typing import Optional, Type
 
 from aiogram import Bot, Dispatcher
-from loguru import logger
-
 from botspot import __version__
-from botspot.components.data import mongo_database, user_data
+from botspot.components.data import access_control, mongo_database, user_data
 from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
-from botspot.components.main import event_scheduler, single_user_mode, telethon_manager, trial_mode
+from botspot.components.main import (
+    event_scheduler,
+    single_user_mode,
+    telethon_manager,
+    trial_mode,
+)
 from botspot.components.middlewares import error_handler, simple_user_cache
 from botspot.components.new import (
     auto_archive,
@@ -25,6 +28,7 @@ from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 from botspot.utils.internal import Singleton
+from loguru import logger
 
 
 class BotManager(metaclass=Singleton):
@@ -61,6 +65,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.single_user_mode.enabled:
             single_user_mode.initialize(self.settings.single_user_mode)
+
+        if self.settings.access_control.enabled:
+            self.deps.access_control = access_control.initialize(self.settings.access_control)
 
         if self.settings.chat_binder.enabled:
             self.deps.chat_binder = chat_binder.initialize(self.settings.chat_binder)
@@ -121,6 +128,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.telethon_manager.enabled:
             telethon_manager.setup_dispatcher(dp)
+
+        if self.settings.access_control.enabled:
+            access_control.setup_dispatcher(dp)
 
         if self.settings.chat_binder.enabled:
             chat_binder.setup_dispatcher(dp)

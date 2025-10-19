@@ -1,9 +1,7 @@
 from functools import cached_property
 from typing import List
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
-
+from botspot.components.data.access_control import AccessControlSettings
 from botspot.components.data.mongo_database import MongoDatabaseSettings
 from botspot.components.data.user_data import UserDataSettings
 from botspot.components.features.user_interactions import AskUserSettings
@@ -23,6 +21,8 @@ from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
 from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class BotspotSettings(BaseSettings):
@@ -73,6 +73,7 @@ class BotspotSettings(BaseSettings):
     queue_manager: QueueManagerSettings = QueueManagerSettings()
     auto_archive: AutoArchiveSettings = AutoArchiveSettings()
     s3_storage: S3StorageSettings = S3StorageSettings()
+    access_control: AccessControlSettings = AccessControlSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
