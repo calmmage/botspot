@@ -17,6 +17,7 @@ from .user_ops import (
     is_friend,
     to_user_record,
 )
+from .formatting_utils import markdown_to_html
 
 
 
@@ -60,5 +61,6 @@ __all__ = [
     "strip_command",
     "typing_status",
     "get_username_from_command_or_dialog",
-    "get_username_from_message"
+    "get_username_from_message",
+    "markdown_to_html",
 ]

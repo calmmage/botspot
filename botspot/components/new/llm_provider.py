@@ -78,6 +78,11 @@ MODEL_NAME_SHORTCUTS = {
     "claude-3.5-sonnet": "anthropic/claude-3-5-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
     "claude-3.7": "anthropic/claude-3-7-sonnet-latest",  # $3.00 per 1M input, $15.00 per 1M output
     "claude-4": "anthropic/claude-sonnet-4-20250514",  # $3 per 1M input, $15 per 1M output
+    "claude-4-opus": "anthropic/claude-opus-4-20250514",
+    "claude-4-sonnet": "anthropic/claude-sonnet-4-20250514",
+    "claude-4.1-opus": "anthropic/claude-opus-4-1-20250805",
+    "claude-4.5-sonnet": "anthropic/claude-sonnet-4-5",
+    "claude-4.5-haiku": "anthropic/claude-haiku-4-5",
     # OpenAI Models
     # Cheap
     "gpt-4o-mini": "openai/gpt-4o-mini",  # $0.15 per 1M input, $0.60 per 1M output
