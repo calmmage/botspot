@@ -14,7 +14,7 @@ from botspot.utils.internal import get_logger
 from pydantic_settings import BaseSettings
 
 if TYPE_CHECKING:
-    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: vulture
 
 logger = get_logger()
 
