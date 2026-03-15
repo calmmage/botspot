@@ -67,6 +67,8 @@ def mock_message():
 def mock_callback_query():
     callback = MagicMock(spec=CallbackQuery)
     callback.data = "choice_option1"
+    callback.from_user = MagicMock()
+    callback.from_user.id = 123
     callback.message = MagicMock(spec=Message)
     callback.message.chat = MagicMock(spec=Chat)
     callback.message.chat.id = 789

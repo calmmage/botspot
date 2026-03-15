@@ -404,17 +404,21 @@ class LLMProvider:
         if model is None:
             # Try to auto-select based on available API keys
             from botspot.utils.llm_key_check import get_fallback_model
-            
+
             fallback = get_fallback_model()
             if fallback:
                 model_name = fallback
-                logger.warning(f"No model specified, auto-selecting {model_name} based on available API keys")
+                logger.warning(
+                    f"No model specified, auto-selecting {model_name} based on available API keys"
+                )
             else:
                 model_name = self.settings.default_model
-                logger.warning(f"No API keys available, using default model {model_name} (may fail)")
+                logger.warning(
+                    f"No API keys available, using default model {model_name} (may fail)"
+                )
         else:
             model_name = model
-            
+
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
@@ -520,15 +524,17 @@ class LLMProvider:
         except Exception as e:
             # Check if this is an API key error and we can retry with a different model
             from botspot.utils.llm_key_check import get_fallback_model, is_api_key_error
-            
+
             if is_api_key_error(e):
                 fallback_model = get_fallback_model()
                 if fallback_model and fallback_model != model:
-                    logger.warning(f"API key error with {model}, retrying with {fallback_model}: {str(e)}")
-                    
+                    logger.warning(
+                        f"API key error with {model}, retrying with {fallback_model}: {str(e)}"
+                    )
+
                     # Get full model name for fallback
                     fallback_full = self._get_full_model_name(fallback_model)
-                    
+
                     # Retry with fallback model
                     response = await acompletion(
                         model=fallback_full, messages=params["messages"], **api_params
@@ -643,15 +649,15 @@ class LLMProvider:
         )
 
         # Ensure we got a streaming response
-        assert isinstance(
-            stream_response, CustomStreamWrapper
-        ), f"Expected streaming response but got: {type(stream_response)}"
+        assert isinstance(stream_response, CustomStreamWrapper), (
+            f"Expected streaming response but got: {type(stream_response)}"
+        )
 
         async for chunk in stream_response:
             choice = chunk.choices[0]
-            assert isinstance(
-                choice, StreamingChoices
-            ), f"Expected StreamChoices but got {type(choice)}"
+            assert isinstance(choice, StreamingChoices), (
+                f"Expected StreamChoices but got {type(choice)}"
+            )
             assert choice.delta.content is not None, "Message content is None"
 
             yield choice.delta.content
@@ -807,12 +813,12 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
         raise ImportError(
             "litellm is not installed. Run 'poetry add litellm' or 'pip install litellm'"
         )
-    # Check for API keys 
+    # Check for API keys
     if not settings.skip_import_check:
         from botspot.utils.llm_key_check import get_available_providers
-        
+
         available_providers = get_available_providers()
-        
+
         if available_providers:
             logger.debug(f"✅ Available LLM providers: {', '.join(available_providers)}")
         else:

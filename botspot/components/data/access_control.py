@@ -49,7 +49,9 @@ class AccessControl:
                 from botspot.components.data.mongo_database import get_database
 
                 db = get_database()
-                logger.info(f"Initializing access_control with collection {settings.mongo_collection}")
+                logger.info(
+                    f"Initializing access_control with collection {settings.mongo_collection}"
+                )
                 collection = db.get_collection(settings.mongo_collection)
                 self._mongo_available = True
             except Exception as e:
@@ -164,9 +166,7 @@ class AccessControl:
             return admins_from_db
 
         admins_from_env = self._get_from_env(ADMINS_KEY)
-        logger.info(
-            f"No admins data in MongoDB, initializing from environment: {admins_from_env}"
-        )
+        logger.info(f"No admins data in MongoDB, initializing from environment: {admins_from_env}")
 
         if self.mongo_available and admins_from_env:
             await self._save_to_db(ADMINS_KEY, admins_from_env)
@@ -383,9 +383,9 @@ def initialize(settings: AccessControlSettings) -> AccessControl:
     add_command("add_friend", "Add a friend to the bot (admin only)", visibility=visibility)(
         add_friend_command_handler
     )
-    add_command("remove_friend", "Remove a friend from the bot (admin only)", visibility=visibility)(
-        remove_friend_command_handler
-    )
+    add_command(
+        "remove_friend", "Remove a friend from the bot (admin only)", visibility=visibility
+    )(remove_friend_command_handler)
     add_command("list_friends", "List all friends (admin only)", visibility=visibility)(
         list_friends_command_handler
     )

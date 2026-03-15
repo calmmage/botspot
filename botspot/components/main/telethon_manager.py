@@ -301,13 +301,17 @@ def setup_dispatcher(dp: Dispatcher) -> None:
         assert message.from_user
         await telethon_manager.setup_client(message.from_user.id, state=state)
 
-    @add_command("setup_telethon_force", "Force new Telethon client setup", visibility=Visibility.ADMIN_ONLY)
+    @add_command(
+        "setup_telethon_force", "Force new Telethon client setup", visibility=Visibility.ADMIN_ONLY
+    )
     @dp.message(Command("setup_telethon_force"), AdminFilter())
     async def setup_telethon_force_command(message: Message, state: FSMContext) -> None:
         assert message.from_user
         await telethon_manager.setup_client(message.from_user.id, state=state, force=True)
 
-    @add_command("check_telethon", "Check if Telethon client is active", visibility=Visibility.ADMIN_ONLY)
+    @add_command(
+        "check_telethon", "Check if Telethon client is active", visibility=Visibility.ADMIN_ONLY
+    )
     @dp.message(Command("check_telethon"), AdminFilter())
     async def check_telethon_handler(message: Message) -> None:
         """Check if user has an active Telethon client"""

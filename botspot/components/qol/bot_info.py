@@ -46,7 +46,7 @@ async def bot_info_handler(message: Message):
 
     # Build response
     response = [
-        f"🤖 Bot Information",
+        "🤖 Bot Information",
         f"Botspot Version: {botspot.__version__}",
         # todo: add main app version from something like __main__.version if available
         f"Uptime: {uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds // 60) % 60}m",
@@ -62,7 +62,7 @@ async def bot_info_handler(message: Message):
 
     if settings.bot_info.show_detailed_settings:
         # model dump
-        response.append(f"\n📊 Detailed Settings:")
+        response.append("\n📊 Detailed Settings:")
         response.append(settings.model_dump_json(indent=2))
 
     await message.answer("\n".join(response))

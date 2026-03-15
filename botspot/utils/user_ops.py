@@ -185,6 +185,7 @@ async def get_user_record_enriched(user_key: Union[str, int]) -> UserRecord:
             #     record.phone = user.phone
 
         return record
+
     result = await _user_record_cache.get_or_set(user_key, _get_record)
     assert isinstance(result, UserRecord)
     return result
@@ -217,14 +218,14 @@ def get_user_record(user_key: Union[str, int]) -> UserRecord:
             ur = uc.get_user(int(user_key))
             assert ur is not None
             return UserRecord(user_id=ur.user_id, username=ur.username)
-        except:
+        except Exception:
             return UserRecord(user_id=int(user_key))
     if user_key.startswith("@"):
         try:
             ur = uc.get_user_by_username(user_key.lstrip("@"))
             assert ur is not None
             return UserRecord(username=ur.username, user_id=ur.user_id)
-        except:
+        except Exception:
             return UserRecord(username=user_key.lstrip("@"))
     return UserRecord(username=user_key)
 
@@ -299,9 +300,7 @@ async def get_username_from_message(
 
     for attempt in range(max_retries):
         # Ask user for username or forward
-        logger.info(
-            f"Asking for username (attempt {attempt + 1}/{max_retries})..."
-        )
+        logger.info(f"Asking for username (attempt {attempt + 1}/{max_retries})...")
         response_message: Optional[Message] = await ask_user_raw(
             chat_id=chat_id,
             question=prompt,
@@ -330,9 +329,7 @@ async def get_username_from_message(
                 "- Forward a message from that user"
             )
         else:
-            logger.warning(
-                f"Failed to extract username after {max_retries} attempts"
-            )
+            logger.warning(f"Failed to extract username after {max_retries} attempts")
             return None
 
     return None
@@ -360,21 +357,15 @@ def _extract_username_from_message(message: Message) -> Optional[str]:  # type: 
 
         if user.username:
             username = f"@{user.username}"
-            logger.info(
-                f"Extracted username from forwarded message: {username}"
-            )
+            logger.info(f"Extracted username from forwarded message: {username}")
             return username
         elif user.id:
             # No username, use user ID
             user_id = str(user.id)
-            logger.info(
-                f"Extracted user ID from forwarded message: {user_id}"
-            )
+            logger.info(f"Extracted user ID from forwarded message: {user_id}")
             return user_id
         else:
-            logger.warning(
-                "Forwarded message from user without username or ID"
-            )
+            logger.warning("Forwarded message from user without username or ID")
             return None
 
     # Method 2: Extract from text message
@@ -395,9 +386,7 @@ def _extract_username_from_message(message: Message) -> Optional[str]:  # type: 
         else:
             # Username without @ prefix
             username = f"@{text}"
-            logger.info(
-                f"Extracted username from text (added @ prefix): {username}"
-            )
+            logger.info(f"Extracted username from text (added @ prefix): {username}")
             return username
 
     logger.warning("Could not extract username from message")

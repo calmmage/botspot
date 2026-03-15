@@ -67,7 +67,7 @@ async def simple_user_cache_middleware(
                     last_name=message.from_user.last_name,
                 )
                 suc.add_user(user_record)
-    except:
+    except Exception:
         # Handle the exception if needed
         pass
     return await handler(event, data)

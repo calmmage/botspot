@@ -22,13 +22,13 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
 
 test:
-	uv run pytest tests/ --cov=src --cov-report=term --cov-fail-under=50
+	uv run pytest tests/ --cov=botspot --cov-report=term --cov-fail-under=50
 
 check:
-	-uv run ruff check src
-	-uv run ruff format --check src
-	-uv run vulture --min-confidence 80 src
-	-uv run pyright src
+	-uv run ruff check botspot
+	-uv run ruff format --check botspot
+	-uv run vulture --min-confidence 80 botspot
+	-uv run pyright botspot
 
 fix:
 	-uv run ruff check --fix .

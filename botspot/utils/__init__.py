@@ -20,7 +20,6 @@ from .user_ops import (
 from .formatting_utils import markdown_to_html
 
 
-
 ...
 # Then import deps_getters which depends on component functions
 from .deps_getters import (

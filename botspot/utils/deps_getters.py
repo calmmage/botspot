@@ -44,9 +44,9 @@ def get_bot() -> "Bot":
 
     deps = get_dependency_manager()
     bot: "Bot" = deps.bot
-    assert (
-        bot is not None
-    ), "Bot is not initialized. To enable pass bot instance to BotManager() constructor"
+    assert bot is not None, (
+        "Bot is not initialized. To enable pass bot instance to BotManager() constructor"
+    )
     return bot
 
 
@@ -55,9 +55,9 @@ def get_dispatcher() -> "Dispatcher":
 
     deps = get_dependency_manager()
     dispatcher: "Dispatcher" = deps.dispatcher
-    assert (
-        dispatcher is not None
-    ), "Dispatcher is not initialized. To enable pass dispatcher instance to BotManager() constructor"
+    assert dispatcher is not None, (
+        "Dispatcher is not initialized. To enable pass dispatcher instance to BotManager() constructor"
+    )
     return dispatcher
 
 

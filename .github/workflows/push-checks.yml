@@ -21,7 +21,7 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run Pyright type checker
-        run: uv run pyright src
+        run: uv run pyright botspot
         continue-on-error: true
 
   tests:

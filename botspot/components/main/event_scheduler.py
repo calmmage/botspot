@@ -30,9 +30,9 @@ def get_scheduler() -> "AsyncIOScheduler":
 
     deps = get_dependency_manager()
     scheduler: "AsyncIOScheduler" = deps.scheduler
-    assert (
-        scheduler is not None
-    ), "Scheduler is not initialized. To enable set ENABLE_SCHEDULER or pass enable_scheduler=True into botspot config"
+    assert scheduler is not None, (
+        "Scheduler is not initialized. To enable set ENABLE_SCHEDULER or pass enable_scheduler=True into botspot config"
+    )
     return scheduler
 
 
