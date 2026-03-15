@@ -107,7 +107,7 @@ async def compose_messages(
         try:
             text += await self._extract_message_text(message)
             text += separator
-        except:
+        except Exception:
             self.logger.exception("Failed to extract message text")
             text += f"Failed to extract message text\n{separator}"
     return text

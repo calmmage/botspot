@@ -14,7 +14,7 @@ except PackageNotFoundError:
     __version__ = toml.load(path)["project"]["version"]
     del toml, Path, path
 
-from . import commands_menu, llm_provider, trial_mode, user_data, user_interactions
+from . import commands_menu, trial_mode, user_data, user_interactions
 from .components.data import access_control, mongo_database
 from .components.data.access_control import add_friend, get_friends, remove_friend
 from .components.main import event_scheduler, telethon_manager

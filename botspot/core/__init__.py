@@ -1,1 +1,1 @@
-from .dependency_manager import get_dependency_manager
+from .dependency_manager import get_dependency_manager as get_dependency_manager

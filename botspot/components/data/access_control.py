@@ -49,7 +49,9 @@ class AccessControl:
                 from botspot.components.data.mongo_database import get_database
 
                 db = get_database()
-                logger.info(f"Initializing access_control with collection {settings.mongo_collection}")
+                logger.info(
+                    f"Initializing access_control with collection {settings.mongo_collection}"
+                )
                 collection = db.get_collection(settings.mongo_collection)
                 self._mongo_available = True
             except Exception as e:
@@ -108,6 +110,14 @@ class AccessControl:
             return deps.botspot_settings.admins
         return []
 
+    def get_friends_cached(self) -> Optional[List[str]]:
+        """Sync access to cached friends list. None if not yet loaded."""
+        return self._friends_cache
+
+    def get_admins_cached(self) -> Optional[List[str]]:
+        """Sync access to cached admins list. None if not yet loaded."""
+        return self._admins_cache
+
     async def get_friends(self) -> List[str]:
         """Get friends list, preferring MongoDB over environment variables."""
         if self._friends_cache is not None:
@@ -156,9 +166,7 @@ class AccessControl:
             return admins_from_db
 
         admins_from_env = self._get_from_env(ADMINS_KEY)
-        logger.info(
-            f"No admins data in MongoDB, initializing from environment: {admins_from_env}"
-        )
+        logger.info(f"No admins data in MongoDB, initializing from environment: {admins_from_env}")
 
         if self.mongo_available and admins_from_env:
             await self._save_to_db(ADMINS_KEY, admins_from_env)
@@ -343,6 +351,18 @@ def setup_dispatcher(dp):
     dp.message.register(remove_friend_command_handler, Command("remove_friend"), AdminFilter())
     dp.message.register(list_friends_command_handler, Command("list_friends"), AdminFilter())
 
+    async def _warm_cache():
+        """Populate access_control caches on startup so sync is_friend/is_admin work."""
+        try:
+            ac = get_access_control()
+            await ac.get_friends()
+            await ac.get_admins()
+            logger.info("Access control caches warmed")
+        except Exception as e:
+            logger.warning(f"Failed to warm access control caches: {e}")
+
+    dp.startup.register(_warm_cache)
+
     return dp
 
 
@@ -363,9 +383,9 @@ def initialize(settings: AccessControlSettings) -> AccessControl:
     add_command("add_friend", "Add a friend to the bot (admin only)", visibility=visibility)(
         add_friend_command_handler
     )
-    add_command("remove_friend", "Remove a friend from the bot (admin only)", visibility=visibility)(
-        remove_friend_command_handler
-    )
+    add_command(
+        "remove_friend", "Remove a friend from the bot (admin only)", visibility=visibility
+    )(remove_friend_command_handler)
     add_command("list_friends", "List all friends (admin only)", visibility=visibility)(
         list_friends_command_handler
     )

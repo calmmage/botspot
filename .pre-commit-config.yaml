@@ -4,9 +4,10 @@ repos:
     hooks:
       - id: nbstripout
         files: \.ipynb$
-        stages: [pre-commit]
+        stages: [ post-commit ]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.19.0
     hooks:
       - id: pyupgrade
+        stages: [ post-commit ]

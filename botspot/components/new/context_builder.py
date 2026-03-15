@@ -36,18 +36,15 @@ Decisions:
 
 from typing import TYPE_CHECKING
 
+from pydantic_settings import BaseSettings
+
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
+    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
     from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
 
 logger = get_logger()
-from typing import TYPE_CHECKING
-
-from pydantic_settings import BaseSettings
-
-if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
 
 
 class ContextBuilderSettings(BaseSettings):
