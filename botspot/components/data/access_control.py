@@ -14,7 +14,7 @@ from botspot.utils.internal import get_logger
 from pydantic_settings import BaseSettings
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection
+    from pymongo.asynchronous.collection import AsyncCollection
 
 logger = get_logger()
 
@@ -39,7 +39,7 @@ class AccessControl:
     """Manages persistent friends and admins lists with MongoDB support."""
 
     def __init__(
-        self, settings: AccessControlSettings, collection: Optional["AsyncIOMotorCollection"] = None
+        self, settings: AccessControlSettings, collection: Optional["AsyncCollection"] = None
     ):
         self.settings = settings
         self._mongo_available = None

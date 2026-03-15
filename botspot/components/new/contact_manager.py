@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from pydantic_settings import BaseSettings
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
 
 
 class ContactManagerSettings(BaseSettings):

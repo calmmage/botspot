@@ -21,7 +21,7 @@ from pydantic_settings import BaseSettings
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
 
 logger = get_logger()
 
@@ -58,7 +58,7 @@ class BoundChatRecord(BaseModel):
 
 class ChatBinder:
     def __init__(
-        self, settings: ChatBinderSettings, collection: Optional["AsyncIOMotorCollection"] = None
+        self, settings: ChatBinderSettings, collection: Optional["AsyncCollection"] = None
     ):
         """Initialize the ChatBinder.
 

@@ -14,7 +14,7 @@ from botspot.utils.deps_getters import get_database
 from botspot.utils.send_safe import send_safe
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
 
 
 class CommandFilterMode(str, Enum):
@@ -52,7 +52,7 @@ class AutoArchive(BaseMiddleware):
         self._warning_sent: Set[int] = set()
         self._collection = None
 
-    async def _get_collection(self) -> "AsyncIOMotorCollection":
+    async def _get_collection(self) -> "AsyncCollection":
         if self._collection is None:
             db = get_database()
             self._collection = db["auto_archive_intro"]

@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorClient  # noqa: F401
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
+    from pymongo import AsyncMongoClient  # noqa: F401
+    from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
 
 logger = get_logger()
 
@@ -28,7 +28,7 @@ def setup_dispatcher(dp):
     return dp
 
 
-def get_database() -> "AsyncIOMotorDatabase":
+def get_database() -> "AsyncDatabase":
     """Get MongoDB database instance from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
 
@@ -38,7 +38,7 @@ def get_database() -> "AsyncIOMotorDatabase":
     return db
 
 
-def get_mongo_client() -> "AsyncIOMotorClient":
+def get_mongo_client() -> "AsyncMongoClient":
     """Get MongoDB client instance from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
 
@@ -52,34 +52,34 @@ def get_mongo_client() -> "AsyncIOMotorClient":
 
 def initialize(
     settings: MongoDatabaseSettings,
-) -> Tuple[Optional["AsyncIOMotorClient"], Optional["AsyncIOMotorDatabase"]]:
+) -> Tuple[Optional["AsyncMongoClient"], Optional["AsyncDatabase"]]:
     """Initialize MongoDB connection and return both client and database.
 
     Args:
         settings: MongoDB settings
 
     Returns:
-        Tuple of (AsyncIOMotorClient, AsyncIOMotorDatabase) or (None, None) if disabled
+        Tuple of (AsyncMongoClient, AsyncDatabase) or (None, None) if disabled
 
     Raises:
-        ImportError: If motor is not installed
+        ImportError: If pymongo is not installed
     """
     # Check if MongoDB is enabled
     if not settings.enabled:
         logger.info("MongoDB is disabled")
         return None, None
 
-    # Check if motor is installed
+    # Check if pymongo is installed
     try:
-        from motor.motor_asyncio import AsyncIOMotorClient
+        from pymongo import AsyncMongoClient
     except ImportError:
-        logger.error("motor package is not installed. Please install it to use MongoDB.")
+        logger.error("pymongo package is not installed. Please install it to use MongoDB.")
         raise ImportError(
-            "motor package is not installed. Run 'poetry add motor' or 'pip install motor'"
+            "pymongo package is not installed. Run 'uv add pymongo' or 'pip install pymongo'"
         )
 
     # Initialize client and database
-    client = AsyncIOMotorClient(settings.conn_str.get_secret_value())
+    client = AsyncMongoClient(settings.conn_str.get_secret_value())
     db = client[settings.database]
     logger.info(f"MongoDB client initialized. Database: {settings.database}")
     return client, db

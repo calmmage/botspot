@@ -3,14 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Mock the MongoDB client
-pytest.importorskip("motor.motor_asyncio")
 pytest.importorskip("pymongo")
 
 
 # Mock MongoDB connection
 @pytest.fixture(autouse=True)
 def mock_mongo():
-    with patch("motor.motor_asyncio.AsyncIOMotorClient") as mock_client:
+    with patch("pymongo.AsyncMongoClient") as mock_client:
         mock_db = MagicMock()
         mock_client.return_value.__getitem__.return_value = mock_db
         yield mock_client
