@@ -1,6 +1,6 @@
 [project]
 name = "botspot"
-version = "0.10.36"
+version = "0.10.37"
 description = ""
 readme = "README.md"
 authors = [

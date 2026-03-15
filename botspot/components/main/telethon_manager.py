@@ -288,26 +288,27 @@ def setup_dispatcher(dp: Dispatcher) -> None:
     from aiogram.fsm.context import FSMContext
     from aiogram.types import Message
 
-    from botspot.commands_menu import add_command
+    from botspot.commands_menu import Visibility, add_command
     from botspot.core.dependency_manager import get_dependency_manager
+    from botspot.utils.admin_filter import AdminFilter
 
     deps = get_dependency_manager()
     telethon_manager = deps.telethon_manager
 
-    @add_command("setup_telethon", "Setup Telethon user client", visibility="hidden")
-    @dp.message(Command("setup_telethon"))
+    @add_command("setup_telethon", "Setup Telethon user client", visibility=Visibility.ADMIN_ONLY)
+    @dp.message(Command("setup_telethon"), AdminFilter())
     async def setup_telethon_command(message: Message, state: FSMContext) -> None:
         assert message.from_user
         await telethon_manager.setup_client(message.from_user.id, state=state)
 
-    @add_command("setup_telethon_force", "Force new Telethon client setup", visibility="hidden")
-    @dp.message(Command("setup_telethon_force"))
+    @add_command("setup_telethon_force", "Force new Telethon client setup", visibility=Visibility.ADMIN_ONLY)
+    @dp.message(Command("setup_telethon_force"), AdminFilter())
     async def setup_telethon_force_command(message: Message, state: FSMContext) -> None:
         assert message.from_user
         await telethon_manager.setup_client(message.from_user.id, state=state, force=True)
 
-    @add_command("check_telethon", "Check if Telethon client is active", visibility="hidden")
-    @dp.message(Command("check_telethon"))
+    @add_command("check_telethon", "Check if Telethon client is active", visibility=Visibility.ADMIN_ONLY)
+    @dp.message(Command("check_telethon"), AdminFilter())
     async def check_telethon_handler(message: Message) -> None:
         """Check if user has an active Telethon client"""
         assert message.from_user

@@ -108,6 +108,14 @@ class AccessControl:
             return deps.botspot_settings.admins
         return []
 
+    def get_friends_cached(self) -> Optional[List[str]]:
+        """Sync access to cached friends list. None if not yet loaded."""
+        return self._friends_cache
+
+    def get_admins_cached(self) -> Optional[List[str]]:
+        """Sync access to cached admins list. None if not yet loaded."""
+        return self._admins_cache
+
     async def get_friends(self) -> List[str]:
         """Get friends list, preferring MongoDB over environment variables."""
         if self._friends_cache is not None:
@@ -342,6 +350,18 @@ def setup_dispatcher(dp):
     dp.message.register(add_friend_command_handler, Command("add_friend"), AdminFilter())
     dp.message.register(remove_friend_command_handler, Command("remove_friend"), AdminFilter())
     dp.message.register(list_friends_command_handler, Command("list_friends"), AdminFilter())
+
+    async def _warm_cache():
+        """Populate access_control caches on startup so sync is_friend/is_admin work."""
+        try:
+            ac = get_access_control()
+            await ac.get_friends()
+            await ac.get_admins()
+            logger.info("Access control caches warmed")
+        except Exception as e:
+            logger.warning(f"Failed to warm access control caches: {e}")
+
+    dp.startup.register(_warm_cache)
 
     return dp
 

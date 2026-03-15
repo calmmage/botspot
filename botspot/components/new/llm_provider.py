@@ -289,16 +289,12 @@ class LLMProvider:
             assert single_user is not None, "Single user mode is enabled but user is not set"
             return await compare_users_async(user, single_user)
 
-        # Check if user is admin or friend
+        # Check if user is admin or friend (checks env vars + access_control)
         if user is not None:
-            # Use enriched data for comparison if possible
-            for admin in deps.botspot_settings.admins:
-                if await compare_users_async(user, admin):
-                    return True
+            from botspot.utils.user_ops import is_admin, is_friend
 
-            for friend in deps.botspot_settings.friends:
-                if await compare_users_async(user, friend):
-                    return True
+            if is_admin(user) or is_friend(user):
+                return True
 
         return False
 

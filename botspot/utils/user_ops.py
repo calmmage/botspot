@@ -234,14 +234,30 @@ def is_admin(user: UserLike) -> bool:
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    return any([compare_users(user, admin) for admin in deps.botspot_settings.admins])
+    # Check env vars (always available)
+    if any(compare_users(user, admin) for admin in deps.botspot_settings.admins):
+        return True
+    # Check access_control cache (if enabled and populated)
+    if deps.access_control is not None:
+        cached = deps.access_control.get_admins_cached()
+        if cached is not None and any(compare_users(user, a) for a in cached):
+            return True
+    return False
 
 
 def is_friend(user: UserLike) -> bool:
     from botspot.core.dependency_manager import get_dependency_manager
 
     deps = get_dependency_manager()
-    return any([compare_users(user, friend) for friend in deps.botspot_settings.friends])
+    # Check env vars (always available)
+    if any(compare_users(user, friend) for friend in deps.botspot_settings.friends):
+        return True
+    # Check access_control cache (if enabled and populated)
+    if deps.access_control is not None:
+        cached = deps.access_control.get_friends_cached()
+        if cached is not None and any(compare_users(user, f) for f in cached):
+            return True
+    return False
 
 
 async def get_username_from_message(

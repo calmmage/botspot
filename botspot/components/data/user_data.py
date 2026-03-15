@@ -2,13 +2,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generic, Optional, Type, TypeVar
 
-from aiogram import BaseMiddleware, Dispatcher, Router
-from aiogram.filters import Command
-from aiogram.types import Message, TelegramObject
+from aiogram import BaseMiddleware, Dispatcher
+from aiogram.types import TelegramObject
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
-from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
@@ -319,7 +317,6 @@ class UserDataSettings(BaseSettings):
     middleware_enabled: bool = True
     collection: str = "botspot_users"
     cache_ttl: int = 300  # Cache TTL in seconds (5 minutes by default)
-    user_types_enabled: bool = True  # New setting
 
     class Config:
         env_prefix = "BOTSPOT_USER_DATA_"
@@ -412,35 +409,6 @@ def setup_dispatcher(dp: Dispatcher, **kwargs):
 
     if settings.middleware_enabled:
         dp.message.middleware(UserTrackingMiddleware(cache_ttl=settings.cache_ttl))
-
-    if settings.user_types_enabled:
-        from botspot import commands_menu as bot_commands_menu
-        from botspot.commands_menu import Visibility
-
-        router = Router(name="user_data")
-        router.message.filter(AdminFilter())  # Only admins can use these commands
-
-        @bot_commands_menu.add_command("make_friend", visibility=Visibility.ADMIN_ONLY)
-        @router.message(Command("make_friend"))
-        async def make_friend_cmd(message: Message):
-            """Make a user a friend (admin only command)"""
-            if not message.reply_to_message:
-                await message.answer("Reply to a user's message to make them a friend")
-                return
-
-            assert message.reply_to_message.from_user is not None
-            user_id = message.reply_to_message.from_user.id
-            # Direct access to dependency_manager to avoid circular imports
-            from botspot.core.dependency_manager import get_dependency_manager
-
-            user_manager = get_dependency_manager().user_manager
-
-            if await user_manager.make_friend(user_id):
-                await message.answer(f"User {user_id} is now a friend!")
-            else:
-                await message.answer("Failed to update user type")
-
-        dp.include_router(router)
 
     async def sync_types():
         from botspot.core.dependency_manager import get_dependency_manager
