@@ -3,7 +3,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generic, Optional, Type, TypeVar
 
 from aiogram import BaseMiddleware, Dispatcher
-from aiogram.types import TelegramObject
+from aiogram.types import Message, TelegramObject
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 

@@ -135,7 +135,7 @@ if __name__ == "__main__":
         dp.message.register(message_handler)
 
         # Simulate a message from an unauthorized user
-        msg = Message(
+        _msg = Message(
             chat={"id": 67890}, from_user=User(id=67890, is_bot=False, first_name="Unauthorized")
         )
         # This handler won't be called due to single_user_mode_middleware

@@ -73,8 +73,6 @@ def get_commands_by_visibility(
     if settings is None:
         settings = BotCommandsMenuSettings()
 
-    result = []
-
     # Handle based on display mode
     if settings.display_mode == GroupDisplayMode.NESTED:
         # NESTED MODE: First by visibility, then by group

@@ -1,13 +1,13 @@
-from botspot.utils.internal import get_logger
-
-logger = get_logger()
-
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+
+from botspot.utils.internal import get_logger
+
+logger = get_logger()
 
 # Placeholder for database connection (adjust as needed)
 

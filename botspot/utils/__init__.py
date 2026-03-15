@@ -20,9 +20,8 @@ from .user_ops import (
 from .formatting_utils import markdown_to_html
 
 
-...
 # Then import deps_getters which depends on component functions
-from .deps_getters import (
+from .deps_getters import (  # noqa: E402
     get_bot,
     get_chat_fetcher,
     get_database,
