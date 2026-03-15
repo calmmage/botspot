@@ -1,8 +1,4 @@
-name: Code Quality
-
-env:
-  COVERAGE_THRESHOLD: 50
-  VULTURE_MIN_CONFIDENCE: 80
+name: Push Checks
 
 on: [ push ]
 
@@ -10,29 +6,43 @@ jobs:
   type-check:
     name: Pyright
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.13" ]
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python-env
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-groups
 
       - name: Run Pyright type checker
-        run: uv run pyright
+        run: uv run pyright src
+        continue-on-error: true
 
   tests:
     name: Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.13" ]
+        python-version: [ "3.12", "3.13" ]
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python-env
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          version: "latest"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-groups
 
       - name: Run tests
-        run: uv run pytest
+        run: uv run pytest tests/

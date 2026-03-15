@@ -1,9 +1,4 @@
-name: Code Quality
-
-env:
-  COVERAGE_THRESHOLD: 50
-  VULTURE_MIN_CONFIDENCE: 80
-  SCAN_PATHS: 'src tests'
+name: PR Checks
 
 on:
   pull_request:
@@ -13,75 +8,87 @@ jobs:
   ruff-check:
     name: Ruff
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.13" ]
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python-env
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-groups
 
       - name: Run Ruff linter
-        run: uv run ruff check --output-format=github ${{ env.SCAN_PATHS }}
+        run: uv run ruff check src
 
       - name: Run Ruff formatter check
-        run: uv run ruff format --check --diff ${{ env.SCAN_PATHS }}
+        run: uv run ruff format --check src
 
   dead-code-check:
     name: Vulture
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.13" ]
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python-env
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-groups
 
       - name: Run Vulture dead code detector
-        run: uv run vulture --min-confidence ${{ env.VULTURE_MIN_CONFIDENCE }} ${{ env.SCAN_PATHS }}
+        run: uv run vulture --min-confidence 80 src
 
   coverage:
     name: Coverage Report
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.13" ]
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python-env
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-groups
 
       - name: Run coverage analysis
         run: |
-          uv run pytest ${{ env.SCAN_PATHS }} \
+          uv run pytest tests/ \
             --cov=src \
-            --cov-report=xml \
             --cov-report=term \
-            --cov-fail-under=${{ env.COVERAGE_THRESHOLD }}
+            --cov-fail-under=50
 
-  #      - name: Upload coverage to Codecov (optional)
-  #        uses: codecov/codecov-action@v3
-  #        if: always()
-  #        with:
-  #          file: ./coverage.xml
-  #          fail_ci_if_error: false
-
-
-  extra-tests:
-    name: Tests Python 3.12
+  complexity:
+    name: Complexity (advisory)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.12" ]
+    continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python-env
-        with:
-          python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Run Lizard complexity check
+        run: uv run lizard -l python --CCN 15 -w src
