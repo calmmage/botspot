@@ -135,6 +135,10 @@ class BotManager(metaclass=Singleton):
         if self.settings.bot_info.enabled:
             bot_info.setup_dispatcher(dp)
 
+        self._setup_optional_components(dp)
+
+    def _setup_optional_components(self, dp: Dispatcher):
+        """Setup optional/feature components on the dispatcher."""
         if self.settings.event_scheduler.enabled:
             event_scheduler.setup_dispatcher(dp)
 

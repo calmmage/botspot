@@ -202,7 +202,6 @@ def require_tier(tier_name: str):
 
 async def _set_tier_handler(message: Message):
     """Admin command: /set_tier <user_id_or_username> <tier_name>"""
-    from botspot.utils.user_ops import get_username_from_command_or_dialog
 
     assert message.from_user is not None
     if message.text is None:

@@ -2,14 +2,12 @@
 Example usage of the telethon_manager component.
 """
 
-from aiogram import html
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from botspot.commands_menu import botspot_command
 from botspot.components.main.telethon_manager import get_telethon_manager
-from botspot.components.main.trial_mode import add_global_limit, add_user_limit
 from examples.base_bot import App, main, router
 
 
