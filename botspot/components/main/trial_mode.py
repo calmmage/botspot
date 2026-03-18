@@ -8,6 +8,7 @@ from aiogram import Dispatcher
 from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -63,7 +64,11 @@ def add_user_limit(limit=3, period=24 * 60 * 60):
                     remaining_seconds = int(user_func_usage[0] + period - current_time)
                     remaining_time = format_remaining_time(remaining_seconds)
                     await message.answer(
-                        f"You have reached your usage limit for the {func_name} command. Reset in: {remaining_time}."
+                        t(
+                            "trial_mode.limit_reached",
+                            func_name=func_name,
+                            remaining_time=remaining_time,
+                        )
                     )
                     return
 
@@ -96,7 +101,11 @@ def add_global_limit(limit=100, period=24 * 60 * 60):
                 remaining_seconds = int(global_usage[0] + period - current_time)
                 remaining_time = format_remaining_time(remaining_seconds)
                 await message.answer(
-                    f"The {func.__name__} command has reached its global usage limit. Please try again later. Reset in: {remaining_time}."
+                    t(
+                        "trial_mode.global_limit",
+                        func_name=func.__name__,
+                        remaining_time=remaining_time,
+                    )
                 )
                 return
 
@@ -137,9 +146,7 @@ class UsageLimitMiddleware:
             remaining_seconds = int(self.global_usage[0] + self.global_period - current_time)
             remaining_time = format_remaining_time(remaining_seconds)
 
-            await message.answer(
-                f"The bot has reached its global usage limit. Please try again later. Reset in: {remaining_time}."
-            )
+            await message.answer(t("trial_mode.bot_limit", remaining_time=remaining_time))
             return
 
         if user_id and self.limit_per_user:
@@ -155,9 +162,7 @@ class UsageLimitMiddleware:
                     self.user_usage[user_id][0] + self.period_per_user - current_time
                 )
                 remaining_time = format_remaining_time(remaining_seconds)
-                await message.answer(
-                    f"You have reached your personal usage limit. Please try again later. Reset in: {remaining_time}."
-                )
+                await message.answer(t("trial_mode.personal_limit", remaining_time=remaining_time))
                 return
 
             self.user_usage[user_id].append(current_time)

@@ -15,7 +15,7 @@ from botspot.components.main import (
     telethon_manager,
     trial_mode,
 )
-from botspot.components.middlewares import error_handler, simple_user_cache
+from botspot.components.middlewares import error_handler, i18n, simple_user_cache
 from botspot.components.new import (
     auto_archive,
     chat_binder,
@@ -92,6 +92,12 @@ class BotManager(metaclass=Singleton):
 
     def setup_dispatcher(self, dp: Dispatcher):
         """Setup dispatcher with components"""
+        # i18n middleware must be first so language is set before any component sends text
+        if self.settings.i18n.enabled:
+            dp.update.middleware(
+                i18n.I18nMiddleware(default_locale=self.settings.i18n.default_locale)
+            )
+
         # Remove global bot check - each component handles its own requirements
         if self.settings.user_data.enabled:
             user_data.setup_dispatcher(dp, **self.settings.user_data.model_dump())

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from aiogram.filters import Command
 from aiogram.types import Message
+from botspot.components.middlewares.i18n import t
 from botspot.utils.admin_filter import AdminFilter
 from botspot.utils.internal import get_logger
 from pydantic_settings import BaseSettings
@@ -276,18 +277,18 @@ async def add_friend_command_handler(message: Message):
     )
 
     if username is None:
-        await message.reply("❌ Failed to get username. Operation cancelled.")
+        await message.reply(t("access_control.add_friend_failed"))
         return
 
     try:
         success = await add_friend(username)
         if success:
-            await message.reply(f"✅ Successfully added {username} to friends list!")
+            await message.reply(t("access_control.add_friend_success", username=username))
         else:
-            await message.reply(f"ℹ️ {username} is already in the friends list.")
+            await message.reply(t("access_control.add_friend_already_exists", username=username))
     except Exception as e:
         logger.error(f"Error adding friend {username}: {e}")
-        await message.reply(f"❌ Error adding friend: {str(e)}")
+        await message.reply(t("access_control.add_friend_error", error=str(e)))
 
 
 async def remove_friend_command_handler(message: Message):
@@ -307,18 +308,18 @@ async def remove_friend_command_handler(message: Message):
     )
 
     if username is None:
-        await message.reply("❌ Failed to get username. Operation cancelled.")
+        await message.reply(t("access_control.remove_friend_failed"))
         return
 
     try:
         success = await remove_friend(username)
         if success:
-            await message.reply(f"✅ Successfully removed {username} from friends list!")
+            await message.reply(t("access_control.remove_friend_success", username=username))
         else:
-            await message.reply(f"ℹ️ {username} was not in the friends list.")
+            await message.reply(t("access_control.remove_friend_not_found", username=username))
     except Exception as e:
         logger.error(f"Error removing friend {username}: {e}")
-        await message.reply(f"❌ Error removing friend: {str(e)}")
+        await message.reply(t("access_control.remove_friend_error", error=str(e)))
 
 
 async def list_friends_command_handler(message: Message):
@@ -329,20 +330,20 @@ async def list_friends_command_handler(message: Message):
         friends = await get_friends()
 
         if not friends:
-            await message.reply("ℹ️ No friends in the list.")
+            await message.reply(t("access_control.list_friends_empty"))
             return
 
-        response = "<b>👥 Friends List:</b>\n\n"
+        response = t("access_control.list_friends_header")
         for i, friend in enumerate(friends, 1):
             response += f"{i}. {friend}\n"
 
-        response += f"\n<i>Total: {len(friends)} friends</i>"
+        response += t("access_control.list_friends_total", count=len(friends))
 
         await message.reply(response)
 
     except Exception as e:
         logger.error(f"Error listing friends: {e}")
-        await message.reply(f"❌ Error listing friends: {str(e)}")
+        await message.reply(t("access_control.list_friends_error", error=str(e)))
 
 
 def setup_dispatcher(dp):
