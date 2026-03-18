@@ -23,7 +23,6 @@ extras = [
     "apscheduler<4.0.0,>=3.10.4",
     "pymongo>=4.9",
     "litellm<2.0,>=1.63",
-    "motor<4.0.0,>=3.6.0",
     "telethon<2.0.0,>=1.38.1",
     "aioboto3<15.0.0,>=14.1.0",
     "mistune<4.0.0,>=3.1.3",
@@ -41,6 +40,7 @@ test = [
     "pyupgrade<4.0.0,>=3.20.0",
     "pyright<2.0.0,>=1.1.401",
     "ruff<1.0.0,>=0.11.12",
+    "lizard>=1.21.2",
 ]
 docs = [
     "mkdocs>=1.6",

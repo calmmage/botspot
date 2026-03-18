@@ -6,6 +6,7 @@ from aiogram.types import Message
 from pydantic_settings import BaseSettings
 
 # from dev.draft.easter_eggs.main import get_easter_egg
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -68,7 +69,7 @@ async def chat_handler(self, message: Message, app: MyApp):
                     await queue.put(message)
                 return
         # test: send user the message count
-        await message.answer(f"Received {len(messages)} messages")
+        await message.answer(t("multi_forward.message_count", count=len(messages)))
 
         text = await self.compose_messages(messages)
         if self.send_as_file:
@@ -144,20 +145,20 @@ async def set_send_as_file(self, message: Message, app: MyApp):
     text = self.strip_command(text)
     if text.lower() in ["0", "false", "no", "off", "disable"]:
         self.send_as_file = False
-        await message.answer("Send as file disabled")
+        await message.answer(t("multi_forward.send_as_file_disabled"))
     else:
         self.send_as_file = True
-        await message.answer("Send as file enabled")
+        await message.answer(t("multi_forward.send_as_file_enabled"))
 
 
 async def enable_send_as_file(self, message: Message, app: MyApp):
     self.send_as_file = True
-    await message.answer("Send as file enabled")
+    await message.answer(t("multi_forward.send_as_file_enabled"))
 
 
 async def disable_send_as_file(self, message: Message, app: MyApp):
     self.send_as_file = False
-    await message.answer("Send as file disabled")
+    await message.answer(t("multi_forward.send_as_file_disabled"))
 
 
 async def multi_forward_handler():

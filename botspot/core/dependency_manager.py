@@ -18,10 +18,8 @@ if TYPE_CHECKING:
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
-    from motor.motor_asyncio import (
-        AsyncIOMotorClient,  # noqa: F401
-        AsyncIOMotorDatabase,  # noqa: F401
-    )
+    from pymongo import AsyncMongoClient  # noqa: F401
+    from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
 
 
 class DependencyManager(metaclass=Singleton):
@@ -30,8 +28,8 @@ class DependencyManager(metaclass=Singleton):
         botspot_settings: Optional[BotspotSettings] = None,
         bot: Optional[Bot] = None,
         dispatcher: Optional[Dispatcher] = None,
-        mongo_client: Optional["AsyncIOMotorClient"] = None,
-        mongo_database: Optional["AsyncIOMotorDatabase"] = None,
+        mongo_client: Optional["AsyncMongoClient"] = None,
+        mongo_database: Optional["AsyncDatabase"] = None,
         **kwargs,
     ):
         self._botspot_settings = botspot_settings or BotspotSettings()
@@ -81,7 +79,7 @@ class DependencyManager(metaclass=Singleton):
         self._dispatcher = value
 
     @property
-    def mongo_client(self) -> "AsyncIOMotorClient":
+    def mongo_client(self) -> "AsyncMongoClient":
         if self._mongo_client is None:
             raise BotspotError("MongoDB client is not initialized")
         return self._mongo_client
@@ -91,7 +89,7 @@ class DependencyManager(metaclass=Singleton):
         self._mongo_client = value
 
     @property
-    def mongo_database(self) -> "AsyncIOMotorDatabase":
+    def mongo_database(self) -> "AsyncDatabase":
         if self._mongo_database is None:
             raise BotspotError("MongoDB database is not initialized")
         return self._mongo_database

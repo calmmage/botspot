@@ -15,7 +15,8 @@
 # from botspot.utils.internal import get_logger
 #
 # if TYPE_CHECKING:
-#     from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase  # noqa: F401
+#     from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
+#     from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
 #
 #     from botspot.core.botspot_settings import BotspotSettings
 #

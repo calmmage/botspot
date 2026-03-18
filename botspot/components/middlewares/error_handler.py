@@ -4,6 +4,7 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from pydantic_settings import BaseSettings
 
+from botspot.components.middlewares.i18n import t
 from botspot.utils.easter_eggs import get_easter_egg
 from botspot.utils.internal import get_logger
 
@@ -60,14 +61,14 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
         if error.user_message:
             response = error.user_message
         else:
-            response = "Oops, something went wrong :("
+            response = t("error_handler.something_went_wrong")
 
         if error.easter_eggs and settings.easter_eggs:
-            response += f"\nHere, take this instead: \n{get_easter_egg()}"
+            response += "\n" + t("error_handler.easter_egg", easter_egg=get_easter_egg())
     else:
-        response = "Oops, something went wrong :("
+        response = t("error_handler.something_went_wrong")
         if settings.easter_eggs:
-            response += f"\nHere, take this instead: \n{get_easter_egg()}"
+            response += "\n" + t("error_handler.easter_egg", easter_egg=get_easter_egg())
 
     if event.update.message:
         await answer_safe(event.update.message, response)

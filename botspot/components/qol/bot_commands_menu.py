@@ -8,6 +8,7 @@ from aiogram.types import BotCommand
 from deprecated import deprecated
 from pydantic_settings import BaseSettings
 
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -104,7 +105,7 @@ def _format_nested_commands(include_admin: bool, settings: BotCommandsMenuSettin
 
     # Process public commands by group
     if grouped_commands[Visibility.PUBLIC]:
-        result.append("📝 Public commands:")
+        result.append(t("commands_menu.public_header"))
         for group_name, cmds in sorted(grouped_commands[Visibility.PUBLIC].items()):
             result.append(f"\n{group_name.title()}:")
             for cmd, desc in sorted(cmds):
@@ -112,7 +113,7 @@ def _format_nested_commands(include_admin: bool, settings: BotCommandsMenuSettin
 
     # Process hidden commands by group
     if grouped_commands[Visibility.HIDDEN]:
-        result.append("\n🕵️ Hidden commands:")
+        result.append("\n" + t("commands_menu.hidden_header"))
         for group_name, cmds in sorted(grouped_commands[Visibility.HIDDEN].items()):
             result.append(f"\n{group_name.title()}:")
             for cmd, desc in sorted(cmds):
@@ -120,13 +121,13 @@ def _format_nested_commands(include_admin: bool, settings: BotCommandsMenuSettin
 
     # Process admin commands by group (if allowed)
     if include_admin and grouped_commands[Visibility.ADMIN_ONLY]:
-        result.append("\n👑 Admin commands:")
+        result.append("\n" + t("commands_menu.admin_header"))
         for group_name, cmds in sorted(grouped_commands[Visibility.ADMIN_ONLY].items()):
             result.append(f"\n{group_name.title()}:")
             for cmd, desc in sorted(cmds):
                 result.append(f"  /{cmd} - {desc}")
 
-    return "\n".join(result) if result else "No commands available"
+    return "\n".join(result) if result else t("commands_menu.no_commands")
 
 
 def _format_flat_commands(include_admin: bool, settings: BotCommandsMenuSettings) -> str:
@@ -136,9 +137,9 @@ def _format_flat_commands(include_admin: bool, settings: BotCommandsMenuSettings
 
     # Visibility-based fallback groups
     visibility_groups = {
-        Visibility.PUBLIC: "📝 Public commands",
-        Visibility.HIDDEN: "🕵️ Hidden commands",
-        Visibility.ADMIN_ONLY: "👑 Admin commands",
+        Visibility.PUBLIC: t("commands_menu.public_header"),
+        Visibility.HIDDEN: t("commands_menu.hidden_header"),
+        Visibility.ADMIN_ONLY: t("commands_menu.admin_header"),
     }
 
     # Process each command
@@ -181,7 +182,7 @@ def _format_flat_commands(include_admin: bool, settings: BotCommandsMenuSettings
         for cmd, desc, _ in sorted(groups[admin_group]):
             result.append(f"  /{cmd} - {desc}")
 
-    return "\n".join(result).strip() if result else "No commands available"
+    return "\n".join(result).strip() if result else t("commands_menu.no_commands")
 
 
 async def set_aiogram_bot_commands(bot: Bot, settings: BotCommandsMenuSettings = None):

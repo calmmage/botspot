@@ -10,8 +10,8 @@ from pydantic_settings import BaseSettings
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
-    from motor.motor_asyncio import AsyncIOMotorDatabase  # noqa: F401
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
+    from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
 
     from botspot.core.botspot_settings import BotspotSettings
 
@@ -57,7 +57,7 @@ class UserManager(Generic[UserT]):
 
     def __init__(
         self,
-        db: "AsyncIOMotorDatabase",
+        db: "AsyncDatabase",
         collection: str,
         user_class: Type[UserT],
         settings: Optional["BotspotSettings"] = None,
@@ -108,7 +108,7 @@ class UserManager(Generic[UserT]):
         return bool(await self.get_user(user_id))
 
     @property
-    def users_collection(self) -> "AsyncIOMotorCollection":
+    def users_collection(self) -> "AsyncCollection":
         return self.db[self.collection]
 
     async def get_users(self, query: Optional[dict] = None) -> list[UserT]:
@@ -337,20 +337,20 @@ def initialize(settings: "BotspotSettings", user_class=None) -> UserManager:
 
     Raises:
         RuntimeError: If MongoDB is not enabled or initialized
-        ImportError: If motor package is not installed
+        ImportError: If pymongo package is not installed
     """
-    # Check that motor is installed
+    # Check that pymongo is installed
     try:
-        import motor  # noqa: F401
+        import pymongo  # noqa: F401
     except ImportError:
         from botspot.utils.internal import get_logger
 
         logger = get_logger()
         logger.error(
-            "motor package is not installed. Please install it to use the user_data component."
+            "pymongo package is not installed. Please install it to use the user_data component."
         )
         raise ImportError(
-            "motor package is not installed. Please install it with 'poetry add motor' or 'pip install motor' to use the user_data component."
+            "pymongo package is not installed. Please install it with 'uv add pymongo' or 'pip install pymongo' to use the user_data component."
         )
 
     # Check that MongoDB component is enabled

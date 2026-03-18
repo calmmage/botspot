@@ -17,6 +17,7 @@ from typing import (
 )
 
 from aiogram.types import Chat, User
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 from botspot.utils.unsorted import (
     Attachment,
@@ -380,7 +381,6 @@ class LLMProvider:
         # Check if user is allowed to use LLM
         if not await self._check_user_allowed(user):
             # Get admin contact info for user message
-            user_message = "You don't have access to AI features"
             if deps.botspot_settings.admins and len(deps.botspot_settings.admins) > 0:
                 if len(deps.botspot_settings.admins) > 1:
                     admin_contact = (
@@ -390,7 +390,11 @@ class LLMProvider:
                     )
                 else:
                     admin_contact = "admin @" + deps.botspot_settings.admins[0].lstrip("@")
-                user_message += f", please write to {admin_contact} to request access"
+                user_message = t(
+                    "llm_provider.no_access_contact_admin", admin_contact=admin_contact
+                )
+            else:
+                user_message = t("llm_provider.no_access")
             raise LLMPermissionError(
                 message=f"User {user} is not allowed to use LLM features",
                 user_message=user_message,
@@ -763,7 +767,7 @@ def setup_dispatcher(dp):
         stats = await get_llm_usage_stats()
 
         if not stats:
-            await message.reply("No LLM usage statistics available.")
+            await message.reply(t("llm_provider.no_stats"))
             return
 
         # Format stats nicely

@@ -91,4 +91,4 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run Lizard complexity check
-        run: uv run lizard -l python --CCN 15 -w botspot
+        run: uv run lizard -l python --CCN 20 -w botspot

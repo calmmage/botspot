@@ -44,20 +44,6 @@ plugins:
 
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Components:
-    - Overview: components/index.md
-    - Data: components/data.md
-    - Features: components/features.md
-    - Main: components/main.md
-    - Middlewares: components/middlewares.md
-    - QoL: components/qol.md
-  - API Reference:
-    - Core: api/core.md
-    - Components: api/components.md
-    - Utils: api/utils.md
-  - Examples: examples.md
-  - Contributing: contributing.md
 
 markdown_extensions:
   - pymdownx.highlight:
