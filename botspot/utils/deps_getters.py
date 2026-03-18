@@ -19,6 +19,7 @@ from botspot.components.new.chat_fetcher import get_chat_fetcher
 from botspot.components.new.llm_provider import get_llm_provider
 from botspot.components.new.queue_manager import get_queue_manager
 from botspot.components.new.s3_storage import S3StorageProvider
+from botspot.components.new.subscription_manager import get_subscription_manager
 from botspot.utils.user_ops import to_user_record
 
 if TYPE_CHECKING:
@@ -120,4 +121,5 @@ __all__ = [
     "get_simple_user_cache",
     "get_dependency_manager",
     "get_botspot_settings",
+    "get_subscription_manager",
 ]

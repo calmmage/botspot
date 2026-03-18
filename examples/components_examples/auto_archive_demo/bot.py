@@ -1,9 +1,6 @@
 from aiogram import F
-from aiogram.filters import Command
 from aiogram.types import Message
 
-from botspot.commands_menu import botspot_command
-from botspot.components.new.chat_binder import list_user_bindings
 from botspot.utils.send_safe import send_safe
 from examples.base_bot import App, main, router
 

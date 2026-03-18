@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
+    from botspot.components.new.subscription_manager import SubscriptionManager
     from pymongo import AsyncMongoClient  # noqa: F401
     from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
 
@@ -48,6 +49,7 @@ class DependencyManager(metaclass=Singleton):
         self._s3_storage = None
         self._simple_user_cache = None
         self._access_control = None
+        self._subscription_manager = None
         self.__dict__.update(kwargs)
 
     @property
@@ -193,6 +195,16 @@ class DependencyManager(metaclass=Singleton):
     @simple_user_cache.setter
     def simple_user_cache(self, value: Optional["SimpleUserCache"]):
         self._simple_user_cache = value
+
+    @property
+    def subscription_manager(self) -> "SubscriptionManager":
+        if self._subscription_manager is None:
+            raise BotspotError("Subscription Manager is not initialized")
+        return self._subscription_manager
+
+    @subscription_manager.setter
+    def subscription_manager(self, value):
+        self._subscription_manager = value
 
     @property
     def access_control(self) -> Optional["AccessControl"]:
