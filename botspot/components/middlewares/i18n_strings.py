@@ -304,6 +304,39 @@ BOTSPOT_STRINGS: dict[str, dict[str, str]] = {
         "en": "No LLM usage statistics available.",
         "ru": "Статистика использования LLM недоступна.",
     },
+    # -- subscription_manager --
+    "subscription.tier_required": {
+        "en": "This feature requires <b>{required}</b> tier. Your current tier: <b>{current}</b>.",
+        "ru": "Эта функция требует уровень <b>{required}</b>. Ваш текущий уровень: <b>{current}</b>.",
+    },
+    "subscription.my_tier": {
+        "en": "Your subscription tier: <b>{tier}</b>",
+        "ru": "Ваш уровень подписки: <b>{tier}</b>",
+    },
+    "subscription.set_tier_usage": {
+        "en": "Usage: /set_tier <user_id> <tier>\nAvailable tiers: free, basic, pro, admin",
+        "ru": "Использование: /set_tier <user_id> <tier>\nДоступные уровни: free, basic, pro, admin",
+    },
+    "subscription.invalid_tier": {
+        "en": "Invalid tier: {tier}. Valid tiers: {valid}",
+        "ru": "Недопустимый уровень: {tier}. Доступные: {valid}",
+    },
+    "subscription.user_not_found": {
+        "en": "Could not resolve user: {target}",
+        "ru": "Не удалось найти пользователя: {target}",
+    },
+    "subscription.tier_set": {
+        "en": "Set tier for {target} to <b>{tier}</b>",
+        "ru": "Уровень для {target} установлен: <b>{tier}</b>",
+    },
+    "subscription.list_empty": {
+        "en": "No subscribers with explicit tiers.",
+        "ru": "Нет подписчиков с явно заданным уровнем.",
+    },
+    "subscription.list_header": {
+        "en": "<b>Subscribers:</b>\n{entries}",
+        "ru": "<b>Подписчики:</b>\n{entries}",
+    },
     # -- multi_forward --
     "multi_forward.message_count": {
         "en": "Received {count} messages",
