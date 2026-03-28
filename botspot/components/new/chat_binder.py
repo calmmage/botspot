@@ -18,10 +18,11 @@ from aiogram.types import Message
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
 
 logger = get_logger()
 
@@ -58,7 +59,7 @@ class BoundChatRecord(BaseModel):
 
 class ChatBinder:
     def __init__(
-        self, settings: ChatBinderSettings, collection: Optional["AsyncIOMotorCollection"] = None
+        self, settings: ChatBinderSettings, collection: Optional["AsyncCollection"] = None
     ):
         """Initialize the ChatBinder.
 
@@ -314,12 +315,12 @@ async def bind_chat_command_handler(message: Message):
     """Handler for the /bind_chat command."""
     chat_id = message.chat.id
     if message.from_user is None:
-        await message.reply("User information is missing.")
+        await message.reply(t("chat_binder.user_info_missing"))
         return
 
     user_id = message.from_user.id
     if message.text is None:
-        await message.reply("Message text is missing.")
+        await message.reply(t("chat_binder.message_text_missing"))
         return
 
     key = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else "default"
@@ -329,25 +330,23 @@ async def bind_chat_command_handler(message: Message):
 
         # Include access status in the response
         access_status = (
-            "✅ I have access to this chat."
-            if record.has_access
-            else "❌ I don't have access to this chat."
+            t("chat_binder.has_access") if record.has_access else t("chat_binder.no_access")
         )
 
-        await message.reply(f"Chat bound successfully with key: {key}\n{access_status}")
+        await message.reply(t("chat_binder.bound_success", key=key, access_status=access_status))
     except ValueError as e:
-        await message.reply(f"Error: {str(e)}")
+        await message.reply(t("chat_binder.bind_error", error=str(e)))
 
 
 async def unbind_chat_command_handler(message: Message):
     """Handler for the /unbind_chat command."""
     if message.from_user is None:
-        await message.reply("User information is missing.")
+        await message.reply(t("chat_binder.user_info_missing"))
         return
 
     user_id = message.from_user.id
     if message.text is None:
-        await message.reply("Message text is missing.")
+        await message.reply(t("chat_binder.message_text_missing"))
         return
 
     key = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else "default"
@@ -355,18 +354,18 @@ async def unbind_chat_command_handler(message: Message):
     try:
         result, deleted_key = await unbind_chat(user_id, key, chat_id=message.chat.id)
         if result:
-            await message.reply(f"Chat unbound successfully with key: {deleted_key}")
+            await message.reply(t("chat_binder.unbound_success", key=deleted_key))
         else:
-            await message.reply(f"No chat was bound with key: {key}")
+            await message.reply(t("chat_binder.unbind_not_found", key=key))
     except Exception as e:
-        await message.reply(f"Error: {str(e)}")
+        await message.reply(t("chat_binder.bind_error", error=str(e)))
 
 
 async def bind_status_command_handler(message: Message):
     """Handler for the /bind_status command."""
     chat_id = message.chat.id
     if message.from_user is None:
-        await message.reply("User information is missing.")
+        await message.reply(t("chat_binder.user_info_missing"))
         return
 
     user_id = message.from_user.id
@@ -376,7 +375,7 @@ async def bind_status_command_handler(message: Message):
         bindings = await get_binding_records(user_id, chat_id)
 
         if not bindings:
-            await message.reply("This chat is not bound to you.")
+            await message.reply(t("chat_binder.not_bound"))
             return
 
         # Format binding information
@@ -384,12 +383,13 @@ async def bind_status_command_handler(message: Message):
             binding = bindings[0]
             # Include access status information
             access_status = (
-                "✅ Bot has access" if binding.has_access else "❌ Bot doesn't have access"
+                t("chat_binder.status_has_access")
+                if binding.has_access
+                else t("chat_binder.status_no_access")
             )
 
             await message.reply(
-                f"This chat is bound to you with key: '{binding.key}'\n"
-                f"Access status: {access_status}"
+                t("chat_binder.status_single", key=binding.key, access_status=access_status)
             )
         else:
             # For multiple bindings, create a simple list
@@ -400,48 +400,48 @@ async def bind_status_command_handler(message: Message):
 
             details_text = "\n".join(binding_details)
             await message.reply(
-                f"This chat is bound to you with {len(bindings)} keys:\n{details_text}"
+                t("chat_binder.status_multiple", count=len(bindings), details=details_text)
             )
     except Exception as e:
         logger.error(f"Error in bind_status_command_handler: {e}")
-        await message.reply(f"Error checking binding status: {str(e)}")
+        await message.reply(t("chat_binder.check_error", error=str(e)))
 
 
 async def async_list_chats_handler(message: Message):
     """Handler for the /list_chats command."""
     if message.from_user is None:
-        await message.reply("User information is missing.")
+        await message.reply(t("chat_binder.user_info_missing"))
         return
 
     try:
         bound_chats = await list_user_bindings(message.from_user.id)
         if not bound_chats:
-            await message.reply("You don't have any bound chats.")
+            await message.reply(t("chat_binder.list_empty"))
             return
 
         chats_info = "\n".join(
             [f"Key: {chat.key}, Chat ID: {chat.chat_id}" for chat in bound_chats]
         )
-        await message.reply(f"Your bound chats:\n{chats_info}")
+        await message.reply(t("chat_binder.list_header", chats_info=chats_info))
     except Exception as e:
-        await message.reply(f"Error listing chats: {str(e)}")
+        await message.reply(t("chat_binder.list_error", error=str(e)))
 
 
 # todo: ask_user_choice - list all keys and ask user to choose one
 async def async_get_chat_handler(message: Message):
     """Handler for the /get_chat command."""
     if message.from_user is None:
-        await message.reply("User information is missing.")
+        await message.reply(t("chat_binder.user_info_missing"))
         return
 
     if message.text is None:
-        await message.reply("Message text is missing.")
+        await message.reply(t("chat_binder.message_text_missing"))
         return
 
     key = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else "default"
 
     chat_id = await get_bound_chat(message.from_user.id, key)
-    await message.reply(f"Bound chat for key '{key}': {chat_id}")
+    await message.reply(t("chat_binder.get_chat_result", key=key, chat_id=chat_id))
 
 
 def setup_dispatcher(dp):

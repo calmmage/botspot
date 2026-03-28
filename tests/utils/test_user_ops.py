@@ -88,7 +88,7 @@ class TestGetUserRecord:
             mock_cache = MagicMock()
             mock_deps.simple_user_cache = mock_cache
             mock_get_deps.return_value = mock_deps
-            
+
             phone = "+12345678901"
             result = get_user_record(phone)
             assert result.phone == phone
@@ -104,7 +104,7 @@ class TestGetUserRecord:
             mock_cache.get_user.side_effect = Exception("User not found")
             mock_deps.simple_user_cache = mock_cache
             mock_get_deps.return_value = mock_deps
-            
+
             user_id_str = "12345"
             result = get_user_record(user_id_str)
             assert result.user_id == 12345
@@ -120,7 +120,7 @@ class TestGetUserRecord:
             mock_cache.get_user_by_username.side_effect = Exception("User not found")
             mock_deps.simple_user_cache = mock_cache
             mock_get_deps.return_value = mock_deps
-            
+
             username = "@test_user"
             result = get_user_record(username)
             assert result.username == "test_user"  # @ should be stripped
@@ -136,7 +136,7 @@ class TestGetUserRecord:
             mock_cache.get_user_by_username.side_effect = Exception("User not found")
             mock_deps.simple_user_cache = mock_cache
             mock_get_deps.return_value = mock_deps
-            
+
             username = "test_user"
             result = get_user_record(username)
             assert result.username == username

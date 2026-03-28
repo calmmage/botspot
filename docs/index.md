@@ -66,9 +66,10 @@ Built-in LLM support:
 
 ## Get Started
 
-1. **[Installation & Setup](getting-started.md)** - Get your first bot running
-2. **[Components Guide](components/index.md)** - Learn the component system
-3. **[Examples](examples.md)** - See real-world implementations
-4. **[API Reference](api/core.md)** - Detailed API documentation
+Install with pip or uv:
 
-Ready to build something awesome? Let's go! 🚀
+```bash
+uv add botspot
+```
+
+Check out the [examples](https://github.com/calmmage/botspot/tree/main/examples) and the [botspot-template](https://github.com/calmmage/botspot-template) to get started.

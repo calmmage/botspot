@@ -10,6 +10,7 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 from botspot.components.features.user_interactions import ask_user
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 from botspot.utils.send_safe import send_safe
 
@@ -113,9 +114,7 @@ class TelethonManager:
         # No client could be initialized or created
         from botspot.core.errors import TelethonClientNotConnectedError
 
-        raise TelethonClientNotConnectedError(
-            f"Client for user {user_id} not found. Please run the /setup_telethon command to authenticate."
-        )
+        raise TelethonClientNotConnectedError(t("telethon.not_connected", user_id=user_id))
 
     async def disconnect_all(self):
         """Disconnect all clients"""
@@ -150,8 +149,7 @@ class TelethonManager:
                 existing_client = await self.get_client(user_id)
                 await send_safe(
                     user_id,
-                    "You already have an active Telethon session! "
-                    "Use /setup_telethon_force to create a new one.",
+                    t("telethon.already_active"),
                 )
                 return existing_client
             except Exception:
@@ -172,13 +170,13 @@ class TelethonManager:
             # Ask for phone number
             phone = await ask_user(
                 user_id,
-                "Please enter your phone number (including country code, e.g., +1234567890):",
+                t("telethon.phone_prompt"),
                 state,
                 timeout=60.0,
             )
 
             if not phone:
-                await send_safe(user_id, "Setup cancelled - no phone number provided.")
+                await send_safe(user_id, t("telethon.cancelled_no_phone"))
                 return None
 
             # Send code request
@@ -187,20 +185,20 @@ class TelethonManager:
             # Ask for verification code
             code = await ask_user(
                 user_id,
-                "Please enter MODIFIED verification code as follows: YOUR CODE splitted with spaces e.g '21694' -> '2 1 6 9 4' or telegram WILL BLOCK IT",
+                t("telethon.code_prompt"),
                 state,
                 timeout=300.0,
                 cleanup=True,
             )
 
             if not code:
-                await send_safe(user_id, "Setup cancelled - no verification code provided.")
+                await send_safe(user_id, t("telethon.cancelled_no_code"))
                 return None
 
             if " " not in code.strip():
                 await send_safe(
                     user_id,
-                    "Setup cancelled - YOU DID NOT split the code with spaces like this: '2 1 6 9 4'",
+                    t("telethon.code_no_spaces"),
                 )
                 return None
 
@@ -214,14 +212,14 @@ class TelethonManager:
                     # 2FA is enabled, ask for password
                     password = await ask_user(
                         user_id,
-                        "Two-factor authentication is enabled. Please enter your 2FA password:",
+                        t("telethon.password_prompt"),
                         state,
                         timeout=300.0,
                         cleanup=True,
                     )
 
                     if not password:
-                        await send_safe(user_id, "Setup cancelled - no password provided.")
+                        await send_safe(user_id, t("telethon.cancelled_no_password"))
                         return None
 
                     password = password.replace(" ", "")
@@ -235,12 +233,12 @@ class TelethonManager:
             self.clients[user_id] = client
             await send_safe(
                 user_id,
-                "Successfully set up Telethon client! The session is saved and ready to use.",
+                t("telethon.setup_success"),
             )
             return client
 
         except Exception as e:
-            await send_safe(user_id, f"Error during setup: {str(e)}")
+            await send_safe(user_id, t("telethon.setup_error", error=str(e)))
             if session_file.exists():
                 session_file.unlink()
             return None
@@ -321,8 +319,6 @@ def setup_dispatcher(dp: Dispatcher) -> None:
         if client and await client.is_user_authorized():
             me = await client.get_me()
             assert me.first_name
-            await message.reply(f"Active Telethon session found for {me.first_name}!")
+            await message.reply(t("telethon.active_session_found", name=me.first_name))
         else:
-            await message.reply(
-                "No active Telethon session found. Use /setup_telethon to create one."
-            )
+            await message.reply(t("telethon.no_session"))

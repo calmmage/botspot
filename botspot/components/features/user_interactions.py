@@ -10,6 +10,7 @@ from aiogram.types import InaccessibleMessage, InlineKeyboardButton, InlineKeybo
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+from botspot.components.middlewares.i18n import t
 from botspot.utils.internal import get_logger
 
 logger = get_logger()
@@ -146,9 +147,11 @@ async def _ask_user_base(
     except asyncio.TimeoutError:
         if notify_on_timeout:
             if default_choice is not None:
-                question += f"\n\n⏰ Auto-selected: {default_choice}"
+                question += "\n\n" + t(
+                    "user_interactions.timeout_auto_selected", choice=default_choice
+                )
             else:
-                question += "\n\n⏰ No response received within the time limit."
+                question += "\n\n" + t("user_interactions.timeout")
             await sent_message.edit_text(question)
         return default_choice  # None if no default choice
     finally:
@@ -274,7 +277,7 @@ async def handle_user_input(message: types.Message, state: FSMContext) -> None:
         bot: Bot = deps.bot
         await bot.send_message(
             chat_id,
-            "Sorry, this response came too late or was for a different question. Please try again.",
+            t("user_interactions.late_response"),
         )
         await state.clear()
         return
@@ -396,9 +399,7 @@ async def ask_user_choice_raw(
     # If adding hint is requested
     displayed_question = question
     if add_hint:
-        displayed_question = (
-            f"{question}\n\nTip: You can choose an option or type your own response."
-        )
+        displayed_question = f"{question}\n\n{t('user_interactions.hint')}"
 
     return await _ask_user_base(
         chat_id=chat_id,
@@ -426,13 +427,13 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
 
     active_request = input_manager.get_active_request(chat_id)
     if not active_request or active_request.handler_id != handler_id:
-        await callback_query.answer("This choice is no longer valid.")
+        await callback_query.answer(t("user_interactions.choice_invalid"))
         return
 
     # Protection against multiple callbacks for the same request
     if active_request.response is not None:
         # Request already has a response, this is likely a retry
-        await callback_query.answer("Your choice has already been recorded.")
+        await callback_query.answer(t("user_interactions.choice_recorded"))
         return
 
     choice = callback_query.data[7:]
@@ -444,7 +445,7 @@ async def handle_choice_callback(callback_query: types.CallbackQuery, state: FSM
     assert not isinstance(callback_query.message, InaccessibleMessage)
 
     # Edit the message to remove buttons and show selection
-    new_text = f"{callback_query.message.text}\n\nSelected: {choice}"
+    new_text = f"{callback_query.message.text}\n\n{t('user_interactions.selected', choice=choice)}"
     try:
         await callback_query.message.edit_text(new_text)
     except TelegramBadRequest as e:

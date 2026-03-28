@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.asynchronous.database import AsyncDatabase
 from pydantic_settings import BaseSettings
 
 from botspot.utils.deps_getters import get_database
@@ -21,10 +21,10 @@ class App:
 
     def __init__(self, **kwargs):
         self.config = AppConfig(**kwargs)
-        self._db: Optional[AsyncIOMotorDatabase] = None
+        self._db: Optional[AsyncDatabase] = None
 
     @property
-    def db(self) -> AsyncIOMotorDatabase:
+    def db(self) -> AsyncDatabase:
         if self._db is None:
             self._db = get_database()
         return self._db

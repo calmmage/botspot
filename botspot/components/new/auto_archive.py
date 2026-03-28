@@ -10,11 +10,12 @@ from loguru import logger
 from pydantic_settings import BaseSettings
 
 from botspot.commands_menu import Visibility, botspot_command
+from botspot.components.middlewares.i18n import t
 from botspot.utils.deps_getters import get_database
 from botspot.utils.send_safe import send_safe
 
 if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection  # noqa: F401
+    from pymongo.asynchronous.collection import AsyncCollection  # noqa: F401
 
 
 class CommandFilterMode(str, Enum):
@@ -52,7 +53,7 @@ class AutoArchive(BaseMiddleware):
         self._warning_sent: Set[int] = set()
         self._collection = None
 
-    async def _get_collection(self) -> "AsyncIOMotorCollection":
+    async def _get_collection(self) -> "AsyncCollection":
         if self._collection is None:
             db = get_database()
             self._collection = db["auto_archive_intro"]
@@ -143,21 +144,21 @@ class AutoArchive(BaseMiddleware):
         except ChatBindingNotFoundError:
             # tell user to bind the chat
             if user_id not in self._warning_sent:
-                message_text = "Auto-archive is enabled, but you don't have a bound chat for forwarding messages to."
-                await send_safe(message.chat.id, message_text)
+                await send_safe(message.chat.id, t("auto_archive.no_binding"))
                 self._warning_sent.add(user_id)
                 await self._save_warning_sent(user_id)
             return await handler(event, data)
 
         # Send intro message if this is first time for this user
         if user_id not in self._intro_sent:
-            intro_message = (
-                "🔔 Auto-archive is enabled! Your messages will be forwarded and deleted after a short delay.\n"
-                f"• Use {self.settings.no_archive_tag} to prevent both forwarding and deletion\n"
-                f"• Use {self.settings.no_delete_tag} to forward but keep the original message\n"
-                "Use /autoarchive_help for more info."
+            await send_safe(
+                message.chat.id,
+                t(
+                    "auto_archive.intro",
+                    no_archive_tag=self.settings.no_archive_tag,
+                    no_delete_tag=self.settings.no_delete_tag,
+                ),
             )
-            await send_safe(message.chat.id, intro_message)
             self._intro_sent.add(user_id)
             await self._save_intro_sent(user_id)
 
@@ -173,11 +174,7 @@ class AutoArchive(BaseMiddleware):
                 if "the message can't be forwarded" in str(e):
                     # Likely the group was upgraded to supergroup
                     await unbind_chat(user_id, key=self.settings.chat_binding_key)
-                    message_text = (
-                        "⚠️ The bound chat was upgraded to supergroup. "
-                        "Please use /bind_auto_archive to bind the new supergroup."
-                    )
-                    await send_safe(message.chat.id, message_text)
+                    await send_safe(message.chat.id, t("auto_archive.supergroup_error"))
                     return await handler(event, data)
                 raise
 
@@ -210,7 +207,7 @@ def setup_dispatcher(dp):
         from botspot.chat_binder import bind_chat
 
         await bind_chat(message.from_user.id, message.chat.id, key=aa.settings.chat_binding_key)
-        await send_safe(message.chat.id, "Chat bound for auto-archiving")
+        await send_safe(message.chat.id, t("auto_archive.bind_success"))
 
     dp.message.register(cmd_bind_auto_archive, Command("bind_auto_archive"))
 
@@ -221,14 +218,14 @@ def setup_dispatcher(dp):
         visibility=Visibility.PUBLIC,
     )
     async def cmd_help_autoarchive(message: Message):
-        help_text = (
-            "🤖 Auto-Archive Help\n\n"
-            "• Messages are automatically forwarded to your bound chat and deleted after a short delay\n"
-            f"• Use {aa.settings.no_archive_tag} to prevent both forwarding and deletion\n"
-            f"• Use {aa.settings.no_delete_tag} to forward but keep the original message\n"
-            "• Use /bind_auto_archive to bind a chat for auto-archiving"
+        await send_safe(
+            message.chat.id,
+            t(
+                "auto_archive.help",
+                no_archive_tag=aa.settings.no_archive_tag,
+                no_delete_tag=aa.settings.no_delete_tag,
+            ),
         )
-        await send_safe(message.chat.id, help_text)
 
     dp.message.register(cmd_help_autoarchive, Command("help_autoarchive"))
 
