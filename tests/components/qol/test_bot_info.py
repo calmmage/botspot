@@ -93,7 +93,7 @@ class TestBotInfoHandler:
 
         # Build response
         response = [
-            f"🤖 Bot Information",
+            "🤖 Bot Information",
             f"Botspot Version: {botspot.__version__}",
             f"Uptime: {uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds // 60) % 60}m",
             "\n📊 Enabled Components:",
@@ -108,7 +108,7 @@ class TestBotInfoHandler:
 
         if mock_settings.bot_info.show_detailed_settings:
             # model dump
-            response.append(f"\n📊 Detailed Settings:")
+            response.append("\n📊 Detailed Settings:")
             response.append(mock_settings.model_dump_json(indent=2))
 
         # Call our mock answer function
@@ -161,7 +161,7 @@ class TestBotInfoHandler:
 
         # Build response
         response = [
-            f"🤖 Bot Information",
+            "🤖 Bot Information",
             f"Botspot Version: {botspot.__version__}",
             f"Uptime: {uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds // 60) % 60}m",
             "\n📊 Enabled Components:",
@@ -176,7 +176,7 @@ class TestBotInfoHandler:
 
         if mock_settings.bot_info.show_detailed_settings:
             # model dump
-            response.append(f"\n📊 Detailed Settings:")
+            response.append("\n📊 Detailed Settings:")
             response.append(mock_settings.model_dump_json(indent=2))
 
         # Call our mock answer function
@@ -263,7 +263,7 @@ class TestBotInfoHandler:
 
         # Build response directly with our known uptime
         response = [
-            f"🤖 Bot Information",
+            "🤖 Bot Information",
             f"Botspot Version: {botspot.__version__}",
             uptime_text,
             "\n📊 Enabled Components:",
