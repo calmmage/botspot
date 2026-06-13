@@ -114,3 +114,10 @@ version = "0.3.0"  # optimize pyproject dependencies
 url = "https://github.com/calmmage/python-project-template.git"
 author = "Petr Lavrov <petrlavrov@calmmage.com>"
 description = "A template for creating a bot using calmapp and bot-lib"
+
+
+[tool.uv]
+# Make `uv sync` install ALL dependency-groups by default.
+# Without this, plain `uv sync` removes packages outside the main + dev groups.
+# To exclude on demand: `uv sync --no-group <name>`.
+default-groups = ["extras", "dev", "test", "docs"]
