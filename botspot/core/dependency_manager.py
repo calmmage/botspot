@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.chat_fetcher import ChatFetcher
     from botspot.components.new.llm_provider import LLMProvider
+    from botspot.components.new.message_aggregator import MessageAggregator
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
     from pymongo import AsyncMongoClient  # noqa: F401
@@ -42,6 +43,7 @@ class DependencyManager(metaclass=Singleton):
         self._user_manager = None
         self._chat_binder = None
         self._llm_provider = None
+        self._message_aggregator = None
         self._queue_manager = None
         self._chat_fetcher = None
         self._auto_archive = None
@@ -177,6 +179,16 @@ class DependencyManager(metaclass=Singleton):
     @auto_archive.setter
     def auto_archive(self, value):
         self._auto_archive = value
+
+    @property
+    def message_aggregator(self) -> "MessageAggregator":
+        if self._message_aggregator is None:
+            raise BotspotError("Message Aggregator is not initialized")
+        return self._message_aggregator
+
+    @message_aggregator.setter
+    def message_aggregator(self, value):
+        self._message_aggregator = value
 
     @property
     def s3_storage(self) -> Optional["S3StorageProvider"]:

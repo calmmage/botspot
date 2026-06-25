@@ -30,6 +30,7 @@ from .utils import (
     compare_users,
     get_bot,
     get_chat_fetcher,
+    get_message_aggregator,
     get_database,
     get_dispatcher,
     get_easter_egg,
@@ -83,6 +84,7 @@ __all__ = [
     # Chat Fetcher
     "chat_fetcher",
     "get_chat_fetcher",
+    "get_message_aggregator",
     # Access Control (Friends/Admins)
     "get_friends",
     "add_friend",
