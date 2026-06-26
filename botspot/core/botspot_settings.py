@@ -15,6 +15,7 @@ from botspot.components.new.auto_archive import AutoArchiveSettings
 from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.new.chat_fetcher import ChatFetcherSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
+from botspot.components.new.message_aggregator import MessageAggregatorSettings
 from botspot.components.new.queue_manager import QueueManagerSettings
 from botspot.components.new.s3_storage import S3StorageSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
@@ -72,6 +73,7 @@ class BotspotSettings(BaseSettings):
     chat_binder: ChatBinderSettings = ChatBinderSettings()
     chat_fetcher: ChatFetcherSettings = ChatFetcherSettings()
     llm_provider: LLMProviderSettings = LLMProviderSettings()
+    message_aggregator: MessageAggregatorSettings = MessageAggregatorSettings()
     queue_manager: QueueManagerSettings = QueueManagerSettings()
     auto_archive: AutoArchiveSettings = AutoArchiveSettings()
     s3_storage: S3StorageSettings = S3StorageSettings()

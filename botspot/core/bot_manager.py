@@ -21,6 +21,7 @@ from botspot.components.new import (
     chat_binder,
     chat_fetcher,
     llm_provider,
+    message_aggregator,
     queue_manager,
     s3_storage,
 )
@@ -77,6 +78,11 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.queue_manager.enabled:
             self.deps.queue_manager = queue_manager.initialize(self.settings.queue_manager)
+
+        if self.settings.message_aggregator.enabled:
+            self.deps.message_aggregator = message_aggregator.initialize(
+                self.settings.message_aggregator
+            )
 
         if self.settings.chat_fetcher.enabled:
             self.deps.chat_fetcher = chat_fetcher.initialize(self.settings.chat_fetcher)
@@ -146,6 +152,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.queue_manager.enabled:
             queue_manager.setup_dispatcher(dp)
+
+        if self.settings.message_aggregator.enabled:
+            message_aggregator.setup_dispatcher(dp)
 
         if self.settings.chat_fetcher.enabled:
             chat_fetcher.setup_dispatcher(dp)
