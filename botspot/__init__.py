@@ -15,7 +15,7 @@ except PackageNotFoundError:
     del toml, Path, path
 
 from . import commands_menu, trial_mode, user_data, user_interactions
-from .components.data import access_control, mongo_database
+from .components.data import access_control, mongo_database, postgres_database
 from .components.data.access_control import add_friend, get_friends, remove_friend
 from .components.main import event_scheduler, telethon_manager
 from .components.main.single_user_mode import (
@@ -69,6 +69,7 @@ __all__ = [
     "event_scheduler",
     ## data
     "mongo_database",
+    "postgres_database",
     "access_control",
     # no need to expose
     ## main
