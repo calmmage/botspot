@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
-from bson import ObjectId
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
@@ -24,7 +23,9 @@ class QueueManagerSettings(BaseSettings):
 
 
 class QueueItem(BaseModel):
-    id: Optional[ObjectId] = Field(default=None, alias="_id")
+    # Mongo ObjectId at runtime, but kept untyped so importing Botspot does not
+    # require the optional PyMongo package when the queue manager is disabled.
+    id: Optional[Any] = Field(default=None, alias="_id")
     data: str
 
     class Config:
@@ -140,21 +141,21 @@ class Queue(Generic[T]):
             {"_id": item.id}, {"$set": item.model_dump(by_alias=True, exclude_none=True)}
         )
 
-    async def delete_item(self, item_id: ObjectId):
+    async def delete_item(self, item_id: Any):
         """Delete an item from the queue by its id."""
         await self.collection.delete_one({"_id": item_id})
 
-    async def mark_done(self, item_id: ObjectId):
+    async def mark_done(self, item_id: Any):
         """Mark an item as done. Only if use_done is enabled."""
         assert self.use_done, "mark_done requires use_done to be enabled."
         await self.collection.update_one({"_id": item_id}, {"$set": {"done": True}})
 
-    async def set_priority(self, item_id: ObjectId, priority: int):
+    async def set_priority(self, item_id: Any, priority: int):
         """Set the priority of an item. Only if use_priority is enabled."""
         assert self.use_priority, "set_priority requires use_priority to be enabled."
         await self.collection.update_one({"_id": item_id}, {"$set": {"priority": priority}})
 
-    async def mark_undone(self, item_id: ObjectId):
+    async def mark_undone(self, item_id: Any):
         """Mark an item as not done (undone). Only if use_done is enabled."""
         assert self.use_done, "mark_undone requires use_done to be enabled."
         await self.collection.update_one({"_id": item_id}, {"$set": {"done": False}})

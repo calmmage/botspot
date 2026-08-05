@@ -459,7 +459,7 @@ wheels = [
 
 [[package]]
 name = "botspot"
-version = "0.10.39"
+version = "0.10.40"
 source = { editable = "." }
 dependencies = [
     { name = "aiogram" },
