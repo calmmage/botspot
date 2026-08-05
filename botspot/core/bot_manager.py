@@ -6,7 +6,7 @@ from typing import Optional, Type
 
 from aiogram import Bot, Dispatcher
 from botspot import __version__
-from botspot.components.data import access_control, mongo_database, user_data
+from botspot.components.data import access_control, mongo_database, postgres_database, user_data
 from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
 from botspot.components.main import (
@@ -54,6 +54,13 @@ class BotManager(metaclass=Singleton):
             mongo_client, mongo_db = mongo_database.initialize(self.settings.mongo_database)
             self.deps.mongo_client = mongo_client
             self.deps.mongo_database = mongo_db
+
+        if self.settings.postgres_database.enabled:
+            postgres_engine, postgres_session_factory = postgres_database.initialize(
+                self.settings.postgres_database
+            )
+            self.deps.postgres_engine = postgres_engine
+            self.deps.postgres_session_factory = postgres_session_factory
 
         if self.settings.event_scheduler.enabled:
             self.deps.scheduler = event_scheduler.initialize(self.settings.event_scheduler)
@@ -116,6 +123,9 @@ class BotManager(metaclass=Singleton):
 
         if self.settings.mongo_database.enabled:
             mongo_database.setup_dispatcher(dp)
+
+        if self.settings.postgres_database.enabled:
+            postgres_database.setup_dispatcher(dp)
 
         if self.settings.print_bot_url.enabled:
             print_bot_url.setup_dispatcher(dp)

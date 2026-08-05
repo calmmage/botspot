@@ -23,10 +23,10 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run Ruff linter
-        run: uv run ruff check src
+        run: uv run ruff check botspot
 
       - name: Run Ruff formatter check
-        run: uv run ruff format --check src
+        run: uv run ruff format --check botspot
 
   dead-code-check:
     name: Vulture
@@ -46,7 +46,7 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run Vulture dead code detector
-        run: uv run vulture --min-confidence 80 src
+        run: uv run vulture --min-confidence 80 botspot
 
   coverage:
     name: Coverage Report
@@ -68,7 +68,7 @@ jobs:
       - name: Run coverage analysis
         run: |
           uv run pytest tests/ \
-            --cov=src \
+            --cov=botspot \
             --cov-report=term \
             --cov-fail-under=50
 
@@ -91,4 +91,4 @@ jobs:
         run: uv sync --all-groups
 
       - name: Run Lizard complexity check
-        run: uv run lizard -l python --CCN 20 -w src
+        run: uv run lizard -l python --CCN 20 -w botspot

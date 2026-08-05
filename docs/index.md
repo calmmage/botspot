@@ -32,7 +32,7 @@ bot.run()
 
 ### 🧩 **Component System**
 Mix and match components to build your bot:
-- **Data**: MongoDB, user data, contact management
+- **Data**: PostgreSQL (preferred for new bots), MongoDB, user data, contact management
 - **Features**: User interactions, multi-forwarding
 - **Main**: Telethon integration, scheduling, trial modes
 - **QoL**: Command menus, bot info, URL generation
