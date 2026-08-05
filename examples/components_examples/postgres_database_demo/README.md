@@ -35,3 +35,9 @@ target_metadata = Base.metadata
 ```
 
 Use the same `postgresql+asyncpg://...` URL. Botspot does not ship app tables or migration scripts.
+
+When sharing a database with another application, give the bot its own schema and
+Alembic version table. Set table schemas on the consuming app's models, enable
+`include_schemas`, and configure `version_table_schema` (or a distinct
+`version_table`) so the bot never reads or overwrites the host application's
+`alembic_version` row.
