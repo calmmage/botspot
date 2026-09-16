@@ -3,6 +3,9 @@ from .chat_utils import typing_status
 from .easter_eggs import get_easter_egg, get_pong
 from .send_safe import answer_safe, reply_safe, send_safe
 from .unsorted import (
+    download_telegram_file,
+    get_attachment_format,
+    get_message_attachments,
     get_message_text,
     get_name,
     get_user,
@@ -24,6 +27,7 @@ from .formatting_utils import markdown_to_html
 from .deps_getters import (  # noqa: E402
     get_bot,
     get_chat_fetcher,
+    get_message_aggregator,
     get_database,
     get_dispatcher,
     get_llm_provider,
@@ -39,6 +43,9 @@ __all__ = [
     "reply_safe",
     "send_typing_status",
     "get_message_text",
+    "get_message_attachments",
+    "get_attachment_format",
+    "download_telegram_file",
     "get_name",
     "get_user",
     "compare_users",
@@ -53,6 +60,7 @@ __all__ = [
     "get_telethon_manager",
     "get_user_manager",
     "get_chat_fetcher",
+    "get_message_aggregator",
     "get_llm_provider",
     "get_easter_egg",
     "get_pong",
