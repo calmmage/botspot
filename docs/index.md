@@ -64,6 +64,8 @@ More demos: [examples/](https://github.com/calmmage/botspot/tree/main/examples).
 
 Enable components in settings / `example.env`. `BotManager` wires them into the dispatcher.
 
+PostgreSQL is optional (`sqlalchemy[asyncio]`, `asyncpg`, `alembic` live in the extras group, same as `pymongo`). Enable with `BOTSPOT_POSTGRES_DATABASE_ENABLED` and `BOTSPOT_POSTGRES_DATABASE_URL` (`postgresql+asyncpg://…`). Apps register models on `botspot.components.data.postgres_database.Base` and point Alembic `target_metadata` at `Base.metadata`. Botspot ships no app tables. Mongo stays available and unchanged.
+
 ## Docs in this repo
 
 | | |

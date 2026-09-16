@@ -9,6 +9,15 @@ from typing import TYPE_CHECKING, Optional
 
 # Import component getters
 from botspot.components.data.mongo_database import get_database, get_mongo_client
+from botspot.components.data.postgres_database import (
+    get_engine as get_postgres_engine,
+)
+from botspot.components.data.postgres_database import (
+    get_session as get_postgres_session,
+)
+from botspot.components.data.postgres_database import (
+    get_session_factory as get_postgres_session_factory,
+)
 from botspot.components.data.user_data import get_user_manager
 from botspot.components.main.event_scheduler import get_scheduler
 from botspot.components.main.single_user_mode import get_single_user, is_single_user_mode_enabled
@@ -113,6 +122,9 @@ __all__ = [
     "get_telethon_manager",
     "get_telethon_client",
     "get_mongo_client",
+    "get_postgres_engine",
+    "get_postgres_session_factory",
+    "get_postgres_session",
     "get_chat_binder",
     "get_chat_fetcher",
     "get_message_aggregator",

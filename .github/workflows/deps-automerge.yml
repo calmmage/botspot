@@ -1,0 +1,26 @@
+name: Automerge mechanical deps
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Auto-merge security / weekly batch PRs after checks
+    if: >
+      github.event.pull_request.draft == false &&
+      (
+        github.event.pull_request.user.login == 'dependabot[bot]' ||
+        startsWith(github.head_ref, 'deps/weekly-')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge (squash) once required checks pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --auto --squash

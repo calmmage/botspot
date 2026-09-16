@@ -3,6 +3,7 @@ from typing import List
 
 from botspot.components.data.access_control import AccessControlSettings
 from botspot.components.data.mongo_database import MongoDatabaseSettings
+from botspot.components.data.postgres_database import PostgresDatabaseSettings
 from botspot.components.data.user_data import UserDataSettings
 from botspot.components.features.user_interactions import AskUserSettings
 from botspot.components.main.event_scheduler import EventSchedulerSettings
@@ -62,6 +63,7 @@ class BotspotSettings(BaseSettings):
     error_handling: ErrorHandlerSettings = ErrorHandlerSettings()
     event_scheduler: EventSchedulerSettings = EventSchedulerSettings()
     mongo_database: MongoDatabaseSettings = MongoDatabaseSettings()
+    postgres_database: PostgresDatabaseSettings = PostgresDatabaseSettings()
     print_bot_url: PrintBotUrlSettings = PrintBotUrlSettings()
     telethon_manager: TelethonManagerSettings = TelethonManagerSettings()
     trial_mode: TrialModeSettings = TrialModeSettings()
