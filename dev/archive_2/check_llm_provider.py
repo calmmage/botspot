@@ -3,8 +3,8 @@ import asyncio
 from litellm import Choices
 from pydantic import BaseModel
 
-# Your user ID
-USER_ID = 291560340
+# Your Telegram user ID
+USER_ID = 123456789
 # Model to use for testing
 MODEL = "gpt-4.1-nano"
 
