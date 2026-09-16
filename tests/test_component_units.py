@@ -54,6 +54,29 @@ class TestAutoArchiveCommandFilter:
         assert all_cmds._is_filtered_command(make_message("/start\nmore"))
 
 
+class TestLlmKeyCheck:
+    def test_timeout_is_retryable_and_skips_failed_provider(self, monkeypatch):
+        from botspot.utils.llm_key_check import (
+            get_fallback_model,
+            is_retryable_llm_error,
+            provider_for_model,
+        )
+
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant")
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-openai")
+        err = TimeoutError("litellm.Timeout: AnthropicException - Connection timed out.")
+        assert is_retryable_llm_error(err)
+        assert provider_for_model("claude-sonnet-4-6") == "anthropic"
+        assert get_fallback_model(exclude_providers=["anthropic"]) == "gpt-4o"
+
+    def test_fallback_without_exclude_still_prefers_anthropic(self, monkeypatch):
+        from botspot.utils.llm_key_check import get_fallback_model
+
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant")
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-openai")
+        assert get_fallback_model() == "claude-4"
+
+
 class TestLLMProvider:
     def test_initialize_disabled_is_none(self):
         assert llm_initialize(LLMProviderSettings(enabled=False)) is None
