@@ -26,8 +26,15 @@ def test_dependabot_stops_per_package_prs():
     text = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
     assert "open-pull-requests-limit: 0" in text
     assert "python-dependencies" in text
-    assert 'patterns:' in text
+    assert "patterns:" in text
     assert '"*"' in text or "- '*'" in text or '- "*"' in text
+    # enable-beta-ecosystems is a top-level key; nesting it under updates is invalid.
+    nested = any(
+        (line.startswith(" ") or line.startswith("\t"))
+        and line.strip().startswith("enable-beta-ecosystems:")
+        for line in text.splitlines()
+    )
+    assert not nested
 
 
 def test_weekly_batch_workflow_tests_then_merges():

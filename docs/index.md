@@ -23,7 +23,7 @@ This library (v0.10.39) is installed from git. The PyPI `botspot` project is an 
 uv add git+https://github.com/calmmage/botspot.git
 ```
 
-See the [README](../README.md#install) for badges, the hero screenshot, and the agents pointer.
+See the [README](https://github.com/calmmage/botspot/blob/main/README.md#install) for badges, the hero screenshot, and the agents pointer.
 
 ## Example
 
@@ -50,7 +50,7 @@ Access components with:
 from botspot.utils.deps_getters import get_bot, get_database, get_scheduler
 ```
 
-More demos: [examples/](https://github.com/calmmage/botspot/tree/main/examples). Agent conventions: [AGENTS.md](../AGENTS.md).
+More demos: [examples/](https://github.com/calmmage/botspot/tree/main/examples). Agent conventions: [AGENTS.md](https://github.com/calmmage/botspot/blob/main/AGENTS.md).
 
 ## Components
 
@@ -70,9 +70,9 @@ PostgreSQL is optional (`sqlalchemy[asyncio]`, `asyncpg`, `alembic` live in the 
 
 | | |
 |---|---|
-| Public README | [../README.md](../README.md) |
-| Component demos | [../examples/](../examples/) |
-| Agent install / conventions | [../AGENTS.md](../AGENTS.md) |
-| Vulnerability reports | [../SECURITY.md](../SECURITY.md) |
+| Public README | [README.md](https://github.com/calmmage/botspot/blob/main/README.md) |
+| Component demos | [examples/](https://github.com/calmmage/botspot/tree/main/examples) |
+| Agent install / conventions | [AGENTS.md](https://github.com/calmmage/botspot/blob/main/AGENTS.md) |
+| Vulnerability reports | [SECURITY.md](https://github.com/calmmage/botspot/blob/main/SECURITY.md) |
 
 Docs stay in this repository and are linked from the README. GitHub Pages is not used.

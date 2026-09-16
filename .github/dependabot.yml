@@ -2,13 +2,15 @@
 # `uv lock --upgrade` + pytest + squash-merge. Limit 0 stops one-PR-per-package
 # noise. Dependabot security updates are independent of this limit and are
 # auto-merged after green PR checks (.github/workflows/deps-automerge.yml).
+#
+# enable-beta-ecosystems is a top-level key only (update-level is rejected by
+# GitHub's dependabot.yml validator). uv is GA, so the flag is omitted.
 version: 2
 updates:
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
-    enable-beta-ecosystems: true
     open-pull-requests-limit: 0
     groups:
       python-dependencies:
