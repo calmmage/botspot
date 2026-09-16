@@ -70,7 +70,7 @@ jobs:
           uv run pytest tests/ \
             --cov=botspot \
             --cov-report=term \
-            --cov-fail-under=54
+            --cov-fail-under=60
 
   complexity:
     name: Complexity (advisory)

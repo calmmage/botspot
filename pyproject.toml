@@ -107,7 +107,7 @@ exclude_lines = [
     "pass",
     "raise ImportError",
 ]
-fail_under = 54
+fail_under = 60
 show_missing = true
 
 [tool.ruff]

@@ -331,24 +331,6 @@ class TestSetAiogramBotCommands:
 
 
 class TestSetupDispatcher:
-    def test_setup_dispatcher_registers_startup_handler(self):
-        """Test setup_dispatcher registers startup handler"""
-        # TODO: Update test for new implementation with sorting feature
-        pass
-        # Original implementation:
-        # # Mock dispatcher
-        # mock_dispatcher = MagicMock()
-        #
-        # # Mock settings
-        # mock_settings = MagicMock()
-        # mock_settings.add_list_commands_handler = False
-        #
-        # # Call setup_dispatcher
-        # setup_dispatcher(mock_dispatcher, mock_settings)
-        #
-        # # Verify startup handler registration
-        # mock_dispatcher.startup.register.assert_called_once_with(set_aiogram_bot_commands)
-
     def test_setup_dispatcher_with_list_commands_handler(self):
         """Test setup_dispatcher registers help command when add_list_commands_handler is enabled"""
         with patch("botspot.components.qol.bot_commands_menu.add_command") as mock_add_command:

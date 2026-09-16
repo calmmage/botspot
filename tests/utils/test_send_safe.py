@@ -68,6 +68,32 @@ async def test_reply_and_answer_safe():
 
 
 @pytest.mark.asyncio
+async def test_auto_delete_issues_delete_message():
+    import asyncio
+
+    client = BotClient()
+    await send_safe(DEFAULT_CHAT_ID, "ephemeral", cleanup=True, cleanup_timeout=0)
+    await asyncio.sleep(0.05)
+    assert client.session.by_method("deleteMessage")
+
+
+@pytest.mark.asyncio
+async def test_long_message_preview_then_file():
+    client = BotClient(
+        send_safe={
+            "enabled": True,
+            "send_long_messages_as_files": True,
+            "send_preview_for_long_messages": True,
+            "preview_cutoff": 20,
+        }
+    )
+    await send_safe(DEFAULT_CHAT_ID, "A" * (MAX_TELEGRAM_MESSAGE_LENGTH + 50))
+    assert client.session.by_method("sendDocument")
+    preview = [t for t in client.texts() if "Preview" in t or "too long" in t]
+    assert preview
+
+
+@pytest.mark.asyncio
 async def test_parse_mode_fallback():
     client = BotClient()
     calls = {"n": 0}

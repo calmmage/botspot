@@ -219,4 +219,156 @@ async def test_getters_return_the_live_bot_and_dispatcher():
     assert cached.username == "tester"
 
 
+@pytest.mark.asyncio
+async def test_single_user_mode_blocks_strangers_and_allows_owner():
+    router = _router()
 
+    @router.message(Command("ping"))
+    async def ping(message: Message):
+        await message.answer("pong")
+
+    client = BotClient(router, single_user_mode={"enabled": True, "user": "owner"})
+    blocked = await client.send("/ping", username="pleb")
+    assert any("personal bot" in t for t in client.texts(blocked))
+    assert not any("pong" in t for t in client.texts(blocked))
+
+    allowed = await client.send("/ping", username="owner", user_id=42)
+    assert any("pong" in t for t in client.texts(allowed))
+
+
+@pytest.mark.asyncio
+async def test_trial_mode_isolates_users_and_enforces_a_global_cap():
+    router = _router()
+
+    @router.message(Command("ping"))
+    async def ping(message: Message):
+        await message.answer("pong")
+
+    per_user = BotClient(
+        router,
+        trial_mode={"enabled": True, "limit_per_user": 1, "period_per_user": 3600},
+    )
+    assert any("pong" in t for t in per_user.texts(await per_user.send("/ping", user_id=1)))
+    assert "pong" not in "\n".join(per_user.texts(await per_user.send("/ping", user_id=1)))
+    assert any(
+        "pong" in t for t in per_user.texts(await per_user.send("/ping", user_id=2, username="b"))
+    )
+
+    global_router = _router()
+
+    @global_router.message(Command("ping"))
+    async def ping_global(message: Message):
+        await message.answer("pong")
+
+    capped = BotClient(
+        global_router,
+        trial_mode={
+            "enabled": True,
+            "limit_per_user": 99,
+            "global_limit": 1,
+            "global_period": 3600,
+        },
+    )
+    assert any("pong" in t for t in capped.texts(await capped.send("/ping", user_id=1)))
+    second = "\n".join(capped.texts(await capped.send("/ping", user_id=2, username="b")))
+    assert "pong" not in second
+    assert "global usage limit" in second
+
+
+@pytest.mark.asyncio
+async def test_error_handler_uses_the_users_language():
+    router = _router()
+
+    @router.message(Command("boom"))
+    async def boom(_message: Message):
+        raise RuntimeError("kaboom")
+
+    client = BotClient(router, error_handling={"enabled": True, "easter_eggs": False})
+    out = await client.send("/boom", language_code="ru")
+    assert any("Упс, что-то пошло не так" in t for t in client.texts(out))
+
+
+@pytest.mark.asyncio
+async def test_hidden_commands_are_listed_but_not_published_to_telegram():
+    from botspot.commands_menu import Visibility
+
+    router = _router()
+
+    @botspot_command("secret", "A hidden ping", visibility=Visibility.HIDDEN)
+    @router.message(Command("secret"))
+    async def secret(message: Message):
+        await message.answer("shh")
+
+    @botspot_command("nuke", "Admin only", visibility=Visibility.ADMIN_ONLY)
+    @router.message(Command("nuke"))
+    async def nuke(message: Message):
+        await message.answer("boom")
+
+    client = BotClient(router, admins_str="@admin")
+    startup = await client.emit_startup()
+    set_cmds = [m for m in startup if m.__api_method__ == "setMyCommands"]
+    names = {c.command for c in set_cmds[0].commands}
+    assert "secret" not in names
+    assert "nuke" not in names
+    assert "list_commands" in names
+
+    listed = "\n".join(client.texts(await client.send("/list_commands", username="pleb")))
+    assert "/secret" in listed
+    assert "/nuke" not in listed
+
+    admin_listed = "\n".join(
+        client.texts(await client.send("/list_commands", username="admin", user_id=42))
+    )
+    assert "/nuke" in admin_listed
+
+
+@pytest.mark.asyncio
+async def test_callback_query_reaches_a_handler():
+    from aiogram.types import CallbackQuery
+
+    router = _router()
+
+    @router.callback_query()
+    async def on_click(query: CallbackQuery):
+        await query.answer()
+        assert query.message is not None
+        await query.message.answer(f"clicked {query.data}")
+
+    client = BotClient(router)
+    out = await client.callback("pick:1")
+    assert any(m.__api_method__ == "answerCallbackQuery" for m in out)
+    assert any("clicked pick:1" in t for t in client.texts(out))
+
+
+@pytest.mark.asyncio
+async def test_postgres_disposes_on_shutdown(tmp_path: Path):
+    db = tmp_path / "bot.db"
+    client = BotClient(postgres_database={"enabled": True, "url": f"sqlite+aiosqlite:///{db}"})
+    assert client.manager.deps.postgres_engine is not None
+    await client.emit_shutdown()
+    assert client.manager.deps._postgres_engine is None
+
+
+@pytest.mark.asyncio
+async def test_simple_user_cache_indexes_first_and_last_name():
+    client = BotClient()
+    await client.send("hi", first_name="Ada", last_name="Lovelace")
+    cache = get_simple_user_cache()
+    cached = cache.get_user(1001)
+    assert cached is not None
+    assert cached.first_name == "Ada"
+    assert cached.last_name == "Lovelace"
+    assert cache.find_user("Ada Lovelace")
+    assert cache.get_user_by_username("tester") is cached
+
+
+@pytest.mark.asyncio
+async def test_send_typing_status_calls_telegram():
+    from botspot.utils.unsorted import send_typing_status
+    from tests.telegram import make_message
+
+    client = BotClient()
+    await send_typing_status(make_message("hi", chat_id=42))
+    actions = client.session.by_method("sendChatAction")
+    assert actions
+    assert actions[0].chat_id == 42
