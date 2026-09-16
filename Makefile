@@ -43,7 +43,7 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
 
 test:
-	uv run pytest tests/ --cov=botspot --cov-report=term --cov-fail-under=50
+	uv run pytest tests/ --cov=botspot --cov-report=term --cov-fail-under=54
 
 check:
 	-uv run ruff check botspot
