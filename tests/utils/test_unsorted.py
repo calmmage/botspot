@@ -6,102 +6,60 @@ from aiogram.enums import ChatAction
 
 class TestGetUser:
     def test_get_user_from_message(self):
-        """Test getting username from message.from_user"""
         from botspot.utils.unsorted import get_user
+        from tests.telegram import make_message
 
-        # Setup
-        message = MagicMock()
-        message.from_user.username = "test_user"
-        message.from_user.id = 123456789
-        message.forward_from = None
-
-        # Execute
-        result = get_user(message)
-
-        # Verify
-        assert result == "test_user"
+        assert get_user(make_message("hi", username="test_user")) == "test_user"
 
     def test_get_user_id_when_no_username(self):
-        """Test getting user ID when username is not set"""
         from botspot.utils.unsorted import get_user
+        from tests.telegram import make_message
 
-        # Setup
-        message = MagicMock()
-        message.from_user.username = None
-        message.from_user.id = 123456789
-        message.forward_from = None
-
-        # Execute
-        result = get_user(message)
-
-        # Verify
-        assert result == "123456789"
+        assert get_user(make_message("hi", username=None, user_id=123456789)) == "123456789"
 
     def test_get_user_from_forward(self):
-        """Test getting username from forwarded message"""
         from botspot.utils.unsorted import get_user
+        from tests.telegram import make_message, make_user
 
-        # Setup
-        message = MagicMock()
-        message.from_user.username = "original_user"
-        message.from_user.id = 123456789
-        message.forward_from.username = "forward_user"
-        message.forward_from.id = 987654321
-
-        # Execute with forward_priority=True
-        result = get_user(message, forward_priority=True)
-
-        # Verify
-        assert result == "forward_user"
+        message = make_message(
+            "hi",
+            username="original_user",
+            forward_from=make_user(user_id=987654321, username="forward_user"),
+        )
+        assert get_user(message, forward_priority=True) == "forward_user"
 
     def test_get_user_id_from_forward_when_no_username(self):
-        """Test getting user ID from forwarded message when username is not set"""
         from botspot.utils.unsorted import get_user
+        from tests.telegram import make_message, make_user
 
-        # Setup
-        message = MagicMock()
-        message.from_user.username = "original_user"
-        message.from_user.id = 123456789
-        message.forward_from.username = None
-        message.forward_from.id = 987654321
-
-        # Execute with forward_priority=True
-        result = get_user(message, forward_priority=True)
-
-        # Verify
-        assert result == "987654321"
+        message = make_message(
+            "hi",
+            username="original_user",
+            forward_from=make_user(user_id=987654321, username=None),
+        )
+        assert get_user(message, forward_priority=True) == "987654321"
 
 
 class TestGetName:
     def test_get_name_from_message(self):
-        """Test getting full name from message.from_user"""
         from botspot.utils.unsorted import get_name
+        from tests.telegram import make_message
 
-        # Setup
-        message = MagicMock()
-        message.from_user.full_name = "Test User"
-        message.forward_from = None
-
-        # Execute
-        result = get_name(message)
-
-        # Verify
-        assert result == "Test User"
+        assert get_name(make_message("hi", first_name="Test", last_name="User")) == "Test User"
 
     def test_get_name_from_forward(self):
-        """Test getting full name from forwarded message"""
         from botspot.utils.unsorted import get_name
+        from tests.telegram import make_message, make_user
 
-        # Setup
-        message = MagicMock()
-        message.from_user.full_name = "Original User"
-        message.forward_from.full_name = "Forward User"
-
-        # Execute with forward_priority=True
-        result = get_name(message, forward_priority=True)
-
-        # Verify
-        assert result == "Forward User"
+        message = make_message(
+            "hi",
+            first_name="Original",
+            last_name="User",
+            forward_from=make_user(
+                user_id=2, username="fwd", first_name="Forward", last_name="User"
+            ),
+        )
+        assert get_name(message, forward_priority=True) == "Forward User"
 
 
 class TestStripCommand:

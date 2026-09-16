@@ -8,6 +8,7 @@ Allows dynamic management via admin commands.
 from typing import TYPE_CHECKING, List, Optional
 
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from botspot.components.middlewares.i18n import t
 from botspot.utils.admin_filter import AdminFilter
@@ -259,15 +260,11 @@ async def remove_friend(username: str) -> bool:
 
 
 # Command handlers
-async def add_friend_command_handler(message: Message):
+async def add_friend_command_handler(message: Message, state: FSMContext):
     """Handler for /add_friend command."""
-    from aiogram.fsm.context import FSMContext
     from botspot.utils.user_ops import get_username_from_command_or_dialog
 
     assert message.from_user is not None
-
-    # Get FSM context from middleware
-    state: FSMContext = message.bot.get("state")  # type: ignore
 
     username = await get_username_from_command_or_dialog(
         message=message,
@@ -291,14 +288,11 @@ async def add_friend_command_handler(message: Message):
         await message.reply(t("access_control.add_friend_error", error=str(e)))
 
 
-async def remove_friend_command_handler(message: Message):
+async def remove_friend_command_handler(message: Message, state: FSMContext):
     """Handler for /remove_friend command."""
-    from aiogram.fsm.context import FSMContext
     from botspot.utils.user_ops import get_username_from_command_or_dialog
 
     assert message.from_user is not None
-
-    state: FSMContext = message.bot.get("state")  # type: ignore
 
     username = await get_username_from_command_or_dialog(
         message=message,

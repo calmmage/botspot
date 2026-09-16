@@ -1,75 +1,78 @@
 # Botspot
 
-A modern, component-based Telegram bot framework for Python that makes building sophisticated bots simple and maintainable.
+A collection of cross-integrated utils and components for Telegram bots.
 
-## Why Botspot?
+Connect botspot components to an [aiogram](https://docs.aiogram.dev) dispatcher. Featured: `user_data` and `send_safe`. Access components via the singleton `deps` object and `deps_getters`.
 
-- **🧩 Component Architecture**: Modular design with reusable components
-- **🔧 Batteries Included**: Database, LLM, storage, and scheduling components
-- **⚡ Async First**: Built on aiogram with full async support
-- **🛡️ Production Ready**: Error handling, monitoring, and trial modes
-- **📱 User-Friendly**: Simplified user interactions and menu systems
+## Install
 
-## Quick Start
+Needs **Python ≥ 3.12** and a bot token from [@BotFather](https://t.me/BotFather).
 
-```python
-from botspot import Bot
-from botspot.components.new import LLMProvider
-
-# Create a bot with LLM capabilities
-bot = Bot(token="your_bot_token")
-llm = LLMProvider(provider="openai", api_key="your_key")
-
-@bot.message()
-async def chat_handler(message, llm: LLMProvider):
-    response = await llm.complete(message.text)
-    await message.reply(response)
-
-bot.run()
-```
-
-## Core Features
-
-### 🧩 **Component System**
-Mix and match components to build your bot:
-- **Data**: MongoDB, user data, contact management
-- **Features**: User interactions, multi-forwarding
-- **Main**: Telethon integration, scheduling, trial modes
-- **QoL**: Command menus, bot info, URL generation
-
-### 🤖 **AI Integration**
-Built-in LLM support:
-- OpenAI, Anthropic, and other providers
-- Conversation context management
-- Streaming responses
-- Token usage tracking
-
-### 📚 **Rich Middleware**
-- Error handling and logging
-- User caching and state management
-- Admin filters and permissions
-- Trial mode limitations
-
-## Architecture
-
-```
-┌─────────────────┐
-│   Your Bot      │
-├─────────────────┤
-│  Components     │  ← Mix & match functionality
-├─────────────────┤
-│  Botspot Core   │  ← Framework foundation  
-├─────────────────┤
-│   aiogram       │  ← Telegram API
-└─────────────────┘
-```
-
-## Get Started
-
-Install with pip or uv:
+Clone the [botspot-template](https://github.com/calmmage/botspot-template), copy `example.env`, enable the components you want, then run:
 
 ```bash
-uv add botspot
+git clone https://github.com/calmmage/botspot-template.git your-bot-name
+cd your-bot-name
+cp example.env .env          # set TELEGRAM_BOT_TOKEN
+python run.py
 ```
 
-Check out the [examples](https://github.com/calmmage/botspot/tree/main/examples) and the [botspot-template](https://github.com/calmmage/botspot-template) to get started.
+This library (v0.10.39) is installed from git. The PyPI `botspot` project is an older 0.1.x snapshot:
+
+```bash
+uv add git+https://github.com/calmmage/botspot.git
+```
+
+See the [README](https://github.com/calmmage/botspot/blob/main/README.md#install) for badges, the hero screenshot, and the agents pointer.
+
+## Example
+
+`examples/base_bot` is the default pattern:
+
+```python
+from botspot import commands_menu
+from botspot.utils import send_safe
+
+@commands_menu.botspot_command("start", "Start the bot")
+@router.message(CommandStart())
+async def start_handler(message: Message, app: App):
+    await send_safe(
+        message.chat.id,
+        f"Hello, {html.bold(message.from_user.full_name)}!\n"
+        f"Welcome to {app.name}!\n"
+        f"Use /help to see available commands.",
+    )
+```
+
+Access components with:
+
+```python
+from botspot.utils.deps_getters import get_bot, get_database, get_scheduler
+```
+
+More demos: [examples/](https://github.com/calmmage/botspot/tree/main/examples). Agent conventions: [AGENTS.md](https://github.com/calmmage/botspot/blob/main/AGENTS.md).
+
+## Components
+
+| Area | Examples |
+|------|----------|
+| Data | PostgreSQL (preferred for new bots), MongoDB, `user_data`, access control |
+| Features | `user_interactions` (`ask_user`), multi-forward |
+| Main | Telethon, scheduler, trial / single-user mode |
+| QoL | `@botspot_command` menu, bot info, print bot URL |
+| New | LLM provider, chat binder, queues, S3, message aggregator |
+
+Enable components in settings / `example.env`. `BotManager` wires them into the dispatcher.
+
+PostgreSQL is optional (`sqlalchemy[asyncio]`, `asyncpg`, `alembic` live in the extras group, same as `pymongo`). Enable with `BOTSPOT_POSTGRES_DATABASE_ENABLED` and `BOTSPOT_POSTGRES_DATABASE_URL` (`postgresql+asyncpg://…`). Apps register models on `botspot.components.data.postgres_database.Base` and point Alembic `target_metadata` at `Base.metadata`. Botspot ships no app tables. Mongo stays available and unchanged.
+
+## Docs in this repo
+
+| | |
+|---|---|
+| Public README | [README.md](https://github.com/calmmage/botspot/blob/main/README.md) |
+| Component demos | [examples/](https://github.com/calmmage/botspot/tree/main/examples) |
+| Agent install / conventions | [AGENTS.md](https://github.com/calmmage/botspot/blob/main/AGENTS.md) |
+| Vulnerability reports | [SECURITY.md](https://github.com/calmmage/botspot/blob/main/SECURITY.md) |
+
+Docs stay in this repository and are linked from the README. GitHub Pages is not used.

@@ -1,0 +1,68 @@
+name: Weekly dependency batch
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: deps-weekly
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    name: uv lock --upgrade + tests + merge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Batch-upgrade the lockfile
+        run: bash scripts/upgrade-deps.sh
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Run tests (must pass before merge)
+        run: uv run pytest tests/
+
+      - name: Open and merge one PR if the lock changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- uv.lock pyproject.toml; then
+            echo "No dependency changes"
+            exit 0
+          fi
+          date_tag="$(date -u +%Y-%m-%d)"
+          branch="deps/weekly-${date_tag}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add uv.lock pyproject.toml
+          git commit -m "chore(deps): weekly tested lock upgrade ${date_tag}"
+          git push -u origin "$branch" --force
+          pr_url="$(gh pr list --head "$branch" --json url --jq '.[0].url' || true)"
+          if [ -z "$pr_url" ] || [ "$pr_url" = "null" ]; then
+            pr_url="$(gh pr create --title "chore(deps): weekly tested lock upgrade ${date_tag}" \
+              --body "Mechanical batch from \`scripts/upgrade-deps.sh\` (\`uv lock --upgrade\`). Tests passed in this workflow. Auto-merged because the bump is mechanical." \
+              --base main --head "$branch")"
+          fi
+          # Tests already ran in this job. GITHUB_TOKEN PRs do not retrigger
+          # pull_request workflows, so merge here instead of waiting on checks.
+          gh pr merge "$pr_url" --squash --delete-branch || \
+            echo "Merge blocked; PR left open: $pr_url"

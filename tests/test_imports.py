@@ -8,6 +8,7 @@ def test_core_imports():
 
 def test_components_imports():
     from botspot.components.data.mongo_database import MongoDatabaseSettings
+    from botspot.components.data.postgres_database import PostgresDatabaseSettings
     from botspot.components.features.user_interactions import AskUserSettings
     from botspot.components.main.event_scheduler import EventSchedulerSettings
     from botspot.components.main.trial_mode import TrialModeSettings
@@ -20,6 +21,7 @@ def test_components_imports():
     assert ErrorHandlerSettings
     assert EventSchedulerSettings
     assert MongoDatabaseSettings
+    assert PostgresDatabaseSettings
     assert PrintBotUrlSettings
     assert TrialModeSettings
 

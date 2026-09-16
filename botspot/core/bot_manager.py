@@ -6,7 +6,12 @@ from typing import Optional, Type
 
 from aiogram import Bot, Dispatcher
 from botspot import __version__
-from botspot.components.data import access_control, mongo_database, user_data
+from botspot.components.data import (
+    access_control,
+    mongo_database,
+    postgres_database,
+    user_data,
+)
 from botspot.components.data.user_data import User
 from botspot.components.features import user_interactions
 from botspot.components.main import (
@@ -54,6 +59,13 @@ class BotManager(metaclass=Singleton):
             mongo_client, mongo_db = mongo_database.initialize(self.settings.mongo_database)
             self.deps.mongo_client = mongo_client
             self.deps.mongo_database = mongo_db
+
+        if self.settings.postgres_database.enabled:
+            postgres_engine, postgres_session_factory = postgres_database.initialize(
+                self.settings.postgres_database
+            )
+            self.deps.postgres_engine = postgres_engine
+            self.deps.postgres_session_factory = postgres_session_factory
 
         if self.settings.event_scheduler.enabled:
             self.deps.scheduler = event_scheduler.initialize(self.settings.event_scheduler)
@@ -105,61 +117,46 @@ class BotManager(metaclass=Singleton):
             )
 
         # Remove global bot check - each component handles its own requirements
-        if self.settings.user_data.enabled:
-            user_data.setup_dispatcher(dp, **self.settings.user_data.model_dump())
-
-        if self.settings.single_user_mode.enabled:
-            single_user_mode.setup_dispatcher(dp)
-
-        if self.settings.error_handling.enabled:
-            error_handler.setup_dispatcher(dp)
-
-        if self.settings.mongo_database.enabled:
-            mongo_database.setup_dispatcher(dp)
-
-        if self.settings.print_bot_url.enabled:
-            print_bot_url.setup_dispatcher(dp)
-
-        if self.settings.bot_commands_menu.enabled:
-            bot_commands_menu.setup_dispatcher(dp, self.settings.bot_commands_menu)
-
-        if self.settings.trial_mode.enabled:
-            trial_mode.setup_dispatcher(dp)
-
-        if self.settings.ask_user.enabled:
-            if not self.deps.bot:
-                raise RuntimeError("Bot instance is required for ask_user functionality")
-
-            user_interactions.setup_dispatcher(dp)
-
-        if self.settings.bot_info.enabled:
-            bot_info.setup_dispatcher(dp)
-
-        if self.settings.event_scheduler.enabled:
-            event_scheduler.setup_dispatcher(dp)
-
-        if self.settings.telethon_manager.enabled:
-            telethon_manager.setup_dispatcher(dp)
-
-        if self.settings.access_control.enabled:
-            access_control.setup_dispatcher(dp)
-
-        if self.settings.chat_binder.enabled:
-            chat_binder.setup_dispatcher(dp)
-
-        if self.settings.llm_provider.enabled:
-            llm_provider.setup_dispatcher(dp)
-
-        if self.settings.queue_manager.enabled:
-            queue_manager.setup_dispatcher(dp)
-
-        if self.settings.message_aggregator.enabled:
-            message_aggregator.setup_dispatcher(dp)
-
-        if self.settings.chat_fetcher.enabled:
-            chat_fetcher.setup_dispatcher(dp)
-
-        if self.settings.auto_archive.enabled:
-            auto_archive.setup_dispatcher(dp)
+        for enabled, setup in self._dispatcher_setups(dp):
+            if enabled:
+                setup()
 
         simple_user_cache.setup_dispatcher(dp)
+
+    def _dispatcher_setups(self, dp: Dispatcher):
+        settings = self.settings
+        return (
+            (
+                settings.user_data.enabled,
+                lambda: user_data.setup_dispatcher(dp, **settings.user_data.model_dump()),
+            ),
+            (settings.single_user_mode.enabled, lambda: single_user_mode.setup_dispatcher(dp)),
+            (settings.error_handling.enabled, lambda: error_handler.setup_dispatcher(dp)),
+            (settings.mongo_database.enabled, lambda: mongo_database.setup_dispatcher(dp)),
+            (settings.postgres_database.enabled, lambda: postgres_database.setup_dispatcher(dp)),
+            (settings.print_bot_url.enabled, lambda: print_bot_url.setup_dispatcher(dp)),
+            (
+                settings.bot_commands_menu.enabled,
+                lambda: bot_commands_menu.setup_dispatcher(dp, settings.bot_commands_menu),
+            ),
+            (settings.trial_mode.enabled, lambda: trial_mode.setup_dispatcher(dp)),
+            (settings.ask_user.enabled, lambda: self._setup_ask_user(dp)),
+            (settings.bot_info.enabled, lambda: bot_info.setup_dispatcher(dp)),
+            (settings.event_scheduler.enabled, lambda: event_scheduler.setup_dispatcher(dp)),
+            (settings.telethon_manager.enabled, lambda: telethon_manager.setup_dispatcher(dp)),
+            (settings.access_control.enabled, lambda: access_control.setup_dispatcher(dp)),
+            (settings.chat_binder.enabled, lambda: chat_binder.setup_dispatcher(dp)),
+            (settings.llm_provider.enabled, lambda: llm_provider.setup_dispatcher(dp)),
+            (settings.queue_manager.enabled, lambda: queue_manager.setup_dispatcher(dp)),
+            (
+                settings.message_aggregator.enabled,
+                lambda: message_aggregator.setup_dispatcher(dp),
+            ),
+            (settings.chat_fetcher.enabled, lambda: chat_fetcher.setup_dispatcher(dp)),
+            (settings.auto_archive.enabled, lambda: auto_archive.setup_dispatcher(dp)),
+        )
+
+    def _setup_ask_user(self, dp: Dispatcher) -> None:
+        if not self.deps.bot:
+            raise RuntimeError("Bot instance is required for ask_user functionality")
+        user_interactions.setup_dispatcher(dp)

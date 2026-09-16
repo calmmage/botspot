@@ -21,6 +21,9 @@ if TYPE_CHECKING:
     from botspot.components.new.s3_storage import S3StorageProvider
     from pymongo import AsyncMongoClient  # noqa: F401
     from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
+    from sqlalchemy.ext.asyncio import AsyncEngine  # noqa: F401
+    from sqlalchemy.ext.asyncio import AsyncSession  # noqa: F401
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 class DependencyManager(metaclass=Singleton):
@@ -31,6 +34,8 @@ class DependencyManager(metaclass=Singleton):
         dispatcher: Optional[Dispatcher] = None,
         mongo_client: Optional["AsyncMongoClient"] = None,
         mongo_database: Optional["AsyncDatabase"] = None,
+        postgres_engine: Optional["AsyncEngine"] = None,
+        postgres_session_factory: Optional["async_sessionmaker[AsyncSession]"] = None,
         **kwargs,
     ):
         self._botspot_settings = botspot_settings or BotspotSettings()
@@ -38,6 +43,8 @@ class DependencyManager(metaclass=Singleton):
         self._dispatcher = dispatcher
         self._mongo_client = mongo_client
         self._mongo_database = mongo_database
+        self._postgres_engine = postgres_engine
+        self._postgres_session_factory = postgres_session_factory
         self._scheduler = None
         self._telethon_manager = None
         self._user_manager = None
@@ -99,6 +106,26 @@ class DependencyManager(metaclass=Singleton):
     @mongo_database.setter
     def mongo_database(self, value):
         self._mongo_database = value
+
+    @property
+    def postgres_engine(self) -> "AsyncEngine":
+        if self._postgres_engine is None:
+            raise BotspotError("PostgreSQL engine is not initialized")
+        return self._postgres_engine
+
+    @postgres_engine.setter
+    def postgres_engine(self, value):
+        self._postgres_engine = value
+
+    @property
+    def postgres_session_factory(self) -> "async_sessionmaker[AsyncSession]":
+        if self._postgres_session_factory is None:
+            raise BotspotError("PostgreSQL session factory is not initialized")
+        return self._postgres_session_factory
+
+    @postgres_session_factory.setter
+    def postgres_session_factory(self, value):
+        self._postgres_session_factory = value
 
     @property
     def scheduler(self) -> "AsyncIOScheduler":
