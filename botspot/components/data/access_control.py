@@ -5,7 +5,8 @@ Provides MongoDB-backed storage for friends and admins with fallback to environm
 Allows dynamic management via admin commands.
 """
 
-from typing import TYPE_CHECKING, List, Optional
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional
 
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -35,6 +36,35 @@ class AccessControlSettings(BaseSettings):
 
 FRIENDS_KEY = "friends"
 ADMINS_KEY = "admins"
+
+_ENV_VAR = {FRIENDS_KEY: "BOTSPOT_FRIENDS_STR", ADMINS_KEY: "BOTSPOT_ADMINS_STR"}
+
+
+@dataclass
+class AccessListDiff:
+    """Difference between the MongoDB list and the env list. Entries keep their original spelling."""
+
+    only_in_db: List[str]
+    only_in_env: List[str]
+    same: bool = field(init=False)
+
+    def __post_init__(self):
+        self.same = not self.only_in_db and not self.only_in_env
+
+
+def _normalize_entry(entry) -> str:
+    """Compare key: stripped, no leading '@', lowercase. Numeric ids compare as strings."""
+    return str(entry).strip().lstrip("@").lower()
+
+
+def diff_access_lists(db_list: List[str], env_list: List[str]) -> AccessListDiff:
+    """Pure diff of two access lists ('@abc' == 'abc' == '@ABC', ids compared as strings)."""
+    db_keys = {_normalize_entry(x) for x in db_list}
+    env_keys = {_normalize_entry(x) for x in env_list}
+    return AccessListDiff(
+        only_in_db=[x for x in db_list if _normalize_entry(x) not in env_keys],
+        only_in_env=[x for x in env_list if _normalize_entry(x) not in db_keys],
+    )
 
 
 class AccessControl:
@@ -66,6 +96,11 @@ class AccessControl:
         self.collection = collection
         self._friends_cache: Optional[List[str]] = None
         self._admins_cache: Optional[List[str]] = None
+        # Where each list came from and how it compared to the env var (filled on first load).
+        self.friends_source: Literal["mongo", "env"] = "env"
+        self.admins_source: Literal["mongo", "env"] = "env"
+        self.friends_diff: Optional[AccessListDiff] = None
+        self.admins_diff: Optional[AccessListDiff] = None
 
     @property
     def mongo_available(self) -> bool:
@@ -112,6 +147,46 @@ class AccessControl:
             return deps.botspot_settings.admins
         return []
 
+    def _compare_with_env(self, key: str, db_list: List[str]) -> Optional[AccessListDiff]:
+        """Log how the MongoDB list relates to the env var. Warn only when they differ."""
+        env_var = _ENV_VAR[key]
+        env_list = self._get_from_env(key)
+        if not env_list:
+            logger.info(f"Loaded {len(db_list)} {key} from MongoDB ({env_var} unset)")
+            return None
+
+        diff = diff_access_lists(db_list, env_list)
+        if diff.same:
+            logger.info(f"Loaded {len(db_list)} {key} from MongoDB (matches {env_var})")
+            return diff
+
+        parts = []
+        if diff.only_in_db:
+            parts.append(f"only in MongoDB: {', '.join(diff.only_in_db)}")
+        if diff.only_in_env:
+            parts.append(f"only in env: {', '.join(diff.only_in_env)}")
+        logger.warning(
+            f"{key.capitalize()} list from MongoDB differs from {env_var} — "
+            f"{'; '.join(parts)}. MongoDB wins."
+        )
+        return diff
+
+    def get_access_report(self) -> Dict[str, dict]:
+        """Source, count and env diff for both lists, for consumers such as startup reports."""
+
+        def _entry(cache, source, diff):
+            return {
+                "source": source,
+                "count": len(cache or []),
+                "only_in_db": list(diff.only_in_db) if diff else [],
+                "only_in_env": list(diff.only_in_env) if diff else [],
+            }
+
+        return {
+            "friends": _entry(self._friends_cache, self.friends_source, self.friends_diff),
+            "admins": _entry(self._admins_cache, self.admins_source, self.admins_diff),
+        }
+
     def get_friends_cached(self) -> Optional[List[str]]:
         """Sync access to cached friends list. None if not yet loaded."""
         return self._friends_cache
@@ -128,13 +203,8 @@ class AccessControl:
         friends_from_db = await self._get_from_db(FRIENDS_KEY)
 
         if friends_from_db is not None:
-            logger.info(
-                f"Loaded {len(friends_from_db)} friends from MongoDB, ignoring environment variables"
-            )
-            if len(friends_from_db) > 0:
-                logger.warning(
-                    "⚠️  Friends list loaded from MongoDB. Environment variable BOTSPOT_FRIENDS_STR will be ignored."
-                )
+            self.friends_source = "mongo"
+            self.friends_diff = self._compare_with_env(FRIENDS_KEY, friends_from_db)
             self._friends_cache = friends_from_db
             return friends_from_db
 
@@ -146,6 +216,7 @@ class AccessControl:
         if self.mongo_available and friends_from_env:
             await self._save_to_db(FRIENDS_KEY, friends_from_env)
 
+        self.friends_source = "env"
         self._friends_cache = friends_from_env
         return friends_from_env
 
@@ -157,13 +228,8 @@ class AccessControl:
         admins_from_db = await self._get_from_db(ADMINS_KEY)
 
         if admins_from_db is not None:
-            logger.info(
-                f"Loaded {len(admins_from_db)} admins from MongoDB, ignoring environment variables"
-            )
-            if len(admins_from_db) > 0:
-                logger.warning(
-                    "⚠️  Admins list loaded from MongoDB. Environment variable BOTSPOT_ADMINS_STR will be ignored."
-                )
+            self.admins_source = "mongo"
+            self.admins_diff = self._compare_with_env(ADMINS_KEY, admins_from_db)
             self._admins_cache = admins_from_db
             return admins_from_db
 
@@ -173,6 +239,7 @@ class AccessControl:
         if self.mongo_available and admins_from_env:
             await self._save_to_db(ADMINS_KEY, admins_from_env)
 
+        self.admins_source = "env"
         self._admins_cache = admins_from_env
         return admins_from_env
 
