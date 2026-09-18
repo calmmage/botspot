@@ -29,6 +29,7 @@ from botspot.components.new import (
     message_aggregator,
     queue_manager,
     s3_storage,
+    subscription_manager,
 )
 from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
 from botspot.core.botspot_settings import BotspotSettings
@@ -106,6 +107,11 @@ class BotManager(metaclass=Singleton):
             s3_provider = s3_storage.initialize(self.settings.s3_storage)
             self.deps.s3_storage = s3_provider
 
+        if self.settings.subscription_manager.enabled:
+            self.deps.subscription_manager = subscription_manager.initialize(
+                self.settings.subscription_manager
+            )
+
         self.deps.simple_user_cache = simple_user_cache.initialize()
 
     def setup_dispatcher(self, dp: Dispatcher):
@@ -154,6 +160,10 @@ class BotManager(metaclass=Singleton):
             ),
             (settings.chat_fetcher.enabled, lambda: chat_fetcher.setup_dispatcher(dp)),
             (settings.auto_archive.enabled, lambda: auto_archive.setup_dispatcher(dp)),
+            (
+                settings.subscription_manager.enabled,
+                lambda: subscription_manager.setup_dispatcher(dp),
+            ),
         )
 
     def _setup_ask_user(self, dp: Dispatcher) -> None:

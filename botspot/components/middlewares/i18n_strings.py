@@ -317,4 +317,178 @@ BOTSPOT_STRINGS: dict[str, dict[str, str]] = {
         "en": "Send as file enabled",
         "ru": "Отправка файлом включена",
     },
+    # -- subscription_manager --
+    "subscription_required": {
+        "en": "A paid plan is required. Use /subscribe to continue.",
+        "ru": "Нужен платный план. Откройте /subscribe, чтобы продолжить.",
+    },
+    "subscription_no_access": {
+        "en": "No access. Use /subscribe or /buy to continue.",
+        "ru": "Нет доступа. Используйте /subscribe или /buy, чтобы продолжить.",
+    },
+    "subscription_minutes_exhausted": {
+        "en": "This period's minutes are used up. Wait for renewal or buy credits with /buy.",
+        "ru": "Минуты этого периода израсходованы. Дождитесь продления или купите кредиты через /buy.",
+    },
+    "billing_insufficient_credits": {
+        "en": "Not enough credits. Use /buy to add credits.",
+        "ru": "Недостаточно кредитов. Пополните баланс через /buy.",
+    },
+    "trial_limit_reached": {
+        "en": "Trial limit reached. Use /account to add credits and continue.",
+        "ru": "Лимит пробного периода достигнут. Пополните баланс через /account, чтобы продолжить.",
+    },
+    "trial_expired": {
+        "en": "Your free trial has expired. Use /account to add credits and continue.",
+        "ru": "Бесплатный пробный период истёк. Пополните баланс через /account, чтобы продолжить.",
+    },
+    "trial_audio_requests_cap": {
+        "en": "Trial limit reached: total audio request cap is exhausted. Use /account to add credits and continue.",
+        "ru": "Лимит пробного периода достигнут: исчерпан лимит аудио запросов. Пополните баланс через /account, чтобы продолжить.",
+    },
+    "trial_audio_minutes_cap": {
+        "en": "Trial limit reached: total audio minutes cap is exhausted. Use /account to add credits and continue.",
+        "ru": "Лимит пробного периода достигнут: исчерпан лимит аудио минут. Пополните баланс через /account, чтобы продолжить.",
+    },
+    "trial_chat_requests_cap": {
+        "en": "Trial limit reached: total AI chat request cap is exhausted. Use /account to add credits and continue.",
+        "ru": "Лимит пробного периода достигнут: исчерпан лимит запросов к AI чату. Пополните баланс через /account, чтобы продолжить.",
+    },
+    "trial_chat_tokens_cap": {
+        "en": "Trial limit reached: total AI chat token cap is exhausted. Use /account to add credits and continue.",
+        "ru": "Лимит пробного периода достигнут: исчерпан лимит токенов AI чата. Пополните баланс через /account, чтобы продолжить.",
+    },
+    "trial_global_audio_requests_day": {
+        "en": "Global free trial limit reached for today (audio requests/day). Try tomorrow or add credits in /account.",
+        "ru": "Глобальный лимит бесплатного периода на сегодня достигнут (аудио запросы/день). Попробуйте завтра или пополните баланс через /account.",
+    },
+    "trial_global_audio_minutes_day": {
+        "en": "Global free trial limit reached for today (audio minutes/day). Try tomorrow or add credits in /account.",
+        "ru": "Глобальный лимит бесплатного периода на сегодня достигнут (аудио минуты/день). Попробуйте завтра или пополните баланс через /account.",
+    },
+    "trial_global_chat_requests_day": {
+        "en": "Global free trial limit reached for today (AI chat requests/day). Try tomorrow or add credits in /account.",
+        "ru": "Глобальный лимит бесплатного периода на сегодня достигнут (запросы AI чата/день). Попробуйте завтра или пополните баланс через /account.",
+    },
+    "trial_global_chat_tokens_day": {
+        "en": "Global free trial limit reached for today (AI chat tokens/day). Try tomorrow or add credits in /account.",
+        "ru": "Глобальный лимит бесплатного периода на сегодня достигнут (токены AI чата/день). Попробуйте завтра или пополните баланс через /account.",
+    },
+    "trial_global_cost_day": {
+        "en": "Global free trial budget reached for today (hard cost cap). Try tomorrow or add credits in /account.",
+        "ru": "Глобальный бюджет бесплатного периода на сегодня достигнут (лимит затрат). Попробуйте завтра или пополните баланс через /account.",
+    },
+    "subscription_picker": {
+        "en": "Choose a plan. Pay with Telegram Stars. Credit packs stay available as pay-as-you-go.",
+        "ru": "Выберите план. Оплата — Telegram Stars. Пакеты кредитов остаются как оплата по факту.",
+    },
+    "subscription_picker_short": {"en": "Plans", "ru": "Планы"},
+    "subscription_plan_button": {
+        "en": "{title} — {stars} ⭐ / mo",
+        "ru": "{title} — {stars} ⭐ / мес",
+    },
+    "subscription_plans_header": {
+        "en": "<b>Plans</b>",
+        "ru": "<b>Планы</b>",
+    },
+    "subscription_plan_row": {
+        "en": "• <b>{title}</b> — ${usd} / {stars} ⭐ — {minutes} min/mo, seats {seats}",
+        "ru": "• <b>{title}</b> — ${usd} / {stars} ⭐ — {minutes} мин/мес, мест {seats}",
+    },
+    "subscription_account": {
+        "en": (
+            "<b>Account</b>\n"
+            "Source: <b>{source}</b>\n"
+            "Plan: <b>{plan}</b>\n"
+            "Until: {until}\n"
+            "Minutes left: {minutes}\n"
+            "Credits: {credits}"
+        ),
+        "ru": (
+            "<b>Аккаунт</b>\n"
+            "Источник: <b>{source}</b>\n"
+            "План: <b>{plan}</b>\n"
+            "До: {until}\n"
+            "Минут осталось: {minutes}\n"
+            "Кредиты: {credits}"
+        ),
+    },
+    "subscription_cancel_renewal": {
+        "en": "Cancel renewal",
+        "ru": "Отменить продление",
+    },
+    "subscription_cancelled": {
+        "en": "Renewal cancelled. Access stays until the current period ends.",
+        "ru": "Продление отменено. Доступ сохранится до конца текущего периода.",
+    },
+    "subscription_pay_stars": {
+        "en": "Pay {stars} ⭐",
+        "ru": "Оплатить {stars} ⭐",
+    },
+    "subscription_pay_prompt": {
+        "en": "Subscribe to <b>{title}</b> for {stars} Telegram Stars per month.",
+        "ru": "Подписка <b>{title}</b> — {stars} Telegram Stars в месяц.",
+    },
+    "subscription_stars_description": {
+        "en": "{title} monthly plan ({stars} Stars)",
+        "ru": "{title} — месячный план ({stars} Stars)",
+    },
+    "subscription_grant_usage": {
+        "en": "Usage: /grant <telegram_user_id> <plan_id> [days]",
+        "ru": "Использование: /grant <telegram_user_id> <plan_id> [days]",
+    },
+    "subscription_grant_done": {
+        "en": "Granted plan <b>{plan}</b> to user {user_id}.",
+        "ru": "Пользователю {user_id} выдан план <b>{plan}</b>.",
+    },
+    "subscription_revoke_usage": {
+        "en": "Usage: /revoke <telegram_user_id>",
+        "ru": "Использование: /revoke <telegram_user_id>",
+    },
+    "subscription_revoke_done": {
+        "en": "Revoked plans for user {user_id}.",
+        "ru": "Планы пользователя {user_id} отозваны.",
+    },
+    "subscription_list_empty": {
+        "en": "No active subscribers.",
+        "ru": "Активных подписчиков нет.",
+    },
+    "subscription_list_header": {
+        "en": "Subscribers:\n{entries}",
+        "ru": "Подписчики:\n{entries}",
+    },
+    "billing_buy_intro": {
+        "en": "Choose a credit pack. Pay with Telegram Stars.",
+        "ru": "Выберите пакет кредитов. Оплата — Telegram Stars.",
+    },
+    "billing_buy_credits": {"en": "Buy credits", "ru": "Купить кредиты"},
+    "billing_pack_button": {
+        "en": "${usd} — {credits} credits",
+        "ru": "${usd} — {credits} кредитов",
+    },
+    "billing_back": {"en": "Back", "ru": "Назад"},
+    "billing_stars_description": {
+        "en": "{credits} credits (${usd} pack)",
+        "ru": "{credits} кредитов (пакет ${usd})",
+    },
+    "billing_payment_success": {
+        "en": "Payment received. Your account is updated.",
+        "ru": "Платёж получен. Аккаунт обновлён.",
+    },
+    "billing_invoice_invalid": {
+        "en": "This invoice is invalid.",
+        "ru": "Этот счёт недействителен.",
+    },
+    "billing_invoice_not_found": {
+        "en": "This invoice was not found or is no longer payable.",
+        "ru": "Счёт не найден или больше не действует.",
+    },
+    "billing_grant_credits_usage": {
+        "en": "Usage: /grant_credits <telegram_user_id> <credits> [note]",
+        "ru": "Использование: /grant_credits <telegram_user_id> <credits> [заметка]",
+    },
+    "billing_grant_credits_done": {
+        "en": "Granted {credits} credits to user {user_id}.\nLedger: {ledger_id}",
+        "ru": "Начислено {credits} кредитов пользователю {user_id}.\nЛеджер: {ledger_id}",
+    },
 }

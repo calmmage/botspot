@@ -99,6 +99,15 @@ async def get_telethon_client(
     return client
 
 
+def get_subscription_manager():
+    """Get the subscription manager. Imported lazily to avoid a circular import at boot."""
+    from botspot.components.new.subscription_manager import (
+        get_subscription_manager as _get_subscription_manager,
+    )
+
+    return _get_subscription_manager()
+
+
 def get_s3_storage() -> Optional[S3StorageProvider]:
     """Get the S3 Storage provider from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
@@ -134,4 +143,5 @@ __all__ = [
     "get_simple_user_cache",
     "get_dependency_manager",
     "get_botspot_settings",
+    "get_subscription_manager",
 ]
