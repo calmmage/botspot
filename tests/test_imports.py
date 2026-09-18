@@ -12,6 +12,7 @@ def test_components_imports():
     from botspot.components.features.user_interactions import AskUserSettings
     from botspot.components.main.event_scheduler import EventSchedulerSettings
     from botspot.components.main.trial_mode import TrialModeSettings
+    from botspot.components.new.subscription_manager import SubscriptionManagerSettings
     from botspot.components.middlewares.error_handler import ErrorHandlerSettings
     from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
     from botspot.components.qol.print_bot_url import PrintBotUrlSettings
@@ -24,6 +25,7 @@ def test_components_imports():
     assert PostgresDatabaseSettings
     assert PrintBotUrlSettings
     assert TrialModeSettings
+    assert SubscriptionManagerSettings
 
 
 def test_utils_imports():
