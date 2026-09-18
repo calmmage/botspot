@@ -39,6 +39,23 @@ if TYPE_CHECKING:
 
 logger = get_logger()
 
+# Models (full litellm names) that rejected `temperature` server-side. Later calls
+# to them skip the parameter immediately instead of paying for a rejected request.
+_TEMPERATURE_REJECTED_MODELS: set[str] = set()
+
+_TEMPERATURE_REJECTION_MARKERS = (
+    "unsupported value",
+    "unsupported parameter",
+    "does not support",
+    "only the default",
+)
+
+
+def _is_temperature_rejection(error: BaseException) -> bool:
+    """True if the error is a provider/litellm rejection of the temperature param."""
+    text = str(error).lower()
+    return "temperature" in text and any(m in text for m in _TEMPERATURE_REJECTION_MARKERS)
+
 
 # ---------------------------------------------
 # region Settings and Configuration
@@ -56,7 +73,9 @@ class LLMProviderSettings(BaseSettings):
     # If False, only friends and admins can use LLM features
     allow_everyone: bool = False
     skip_import_check: bool = False  # Skip import check for dependencies
-    drop_unsupported_params: bool = False
+    # Set litellm.drop_params so params litellm knows a model rejects (e.g. temperature
+    # on reasoning models) are dropped instead of raising UnsupportedParamsError.
+    drop_unsupported_params: bool = True
 
     class Config:
         env_prefix = "BOTSPOT_LLM_PROVIDER_"
@@ -202,6 +221,17 @@ class LLMProvider:
         self.settings = settings
         # In-memory storage for usage stats if MongoDB is not available
         self.usage_stats = defaultdict(int)
+        if settings.drop_unsupported_params:
+            try:
+                import litellm
+
+                litellm.drop_params = True
+                logger.info(
+                    "litellm.drop_params=True: params a model does not support "
+                    "(e.g. temperature) are dropped instead of rejected"
+                )
+            except ImportError:
+                pass  # initialize() reports the missing dependency
 
     def _get_full_model_name(self, model: str) -> str:
         """Convert a model shortcut to its full name for litellm."""
@@ -421,19 +451,12 @@ class LLMProvider:
         else:
             model_name = model
 
-        temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
         timeout = timeout or self.settings.default_timeout
 
-        # O-series models only support temperature=1
-        if self._is_o_series_model(model_name) and temperature != 1:
-            logger.warning(
-                f"O-series model '{model_name}' only supports temperature=1. Overriding temperature {temperature} -> 1."
-            )
-            temperature = 1
-
         # Get full model name
         model = self._get_full_model_name(model_name)
+        temperature = self._resolve_temperature(model, temperature)
 
         # Prepare messages
         messages = await self._aprepare_messages(prompt, system_message, attachments)
@@ -487,7 +510,6 @@ class LLMProvider:
         Returns:
             Raw response from the LLM with full metadata and usage stats
         """
-        from litellm import acompletion
         from litellm.types.utils import ModelResponse
 
         # Prepare common parameters
@@ -504,13 +526,7 @@ class LLMProvider:
         )
 
         # Additional parameters for the API call
-        api_params = {
-            "temperature": params["temperature"],
-            "max_tokens": params["max_tokens"],
-            "request_timeout": params["timeout"],
-            "num_retries": max_retries,
-            **extra_kwargs,
-        }
+        api_params = self._build_api_params(params, max_retries, extra_kwargs)
 
         # Add structured output if needed
         if params["structured_output_schema"]:
@@ -520,9 +536,7 @@ class LLMProvider:
 
         # Make the actual API call with fallback retry
         try:
-            response = await acompletion(
-                model=params["model"], messages=params["messages"], **api_params
-            )
+            response = await self._acompletion(params["model"], params["messages"], api_params)
         except Exception as e:
             # Timeouts/credits/auth: retry a *different* provider. Same-provider
             # fallback is useless when Anthropic is hanging or the key is empty.
@@ -544,8 +558,8 @@ class LLMProvider:
 
                     fallback_full = self._get_full_model_name(fallback_model)
                     fallback_params = {k: v for k, v in api_params.items() if k != "api_key"}
-                    response = await acompletion(
-                        model=fallback_full, messages=params["messages"], **fallback_params
+                    response = await self._acompletion(
+                        fallback_full, params["messages"], fallback_params
                     )
                 else:
                     raise
@@ -624,7 +638,6 @@ class LLMProvider:
 
         Arguments are the same as aquery_llm_raw but returns an async generator of text chunks.
         """
-        from litellm import acompletion
         from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
         from litellm.types.utils import StreamingChoices
 
@@ -645,16 +658,9 @@ class LLMProvider:
         await self._track_usage(params["user"], params["model"], token_estimate)
 
         # Make the actual API call with streaming
-        stream_response = await acompletion(
-            model=params["model_name"],
-            messages=params["messages"],
-            temperature=params["temperature"],
-            max_tokens=params["max_tokens"],
-            request_timeout=params["timeout"],
-            num_retries=max_retries,
-            stream=True,
-            **extra_kwargs,
-        )
+        api_params = self._build_api_params(params, max_retries, extra_kwargs)
+        api_params["stream"] = True
+        stream_response = await self._acompletion(params["model"], params["messages"], api_params)
 
         # Ensure we got a streaming response
         assert isinstance(stream_response, CustomStreamWrapper), (
@@ -734,6 +740,91 @@ class LLMProvider:
     # endregion Asynchronous Query Methods
     # ---------------------------------------------
 
+    def _resolve_temperature(self, model: str, temperature: Optional[float]) -> Optional[float]:
+        """
+        Pick the temperature to send for `model`, or None to omit the parameter.
+
+        Omitted when the model already rejected temperature server-side, or when the
+        caller did not ask for one and litellm says the model does not support it.
+        O-series models get temperature=1 (the only value they accept).
+        """
+        explicit = temperature is not None
+        if temperature is None:
+            temperature = self.settings.default_temperature
+
+        if self._is_o_series_model(model) and temperature != 1:
+            logger.warning(
+                f"O-series model '{model}' only supports temperature=1. Overriding temperature {temperature} -> 1."
+            )
+            temperature = 1
+
+        if model in _TEMPERATURE_REJECTED_MODELS:
+            logger.debug(f"Model {model} previously rejected temperature; omitting it")
+            return None
+        if not explicit and not self._model_supports_temperature(model):
+            logger.debug(f"Model {model} does not support temperature; omitting default")
+            return None
+        return temperature
+
+    @staticmethod
+    def _build_api_params(
+        params: Dict[str, Any], max_retries: int, extra_kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build litellm kwargs from prepared params; temperature only when set."""
+        api_params: Dict[str, Any] = {
+            "max_tokens": params["max_tokens"],
+            "request_timeout": params["timeout"],
+            "num_retries": max_retries,
+            **extra_kwargs,
+        }
+        if params["temperature"] is not None:
+            api_params["temperature"] = params["temperature"]
+        return api_params
+
+    @staticmethod
+    async def _acompletion(model: str, messages: list, api_params: Dict[str, Any]):
+        """
+        Call litellm.acompletion; if the provider rejects `temperature`, retry once
+        without it and remember the model so later calls skip the parameter.
+        """
+        from litellm import acompletion
+
+        try:
+            return await acompletion(model=model, messages=messages, **api_params)
+        except Exception as e:
+            if "temperature" not in api_params or not _is_temperature_rejection(e):
+                raise
+            logger.warning(
+                f"Model {model} rejected temperature={api_params['temperature']}; retrying without it"
+            )
+            _TEMPERATURE_REJECTED_MODELS.add(model)
+            retry_params = {k: v for k, v in api_params.items() if k != "temperature"}
+            return await acompletion(model=model, messages=messages, **retry_params)
+
+    @staticmethod
+    def _model_supports_temperature(model: str) -> bool:
+        """
+        Ask litellm whether `model` accepts temperature. Unknown models or litellm
+        errors count as supported; the server-side fallback covers the rest.
+        """
+        try:
+            import litellm
+
+            supported = litellm.get_supported_openai_params(model=model)
+            if supported is not None and "temperature" not in supported:
+                return False
+        except Exception:
+            pass
+        try:
+            import litellm
+
+            model_params = litellm.get_model_info(model).get("supported_openai_params")
+            if model_params is not None and "temperature" not in model_params:
+                return False
+        except Exception:
+            pass
+        return True
+
     @staticmethod
     def _is_o_series_model(model_name: str) -> bool:
         """Check if the model is an O-series model that only supports temperature=1."""
@@ -803,11 +894,6 @@ def initialize(settings: LLMProviderSettings) -> Optional[LLMProvider]:
     if not settings.enabled:
         logger.info("LLM Provider component is disabled")
         return None
-
-    if settings.drop_unsupported_params:
-        import litellm
-
-        litellm.drop_params = True
 
     # Check if litellm is installed
     try:
