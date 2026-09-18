@@ -82,6 +82,24 @@ if choice == "1":
 
 ## Data & Access Control
 
+### postgres_database.py (preferred for new bots)
+```python
+from botspot.components.data.postgres_database import Base, get_session
+from sqlalchemy import select
+from sqlalchemy.orm import Mapped, mapped_column
+
+class Item(Base):
+    __tablename__ = "items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text: Mapped[str]
+
+async with get_session() as session:
+    session.add(Item(text="hi"))
+    await session.commit()
+```
+
+Alembic lives in the app: `target_metadata = Base.metadata` after importing app models. Botspot owns no app tables.
+
 ### mongo_database.py
 ```python
 from botspot.components.data.mongo_database import get_database
@@ -147,6 +165,7 @@ Load them from `.env`; defaults live in `example.env`.
 - Access: `BOTSPOT_ADMINS_STR`, `BOTSPOT_FRIENDS_STR`.
 - Scheduler: `BOTSPOT_SCHEDULER_ENABLED`, `BOTSPOT_SCHEDULER_TIMEZONE`.
 - Mongo: `BOTSPOT_MONGO_DATABASE_ENABLED`, `BOTSPOT_MONGO_DATABASE_CONN_STR`, `BOTSPOT_MONGO_DATABASE_DATABASE`.
+- Postgres: `BOTSPOT_POSTGRES_DATABASE_ENABLED`, `BOTSPOT_POSTGRES_DATABASE_URL`.
 - Telethon: `BOTSPOT_TELETHON_MANAGER_ENABLED`, `BOTSPOT_TELETHON_MANAGER_API_ID`, `BOTSPOT_TELETHON_MANAGER_API_HASH`, `BOTSPOT_TELETHON_MANAGER_SESSIONS_DIR`, `BOTSPOT_TELETHON_MANAGER_AUTO_AUTH`.
 - Trial mode: `BOTSPOT_TRIAL_MODE_ENABLED`, `BOTSPOT_TRIAL_MODE_PERIOD_PER_USER`, `BOTSPOT_TRIAL_MODE_GLOBAL_PERIOD`, `BOTSPOT_TRIAL_MODE_ALLOWED_USERS`, `BOTSPOT_TRIAL_MODE_LIMIT_PER_USER`, `BOTSPOT_TRIAL_MODE_GLOBAL_LIMIT`.
 - User data: `BOTSPOT_USER_DATA_ENABLED`, `BOTSPOT_USER_DATA_MIDDLEWARE_ENABLED`, `BOTSPOT_USER_DATA_COLLECTION`, `BOTSPOT_USER_DATA_CACHE_TTL`, `BOTSPOT_USER_DATA_USER_TYPES_ENABLED`.
