@@ -52,7 +52,7 @@ class LLMProviderSettings(BaseSettings):
     default_model: str = "claude-4"  # Default model to use (maps to claude-3-7-sonnet-latest)
     default_temperature: float = 0.7
     default_max_tokens: int = 1024
-    default_timeout: int = 30
+    default_timeout: int = 90
     # If False, only friends and admins can use LLM features
     allow_everyone: bool = False
     skip_import_check: bool = False  # Skip import check for dependencies
@@ -524,27 +524,33 @@ class LLMProvider:
                 model=params["model"], messages=params["messages"], **api_params
             )
         except Exception as e:
-            # Check if this is an API key error and we can retry with a different model
-            from botspot.utils.llm_key_check import get_fallback_model, is_api_key_error
+            # Timeouts/credits/auth: retry a *different* provider. Same-provider
+            # fallback is useless when Anthropic is hanging or the key is empty.
+            from botspot.utils.llm_key_check import (
+                get_fallback_model,
+                is_retryable_llm_error,
+                provider_for_model,
+            )
 
-            if is_api_key_error(e):
-                fallback_model = get_fallback_model()
-                if fallback_model and fallback_model != model:
+            if is_retryable_llm_error(e):
+                failed_provider = provider_for_model(params["model"]) or provider_for_model(model)
+                fallback_model = get_fallback_model(
+                    exclude_providers=[failed_provider] if failed_provider else None
+                )
+                if fallback_model and fallback_model not in {model, params["model"]}:
                     logger.warning(
-                        f"API key error with {model}, retrying with {fallback_model}: {str(e)}"
+                        f"LLM error with {params['model']}, retrying with {fallback_model}: {type(e).__name__}"
                     )
 
-                    # Get full model name for fallback
                     fallback_full = self._get_full_model_name(fallback_model)
-
-                    # Retry with fallback model
+                    fallback_params = {k: v for k, v in api_params.items() if k != "api_key"}
                     response = await acompletion(
-                        model=fallback_full, messages=params["messages"], **api_params
+                        model=fallback_full, messages=params["messages"], **fallback_params
                     )
                 else:
-                    raise  # No fallback available, re-raise original error
+                    raise
             else:
-                raise  # Not an API key error, re-raise original error
+                raise
 
         # Track usage asynchronously (approximate tokens used)
         token_estimate = (len(params["prompt"]) + len(response.choices[0].message.content)) // 4

@@ -105,13 +105,16 @@ def initialize(
             "Run \"uv add 'sqlalchemy[asyncio]' asyncpg\" or equivalent"
         )
 
-    try:
-        import asyncpg  # noqa: F401
-    except ImportError:
-        logger.error("asyncpg is not installed. Install with: uv add asyncpg")
-        raise ImportError("asyncpg package is not installed. Run 'uv add asyncpg' or equivalent")
-
     url = settings.url.get_secret_value()
+    if url.startswith("postgresql"):
+        try:
+            import asyncpg  # noqa: F401
+        except ImportError:
+            logger.error("asyncpg is not installed. Install with: uv add asyncpg")
+            raise ImportError(
+                "asyncpg package is not installed. Run 'uv add asyncpg' or equivalent"
+            )
+
     engine = create_async_engine(url)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     logger.info("PostgreSQL async engine initialized")

@@ -1,13 +1,18 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
+# Version bumps are the weekly tested batch job (.github/workflows/deps-weekly.yml):
+# `uv lock --upgrade` + pytest + squash-merge. Limit 0 stops one-PR-per-package
+# noise. Dependabot security updates are independent of this limit and are
+# auto-merged after green PR checks (.github/workflows/deps-automerge.yml).
+#
+# enable-beta-ecosystems is a top-level key only (update-level is rejected by
+# GitHub's dependabot.yml validator). uv is GA, so the flag is omitted.
 version: 2
 updates:
-  # Enable version updates for Python with uv
   - package-ecosystem: "uv"
-    directory: "/" # Where your pyproject.toml and uv.lock files are located
+    directory: "/"
     schedule:
-      interval: "weekly" # Adjust to "weekly" or "monthly" as needed
-    enable-beta-ecosystems: true # Required for uv support, as it's considered a beta ecosystem
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
