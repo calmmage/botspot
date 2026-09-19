@@ -796,3 +796,49 @@ async def test_reconcile_star_transactions_credits_missing(monkeypatch, manager)
     summary = await manager.reconcile()
     assert summary["star_credits"] == 1
     assert (await manager.get_balance(60)).balance_credits == 1000
+
+
+def _observers(dp):
+    from aiogram import Dispatcher
+
+    assert isinstance(dp, Dispatcher)
+    return {
+        "message": len(dp.message.handlers),
+        "callback": len(dp.callback_query.handlers),
+        "pre_checkout": len(dp.pre_checkout_query.handlers),
+        "startup": len(dp.startup.handlers),
+    }
+
+
+def test_setup_dispatcher_register_commands_false_mounts_only_payments():
+    from aiogram import Dispatcher
+
+    from botspot.components.new.subscription_manager import setup_dispatcher
+
+    dp = setup_dispatcher(Dispatcher(), register_commands=False)
+    counts = _observers(dp)
+    # only successful_payment on message; no commands, no sub: callbacks
+    assert counts["message"] == 1
+    assert counts["callback"] == 0
+    assert counts["pre_checkout"] == 1
+    assert counts["startup"] == 1
+
+
+def test_setup_dispatcher_reads_register_commands_setting(monkeypatch):
+    from aiogram import Dispatcher
+
+    from botspot.components.new.subscription_manager import setup_dispatcher
+    from botspot.core.botspot_settings import BotspotSettings
+    from botspot.core.dependency_manager import DependencyManager
+
+    settings = BotspotSettings(subscription_manager={"register_commands": False})
+    deps = DependencyManager(botspot_settings=settings)
+    monkeypatch.setattr("botspot.core.dependency_manager.get_dependency_manager", lambda: deps)
+    dp = setup_dispatcher(Dispatcher())
+    counts = _observers(dp)
+    assert counts["message"] == 1 and counts["callback"] == 0
+
+    settings.subscription_manager.register_commands = True
+    dp2 = setup_dispatcher(Dispatcher())
+    assert _observers(dp2)["callback"] == 1
+    assert _observers(dp2)["message"] > 1
