@@ -160,6 +160,8 @@ class FakeBot:
         self.invoice_links = []
         self.edits = []
         self.refunds = []
+        self.messages = []
+        self.usernames: dict[int, str] = {}
         self.star_transactions = SimpleNamespace(transactions=[])
 
     async def create_invoice_link(self, **kwargs):
@@ -179,6 +181,13 @@ class FakeBot:
 
     async def send_invoice(self, **kwargs):
         return SimpleNamespace(message_id=1)
+
+    async def send_message(self, chat_id, text, **kwargs):
+        self.messages.append({"chat_id": chat_id, "text": text, **kwargs})
+        return SimpleNamespace(message_id=len(self.messages))
+
+    async def get_chat(self, chat_id):
+        return SimpleNamespace(id=chat_id, username=self.usernames.get(int(chat_id)))
 
 
 def _settings(**overrides) -> SubscriptionManagerSettings:
@@ -842,3 +851,280 @@ def test_setup_dispatcher_reads_register_commands_setting(monkeypatch):
     dp2 = setup_dispatcher(Dispatcher())
     assert _observers(dp2)["callback"] == 1
     assert _observers(dp2)["message"] > 1
+
+
+def _stripe_settings(**overrides) -> SubscriptionManagerSettings:
+    data = {
+        "stripe_secret_key": SecretStr("sk_test_placeholder"),
+        "public_base_url": "https://example.com",
+        "stripe_price_ids_json": '{"plus": "price_test_plus"}',
+        "signature_secret": SecretStr("test-secret"),
+        "enabled": True,
+    }
+    data.update(overrides)
+    return SubscriptionManagerSettings(**data)
+
+
+def _stripe_http(monkeypatch, handler):
+    from botspot.components.new.subscription_manager import stripe as stripe_mod
+
+    monkeypatch.setattr(stripe_mod, "stripe_request", handler)
+
+
+def test_stripe_request_headers_optional_idempotency_key():
+    from botspot.components.new.subscription_manager.stripe import stripe_request_headers
+
+    plain = stripe_request_headers("sk_test_placeholder")
+    assert plain["Stripe-Version"]
+    assert "Idempotency-Key" not in plain
+    keyed = stripe_request_headers("sk_test_placeholder", idempotency_key="inv_abc")
+    assert keyed["Idempotency-Key"] == "inv_abc"
+
+
+def test_stripe_integration_identifier_is_stable():
+    from botspot.components.new.subscription_manager.stripe import stripe_integration_identifier
+
+    manager = _manager(settings=_stripe_settings())
+    assert stripe_integration_identifier(manager, "credits") == "botspot-credits"
+    assert stripe_integration_identifier(manager, "plan") == "botspot-plan"
+    custom = _manager(settings=_stripe_settings(stripe_integration_identifier_prefix="acme"))
+    assert stripe_integration_identifier(custom, "credits") == "acme-credits"
+    assert stripe_integration_identifier(custom, "plan") == "acme-plan"
+
+
+def test_stripe_integration_identifier_prefix_env(monkeypatch):
+    monkeypatch.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_STRIPE_INTEGRATION_IDENTIFIER_PREFIX", "shop")
+    settings = SubscriptionManagerSettings()
+    assert settings.stripe_integration_identifier_prefix == "shop"
+
+
+@pytest.mark.asyncio
+async def test_stripe_customer_reused_on_checkout(monkeypatch):
+    calls: list[dict] = []
+
+    async def fake_request(manager, method, url, data=None, idempotency_key=None):
+        calls.append(
+            {"method": method, "url": url, "data": dict(data or {}), "key": idempotency_key}
+        )
+        if "customers" in url:
+            return 200, {"id": "cus_test_1"}
+        return 200, {"id": "cs_test_1", "url": "https://checkout.stripe.com/c/pay/cs_test_1"}
+
+    _stripe_http(monkeypatch, fake_request)
+    bot = FakeBot()
+    bot.usernames[70] = "alice"
+    mgr = _manager(settings=_stripe_settings(), bot=bot)
+
+    first = await mgr.create_stripe_checkout(70, sku="credits_10")
+    second = await mgr.create_stripe_checkout(70, sku="credits_10")
+    assert first.startswith("https://checkout.stripe.com/")
+    assert second.startswith("https://checkout.stripe.com/")
+
+    customer_calls = [c for c in calls if "customers" in c["url"]]
+    checkout_calls = [c for c in calls if "checkout/sessions" in c["url"]]
+    assert len(customer_calls) == 1
+    assert customer_calls[0]["key"] == "customer:70"
+    assert customer_calls[0]["data"]["metadata[telegram_user_id]"] == "70"
+    assert customer_calls[0]["data"]["name"] == "alice"
+    assert customer_calls[0]["data"]["description"] == "alice"
+    assert "email" not in customer_calls[0]["data"]
+    assert len(checkout_calls) == 2
+    assert checkout_calls[0]["data"]["customer"] == "cus_test_1"
+    assert checkout_calls[1]["data"]["customer"] == "cus_test_1"
+    assert checkout_calls[0]["data"]["mode"] == "payment"
+    assert checkout_calls[0]["data"]["integration_identifier"] == "botspot-credits"
+    invoice_ids = {doc["_id"] for doc in mgr.invoices.docs.values()}
+    assert {c["key"] for c in checkout_calls} == invoice_ids
+    account = await mgr.accounts.find_one({"_id": 70})
+    assert account["stripe_customer_id"] == "cus_test_1"
+
+
+@pytest.mark.asyncio
+async def test_stripe_plan_checkout_passes_customer_and_stable_id(monkeypatch):
+    calls: list[dict] = []
+
+    async def fake_request(manager, method, url, data=None, idempotency_key=None):
+        calls.append({"url": url, "data": dict(data or {}), "key": idempotency_key})
+        if "customers" in url:
+            return 200, {"id": "cus_plan_1"}
+        return 200, {"id": "cs_plan_1", "url": "https://checkout.stripe.com/c/pay/cs_plan_1"}
+
+    _stripe_http(monkeypatch, fake_request)
+    mgr = _manager(settings=_stripe_settings())
+    url = await mgr.create_stripe_checkout(71, plan_id="plus")
+    assert url
+    checkout = [c for c in calls if "checkout/sessions" in c["url"]][0]
+    assert checkout["data"]["mode"] == "subscription"
+    assert checkout["data"]["customer"] == "cus_plan_1"
+    assert checkout["data"]["integration_identifier"] == "botspot-plan"
+    assert checkout["data"]["line_items[0][price]"] == "price_test_plus"
+    assert checkout["key"]
+
+
+@pytest.mark.asyncio
+async def test_create_stripe_portal_url(monkeypatch):
+    mgr = _manager(settings=_stripe_settings())
+    with pytest.raises(SubscriptionPaymentError) as exc:
+        await mgr.create_stripe_portal_url(72)
+    assert "No Stripe customer" in str(exc.value.user_message)
+
+    await mgr.accounts.update_one(
+        {"_id": 72}, {"$set": {"stripe_customer_id": "cus_portal_1"}}, upsert=True
+    )
+    calls: list[dict] = []
+
+    async def fake_request(manager, method, url, data=None, idempotency_key=None):
+        calls.append({"url": url, "data": dict(data or {})})
+        return 200, {"url": "https://billing.stripe.com/p/session/test"}
+
+    _stripe_http(monkeypatch, fake_request)
+    url = await mgr.create_stripe_portal_url(72)
+    assert url == "https://billing.stripe.com/p/session/test"
+    assert calls[0]["data"]["customer"] == "cus_portal_1"
+    assert calls[0]["data"]["return_url"] == "https://example.com/billing/success"
+
+
+@pytest.mark.asyncio
+async def test_stripe_invoice_payment_failed_marks_past_due(monkeypatch):
+    mgr = _manager(settings=_stripe_settings())
+    await mgr._activate_subscription(
+        user_id=73,
+        plan_id="plus",
+        provider=PROVIDER_STRIPE,
+        provider_sub_id="sub_fail_1",
+        provider_charge_id="cs_old",
+        period_end=mgr._now() + timedelta(days=20),
+    )
+    await mgr.accounts.update_one(
+        {"_id": 73}, {"$set": {"stripe_customer_id": "cus_fail_1"}}, upsert=True
+    )
+
+    async def fake_request(manager, method, url, data=None, idempotency_key=None):
+        return 200, {"url": "https://billing.stripe.com/p/session/fail"}
+
+    _stripe_http(monkeypatch, fake_request)
+    event = {
+        "id": "evt_fail_1",
+        "type": "invoice.payment_failed",
+        "data": {
+            "object": {
+                "id": "in_fail_1",
+                "subscription": "sub_fail_1",
+            }
+        },
+    }
+    assert await mgr.handle_stripe_event(event) is True
+    sub = await mgr.subscriptions.find_one({"provider_sub_id": "sub_fail_1"})
+    assert sub["status"] == "past_due"
+    assert mgr.bot().messages
+    assert "https://billing.stripe.com/p/session/fail" in mgr.bot().messages[0]["text"]
+    assert mgr.bot().messages[0]["chat_id"] == 73
+
+    replay = await mgr.handle_stripe_event(event)
+    assert replay is False
+    assert len(mgr.bot().messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_stripe_invoice_payment_failed_parent_subscription_no_notice_without_customer():
+    mgr = _manager(settings=_stripe_settings())
+    await mgr._activate_subscription(
+        user_id=74,
+        plan_id="plus",
+        provider=PROVIDER_STRIPE,
+        provider_sub_id="sub_fail_2",
+        provider_charge_id="cs_old_2",
+        period_end=mgr._now() + timedelta(days=20),
+    )
+    event = {
+        "id": "evt_fail_parent",
+        "type": "invoice.payment_failed",
+        "data": {
+            "object": {
+                "id": "in_fail_2",
+                "parent": {
+                    "type": "subscription_details",
+                    "subscription_details": {"subscription": "sub_fail_2"},
+                },
+            }
+        },
+    }
+    assert await mgr.handle_stripe_event(event) is True
+    sub = await mgr.subscriptions.find_one({"provider_sub_id": "sub_fail_2"})
+    assert sub["status"] == "past_due"
+    assert mgr.bot().messages == []
+
+
+@pytest.mark.asyncio
+async def test_stripe_replayed_event_returns_false_before_fulfill(monkeypatch, manager):
+    from botspot.components.new.subscription_manager import stripe as stripe_mod
+    from botspot.components.new.subscription_manager.payloads import sign_invoice_metadata
+
+    fulfilled: list[str] = []
+    original = stripe_mod._fulfill_stripe_session
+
+    async def tracking_fulfill(*args, **kwargs):
+        fulfilled.append("yes")
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(stripe_mod, "_fulfill_stripe_session", tracking_fulfill)
+    invoice = await manager._create_invoice(
+        provider=PROVIDER_STRIPE,
+        user_id=75,
+        sku="credits_10",
+        title="pack",
+        credits=1000,
+        amount_minor=1000,
+        currency="USD",
+        status="open",
+    )
+    signature = sign_invoice_metadata(manager.settings, invoice.invoice_id, 75)
+    event = {
+        "id": "evt_replay_1",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_replay_1",
+                "payment_status": "paid",
+                "metadata": {
+                    "invoice_id": invoice.invoice_id,
+                    "telegram_user_id": "75",
+                    "signature": signature,
+                    "kind": "pack",
+                },
+            }
+        },
+    }
+    assert await manager.handle_stripe_event(event) is True
+    assert await manager.handle_stripe_event(event) is False
+    assert fulfilled == ["yes"]
+
+
+@pytest.mark.asyncio
+async def test_stripe_invoice_paid_replay_still_processes(monkeypatch, manager):
+    monkeypatch.setattr("botspot.utils.user_ops.is_admin", lambda user: False)
+    monkeypatch.setattr("botspot.utils.user_ops.is_friend", lambda user: False)
+    await manager._activate_subscription(
+        user_id=76,
+        plan_id="plus",
+        provider=PROVIDER_STRIPE,
+        provider_sub_id="sub_replay_paid",
+        provider_charge_id="cs_old_r",
+        period_end=manager._now() + timedelta(days=2),
+    )
+    end_ts = int((manager._now() + timedelta(days=30)).timestamp())
+    event = {
+        "id": "evt_paid_replay",
+        "type": "invoice.paid",
+        "data": {
+            "object": {
+                "id": "in_replay",
+                "subscription": "sub_replay_paid",
+                "lines": {"data": [{"period": {"end": end_ts}}]},
+            }
+        },
+    }
+    assert await manager.handle_stripe_event(event) is True
+    assert await manager.handle_stripe_event(event) is True
+    sub = await manager._active_subscription_doc(76)
+    assert sub["current_period_end"] > manager._now() + timedelta(days=20)

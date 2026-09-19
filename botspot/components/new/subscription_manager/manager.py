@@ -880,6 +880,9 @@ class SubscriptionManager:
     ):
         return stripe_adapter.create_stripe_checkout(self, user_id, sku=sku, plan_id=plan_id)
 
+    def create_stripe_portal_url(self, user_id: int):
+        return stripe_adapter.create_stripe_portal_url(self, user_id)
+
     def verify_stripe_webhook(self, raw_body: bytes, signature: str) -> dict:
         return stripe_adapter.verify_stripe_webhook(self, raw_body, signature)
 
