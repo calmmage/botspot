@@ -19,6 +19,7 @@ from botspot.components.new.llm_provider import LLMProviderSettings
 from botspot.components.new.message_aggregator import MessageAggregatorSettings
 from botspot.components.new.queue_manager import QueueManagerSettings
 from botspot.components.new.s3_storage import S3StorageSettings
+from botspot.components.new.subscription_manager.settings import SubscriptionManagerSettings
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
@@ -80,6 +81,7 @@ class BotspotSettings(BaseSettings):
     auto_archive: AutoArchiveSettings = AutoArchiveSettings()
     s3_storage: S3StorageSettings = S3StorageSettings()
     access_control: AccessControlSettings = AccessControlSettings()
+    subscription_manager: SubscriptionManagerSettings = SubscriptionManagerSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"

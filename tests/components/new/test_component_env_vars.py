@@ -70,6 +70,20 @@ def test_llm_provider_env_vars():
         assert settings.default_timeout == 60
 
 
+def test_subscription_manager_env_vars():
+    """Test that subscription_manager settings read BOTSPOT_SUBSCRIPTION_MANAGER_ env."""
+    from botspot.components.new.subscription_manager import SubscriptionManagerSettings
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_ENABLED", "True")
+        mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_GRACE_DAYS", "3")
+        mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_STARS_PER_USD", "80")
+        settings = SubscriptionManagerSettings()
+        assert settings.enabled is True
+        assert settings.grace_days == 3
+        assert settings.stars_per_usd == 80
+
+
 def test_error_handler_env_vars():
     """Test that the error_handler component reads environment variables correctly."""
     from botspot.components.middlewares.error_handler import ErrorHandlerSettings

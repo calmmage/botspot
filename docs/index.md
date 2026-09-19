@@ -60,7 +60,7 @@ More demos: [examples/](https://github.com/calmmage/botspot/tree/main/examples).
 | Features | `user_interactions` (`ask_user`), multi-forward |
 | Main | Telethon, scheduler, trial / single-user mode |
 | QoL | `@botspot_command` menu, bot info, print bot URL |
-| New | LLM provider, chat binder, queues, S3, message aggregator |
+| New | LLM provider, chat binder, queues, S3, message aggregator, `subscription_manager` (credits, Telegram Stars subscriptions, trial caps) |
 
 Enable components in settings / `example.env`. `BotManager` wires them into the dispatcher.
 

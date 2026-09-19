@@ -14,7 +14,7 @@ except PackageNotFoundError:
     __version__ = toml.load(path)["project"]["version"]
     del toml, Path, path
 
-from . import commands_menu, trial_mode, user_data, user_interactions
+from . import commands_menu, subscription_manager, trial_mode, user_data, user_interactions
 from .components.data import access_control, mongo_database, postgres_database
 from .components.data.access_control import add_friend, get_friends, remove_friend
 from .components.main import event_scheduler, telethon_manager
@@ -35,6 +35,7 @@ from .utils import (
     get_dispatcher,
     get_easter_egg,
     get_llm_provider,
+    get_subscription_manager,
     get_message_text,
     get_name,
     get_pong,
@@ -54,6 +55,7 @@ from .utils import (
 __all__ = [
     # files
     "trial_mode",
+    "subscription_manager",
     "user_interactions",
     "user_data",
     "get_user_manager",
@@ -82,6 +84,7 @@ __all__ = [
     # LLM Provider
     "get_llm_provider",
     "llm_provider",
+    "get_subscription_manager",
     # Chat Fetcher
     "chat_fetcher",
     "get_chat_fetcher",
