@@ -378,6 +378,16 @@ BOTSPOT_STRINGS: dict[str, dict[str, str]] = {
         "en": "Global free trial budget reached for today (hard cost cap). Try tomorrow or add credits in /account.",
         "ru": "Глобальный бюджет бесплатного периода на сегодня достигнут (лимит затрат). Попробуйте завтра или пополните баланс через /account.",
     },
+    "trial_daily_cap": {
+        "en": (
+            "Daily free limit reached. You have {minutes_left} minutes left today. "
+            "Resets at {resets_at}."
+        ),
+        "ru": (
+            "Дневной бесплатный лимит исчерпан. Сегодня осталось {minutes_left} мин. "
+            "Сброс в {resets_at}."
+        ),
+    },
     "subscription_picker": {
         "en": "Choose a plan. Pay with Telegram Stars. Credit packs stay available as pay-as-you-go.",
         "ru": "Выберите план. Оплата — Telegram Stars. Пакеты кредитов остаются как оплата по факту.",

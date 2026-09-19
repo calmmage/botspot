@@ -69,7 +69,13 @@ STRIPE_CANCEL_EVENT_TYPES = frozenset({"customer.subscription.deleted"})
 
 
 class SubscriptionManagerSettings(BaseSettings):
-    """Env prefix ``BOTSPOT_SUBSCRIPTION_MANAGER_``."""
+    """Env prefix ``BOTSPOT_SUBSCRIPTION_MANAGER_``.
+
+    Per-user daily trial caps (0 = off): ``TRIAL_USER_AUDIO_MINUTES_PER_DAY``,
+    ``TRIAL_USER_AUDIO_REQUESTS_PER_DAY``, ``TRIAL_USER_CHAT_REQUESTS_PER_DAY``.
+    ``TRIAL_DURATION_DAYS=0`` means no expiry (public free tier); default 7 expires
+    after a week.
+    """
 
     enabled: bool = False
     register_commands: bool = True
@@ -84,11 +90,14 @@ class SubscriptionManagerSettings(BaseSettings):
     plans_json: str = ""
     packs_json: str = ""
     trial_enabled: bool = True
-    trial_duration_days: int = 7
+    trial_duration_days: int = 7  # 0 = no expiry (public free tier)
     trial_user_audio_requests_total: int = 20
     trial_user_audio_minutes_total: float = 90.0
     trial_user_chat_requests_total: int = 200
     trial_user_chat_tokens_total: int = 60000
+    trial_user_audio_minutes_per_day: float = 0  # 0 = off
+    trial_user_audio_requests_per_day: int = 0  # 0 = off
+    trial_user_chat_requests_per_day: int = 0  # 0 = off
     trial_global_audio_requests_per_day: int = 100
     trial_global_audio_minutes_per_day: float = 480.0
     trial_global_chat_requests_per_day: int = 1000
