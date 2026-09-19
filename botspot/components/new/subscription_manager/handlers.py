@@ -331,7 +331,20 @@ async def _schedule_reconcile(manager) -> None:
     logger.info(f"subscription reconcile asyncio loop every {hours}h")
 
 
-def setup_dispatcher(dp: Dispatcher) -> Dispatcher:
+def _register_commands_enabled() -> bool:
+    """Read register_commands from the live settings; default True outside a bot."""
+    try:
+        from botspot.core.dependency_manager import get_dependency_manager
+
+        return bool(
+            get_dependency_manager().botspot_settings.subscription_manager.register_commands
+        )
+    except Exception:
+        return True
+
+
+def register_command_handlers(dp: Dispatcher) -> Dispatcher:
+    """/subscribe /account /plans /buy, admin commands and the sub: callbacks."""
     from botspot.commands_menu import Visibility, add_command
 
     add_command("subscribe", "Subscribe to a plan", visibility=Visibility.PUBLIC)(cmd_subscribe)
@@ -358,7 +371,23 @@ def setup_dispatcher(dp: Dispatcher) -> Dispatcher:
     dp.message.register(cmd_subscribers, Command("subscribers"), AdminFilter())
     dp.message.register(cmd_grant_credits, Command("grant_credits"), AdminFilter())
     dp.callback_query.register(on_callback, F.data.startswith("sub:"))
+    return dp
+
+
+def register_payment_handlers(dp: Dispatcher) -> Dispatcher:
+    """Stars pre-checkout + successful_payment and the startup hook. Always needed."""
     dp.pre_checkout_query.register(on_pre_checkout)
     dp.message.register(on_successful_payment, F.successful_payment)
     dp.startup.register(_on_startup)
+    return dp
+
+
+def setup_dispatcher(dp: Dispatcher, *, register_commands: bool | None = None) -> Dispatcher:
+    """Mount the component. ``register_commands=False`` (arg or setting) mounts only
+    the payment handlers so a host bot can own /subscribe & co itself."""
+    if register_commands is None:
+        register_commands = _register_commands_enabled()
+    if register_commands:
+        register_command_handlers(dp)
+    register_payment_handlers(dp)
     return dp

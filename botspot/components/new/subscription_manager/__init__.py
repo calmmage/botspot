@@ -6,7 +6,12 @@ Stripe/YooKassa/TON adapters, trial caps, and friend/admin bypass.
 
 from __future__ import annotations
 
-from botspot.components.new.subscription_manager.handlers import require_plan, setup_dispatcher
+from botspot.components.new.subscription_manager.handlers import (
+    register_command_handlers,
+    register_payment_handlers,
+    require_plan,
+    setup_dispatcher,
+)
 from botspot.components.new.subscription_manager.manager import SubscriptionManager
 from botspot.components.new.subscription_manager.models import (
     Balance,
@@ -76,6 +81,8 @@ __all__ = [
     "CheckoutResult",
     "initialize",
     "setup_dispatcher",
+    "register_command_handlers",
+    "register_payment_handlers",
     "get_subscription_manager",
     "require_plan",
     "STRIPE_WEBHOOK_PATH",
