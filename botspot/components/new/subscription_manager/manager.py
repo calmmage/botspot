@@ -441,7 +441,9 @@ class SubscriptionManager:
         )
         if trial.allowed:
             return Decision(allowed=True, source=SOURCE_TRIAL, reason="trial")
+        return self._deny_authorize(trial, sub, credits, needed_minutes)
 
+    def _deny_authorize(self, trial, sub, credits: int, needed_minutes: float) -> Decision:
         if trial.message_key == REASON_TRIAL_DAILY_CAP:
             minutes_left = (
                 0.0 if trial.minutes_left_today is None else float(trial.minutes_left_today)
@@ -458,7 +460,6 @@ class SubscriptionManager:
                     resets_at=resets_at,
                 ),
             )
-
         if sub and needed_minutes > 0:
             message_key = "subscription_minutes_exhausted"
         elif credits:
