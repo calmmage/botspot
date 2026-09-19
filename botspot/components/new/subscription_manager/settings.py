@@ -9,6 +9,8 @@ TELEGRAM_STARS_PERIOD_SECONDS = 2592000
 TELEGRAM_STARS_MAX_AMOUNT = 10000
 STRIPE_API_VERSION = "2026-08-26.dahlia"
 STRIPE_CHECKOUT_SESSIONS_URL = "https://api.stripe.com/v1/checkout/sessions"
+STRIPE_CUSTOMERS_URL = "https://api.stripe.com/v1/customers"
+STRIPE_BILLING_PORTAL_SESSIONS_URL = "https://api.stripe.com/v1/billing_portal/sessions"
 STRIPE_WEBHOOK_PATH = "/api/billing/stripe/webhook"
 YOOKASSA_WEBHOOK_PATH = "/api/billing/yookassa/webhook"
 YOOKASSA_API_BASE = "https://api.yookassa.ru/v3"
@@ -62,7 +64,9 @@ STRIPE_FULFILL_EVENT_TYPES = frozenset(
         "checkout.session.async_payment_succeeded",
     }
 )
-STRIPE_FAIL_EVENT_TYPES = frozenset({"checkout.session.async_payment_failed"})
+STRIPE_FAIL_EVENT_TYPES = frozenset(
+    {"checkout.session.async_payment_failed", "invoice.payment_failed"}
+)
 STRIPE_PAID_STATUSES = frozenset({"paid", "no_payment_required"})
 STRIPE_RENEW_EVENT_TYPES = frozenset({"invoice.paid"})
 STRIPE_CANCEL_EVENT_TYPES = frozenset({"customer.subscription.deleted"})
@@ -101,6 +105,7 @@ class SubscriptionManagerSettings(BaseSettings):
     stripe_webhook_secret: SecretStr | None = None
     stripe_allow_live: bool = False
     stripe_price_ids_json: str = ""
+    stripe_integration_identifier_prefix: str = "botspot"
     public_base_url: str = ""
     yookassa_shop_id: str = ""
     yookassa_secret_key: SecretStr | None = None
