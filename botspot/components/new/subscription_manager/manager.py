@@ -49,7 +49,10 @@ from botspot.components.new.subscription_manager.settings import (
 from botspot.components.new.subscription_manager import stripe as stripe_adapter
 from botspot.components.new.subscription_manager import ton as ton_adapter
 from botspot.components.new.subscription_manager import yookassa as yookassa_adapter
-from botspot.components.new.subscription_manager.trial import TrialLimiter
+from botspot.components.new.subscription_manager.trial import (
+    REASON_TRIAL_DAILY_CAP,
+    TrialLimiter,
+)
 from botspot.core.errors import SubscriptionValidationError
 from botspot.utils.internal import get_logger
 
@@ -438,6 +441,23 @@ class SubscriptionManager:
         )
         if trial.allowed:
             return Decision(allowed=True, source=SOURCE_TRIAL, reason="trial")
+
+        if trial.message_key == REASON_TRIAL_DAILY_CAP:
+            minutes_left = (
+                0.0 if trial.minutes_left_today is None else float(trial.minutes_left_today)
+            )
+            resets_at = trial.resets_at or ""
+            return Decision(
+                allowed=False,
+                source=SOURCE_NONE,
+                reason=REASON_TRIAL_DAILY_CAP,
+                message_key=REASON_TRIAL_DAILY_CAP,
+                user_message=t(
+                    REASON_TRIAL_DAILY_CAP,
+                    minutes_left=f"{minutes_left:.1f}",
+                    resets_at=resets_at,
+                ),
+            )
 
         if sub and needed_minutes > 0:
             message_key = "subscription_minutes_exhausted"

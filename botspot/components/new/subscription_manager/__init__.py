@@ -2,6 +2,12 @@
 
 Credits ledger, Telegram Stars one-off invoices and native subscriptions,
 Stripe/YooKassa/TON adapters, trial caps, and friend/admin bypass.
+
+Per-user daily trial caps (env prefix ``BOTSPOT_SUBSCRIPTION_MANAGER_``, 0 = off):
+``TRIAL_USER_AUDIO_MINUTES_PER_DAY``, ``TRIAL_USER_AUDIO_REQUESTS_PER_DAY``,
+``TRIAL_USER_CHAT_REQUESTS_PER_DAY``. ``TRIAL_DURATION_DAYS=0`` means no expiry
+(public free tier). Hitting a per-user daily cap sets ``Decision.reason`` to
+``trial_daily_cap``.
 """
 
 from __future__ import annotations

@@ -82,6 +82,7 @@ class Decision(BaseModel):
     hold_id: str | None = None
     reason: str = ""
     message_key: str = ""
+    user_message: str | None = None
 
 
 class Balance(BaseModel):

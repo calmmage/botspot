@@ -842,3 +842,133 @@ def test_setup_dispatcher_reads_register_commands_setting(monkeypatch):
     dp2 = setup_dispatcher(Dispatcher())
     assert _observers(dp2)["callback"] == 1
     assert _observers(dp2)["message"] > 1
+
+
+def test_trial_daily_cap_defaults_off():
+    settings = SubscriptionManagerSettings()
+    assert settings.trial_user_audio_minutes_per_day == 0
+    assert settings.trial_user_audio_requests_per_day == 0
+    assert settings.trial_user_chat_requests_per_day == 0
+    assert settings.trial_duration_days == 7
+
+
+def test_trial_daily_cap_settings_env(monkeypatch):
+    monkeypatch.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_TRIAL_USER_AUDIO_MINUTES_PER_DAY", "20")
+    monkeypatch.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_TRIAL_USER_AUDIO_REQUESTS_PER_DAY", "5")
+    monkeypatch.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_TRIAL_USER_CHAT_REQUESTS_PER_DAY", "10")
+    monkeypatch.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_TRIAL_DURATION_DAYS", "0")
+    settings = SubscriptionManagerSettings()
+    assert settings.trial_user_audio_minutes_per_day == 20
+    assert settings.trial_user_audio_requests_per_day == 5
+    assert settings.trial_user_chat_requests_per_day == 10
+    assert settings.trial_duration_days == 0
+
+
+def _unlimited_trial_settings(**overrides):
+    data = {
+        "trial_duration_days": 0,
+        "trial_user_audio_minutes_total": 0,
+        "trial_user_audio_requests_total": 0,
+        "trial_user_chat_requests_total": 0,
+        "trial_user_chat_tokens_total": 0,
+        "trial_global_audio_minutes_per_day": 0,
+        "trial_global_audio_requests_per_day": 0,
+        "trial_global_chat_requests_per_day": 0,
+        "trial_global_chat_tokens_per_day": 0,
+        "trial_global_cost_usd_per_day": 0,
+    }
+    data.update(overrides)
+    return _settings(**data)
+
+
+@pytest.mark.asyncio
+async def test_per_user_daily_cap_across_day_boundary(monkeypatch):
+    monkeypatch.setattr("botspot.utils.user_ops.is_admin", lambda user: False)
+    monkeypatch.setattr("botspot.utils.user_ops.is_friend", lambda user: int(user) == 2)
+    from botspot.components.middlewares.i18n import t
+    from botspot.components.new.subscription_manager.trial import TrialLimiter
+
+    now_box = [datetime(2026, 9, 19, 15, 0, 0)]
+    monkeypatch.setattr(TrialLimiter, "_now_utc", lambda *a, **k: now_box[0])
+    mgr = _manager(settings=_unlimited_trial_settings(trial_user_audio_minutes_per_day=20.0))
+
+    first = await mgr.authorize(100, kind="audio", estimated_minutes=20, estimated_cost_usd=0.01)
+    assert first.allowed and first.source == SOURCE_TRIAL
+    denied = await mgr.authorize(100, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01)
+    assert denied.allowed is False
+    assert denied.reason == "trial_daily_cap"
+    assert denied.message_key == "trial_daily_cap"
+    assert denied.user_message is not None
+    assert "0.0" in denied.user_message
+    assert "2026-09-20 00:00 UTC" in denied.user_message
+    rendered = t("trial_daily_cap", minutes_left="0.0", resets_at="2026-09-20 00:00 UTC")
+    assert denied.user_message == rendered
+
+    other = await mgr.authorize(101, kind="audio", estimated_minutes=5, estimated_cost_usd=0.01)
+    assert other.allowed and other.source == SOURCE_TRIAL
+
+    friend = await mgr.authorize(2, kind="audio", estimated_minutes=50, estimated_cost_usd=1.0)
+    assert friend.allowed and friend.source == SOURCE_FRIEND
+
+    now_box[0] = datetime(2026, 9, 20, 0, 0, 1)
+    next_day = await mgr.authorize(100, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01)
+    assert next_day.allowed and next_day.source == SOURCE_TRIAL
+
+
+@pytest.mark.asyncio
+async def test_per_user_daily_request_caps(monkeypatch):
+    monkeypatch.setattr("botspot.utils.user_ops.is_admin", lambda user: False)
+    monkeypatch.setattr("botspot.utils.user_ops.is_friend", lambda user: False)
+    from botspot.components.new.subscription_manager.trial import TrialLimiter
+
+    now_box = [datetime(2026, 9, 19, 12, 0, 0)]
+    monkeypatch.setattr(TrialLimiter, "_now_utc", lambda *a, **k: now_box[0])
+    audio_mgr = _manager(settings=_unlimited_trial_settings(trial_user_audio_requests_per_day=1))
+    first = await audio_mgr.authorize(
+        310, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01
+    )
+    second = await audio_mgr.authorize(
+        310, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01
+    )
+    assert first.allowed
+    assert second.allowed is False
+    assert second.reason == "trial_daily_cap"
+
+    chat_mgr = _manager(settings=_unlimited_trial_settings(trial_user_chat_requests_per_day=2))
+    a = await chat_mgr.authorize(311, kind="chat", estimated_tokens=8, estimated_cost_usd=0.01)
+    b = await chat_mgr.authorize(311, kind="chat", estimated_tokens=8, estimated_cost_usd=0.01)
+    c = await chat_mgr.authorize(311, kind="chat", estimated_tokens=8, estimated_cost_usd=0.01)
+    assert a.allowed and b.allowed
+    assert c.allowed is False
+    assert c.reason == "trial_daily_cap"
+
+
+@pytest.mark.asyncio
+async def test_trial_duration_zero_means_no_expiry(monkeypatch):
+    monkeypatch.setattr("botspot.utils.user_ops.is_admin", lambda user: False)
+    monkeypatch.setattr("botspot.utils.user_ops.is_friend", lambda user: False)
+    from botspot.components.new.subscription_manager.trial import TrialLimiter
+
+    now_box = [datetime(2026, 9, 1, 12, 0, 0)]
+    monkeypatch.setattr(TrialLimiter, "_now_utc", lambda *a, **k: now_box[0])
+    free = _manager(settings=_unlimited_trial_settings(trial_duration_days=0))
+    first = await free.authorize(200, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01)
+    assert first.allowed
+    assert await free.trial.is_trial_active(200)
+    now_box[0] = datetime(2026, 9, 20, 12, 0, 0)
+    later = await free.authorize(200, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01)
+    assert later.allowed
+    assert await free.trial.is_trial_active(200)
+    doc = await free.trial.trial_users.find_one({"_id": 200})
+    assert doc is not None
+    assert doc.get("expires_at") is None
+
+    now_box[0] = datetime(2026, 9, 1, 12, 0, 0)
+    week = _manager(settings=_settings(trial_duration_days=7, trial_global_cost_usd_per_day=10))
+    started = await week.authorize(201, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01)
+    assert started.allowed
+    now_box[0] = datetime(2026, 9, 9, 12, 0, 0)
+    expired = await week.authorize(201, kind="audio", estimated_minutes=1, estimated_cost_usd=0.01)
+    assert expired.allowed is False
+    assert expired.message_key == "trial_expired"
+    assert await week.trial.is_trial_active(201) is False

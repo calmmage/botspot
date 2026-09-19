@@ -1,4 +1,9 @@
-"""Trial caps (whisper trial_limits.py), friends/admins bypass via user_ops."""
+"""Trial caps (whisper trial_limits.py), friends/admins bypass via user_ops.
+
+Per-user daily caps (0 = off) live in ``trial_daily_usage`` as one doc per user
+per UTC day (``_id`` = ``{user_id}:{YYYY-MM-DD}``), incremented with atomic
+``$inc``. ``trial_duration_days=0`` means no expiry.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +16,8 @@ from botspot.utils.internal import get_logger
 
 logger = get_logger()
 
+REASON_TRIAL_DAILY_CAP = "trial_daily_cap"
+
 
 @dataclass
 class TrialDecision:
@@ -18,6 +25,8 @@ class TrialDecision:
     message_key: str = ""
     alert_message: Optional[str] = None
     bypassed: bool = False
+    minutes_left_today: Optional[float] = None
+    resets_at: Optional[str] = None
 
 
 class TrialLimiter:
@@ -59,14 +68,55 @@ class TrialLimiter:
         return sorted(set(values))
 
     @staticmethod
+    def _now_utc() -> datetime.datetime:
+        return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
+    @staticmethod
     def _utc_day_key(now: datetime.datetime) -> str:
         return now.strftime("%Y-%m-%d")
+
+    @staticmethod
+    def _user_day_id(user_id: int, day_key: str) -> str:
+        return f"{int(user_id)}:{day_key}"
+
+    @staticmethod
+    def _resets_at_utc(now: datetime.datetime) -> str:
+        tomorrow = now.date() + datetime.timedelta(days=1)
+        nxt = datetime.datetime.combine(tomorrow, datetime.time.min)
+        return nxt.strftime("%Y-%m-%d 00:00 UTC")
 
     @staticmethod
     def _limit_exceeded(current: float, increment: float, limit: float) -> bool:
         if limit <= 0:
             return False
         return (current + increment) > limit
+
+    def _trial_has_expiry(self) -> bool:
+        return int(self.settings.trial_duration_days) > 0
+
+    def _per_user_daily_caps_enabled(self) -> bool:
+        return (
+            float(self.settings.trial_user_audio_minutes_per_day) > 0
+            or int(self.settings.trial_user_audio_requests_per_day) > 0
+            or int(self.settings.trial_user_chat_requests_per_day) > 0
+        )
+
+    def _minutes_left_today(self, user_day: Optional[dict]) -> float:
+        cap = float(self.settings.trial_user_audio_minutes_per_day)
+        if cap <= 0:
+            return 0.0
+        used = float((user_day or {}).get("audio_minutes_reserved", 0.0) or 0.0)
+        return max(0.0, cap - used)
+
+    def _daily_cap_denied(
+        self, user_day: Optional[dict], now_utc: datetime.datetime
+    ) -> TrialDecision:
+        return TrialDecision(
+            allowed=False,
+            message_key=REASON_TRIAL_DAILY_CAP,
+            minutes_left_today=self._minutes_left_today(user_day),
+            resets_at=self._resets_at_utc(now_utc),
+        )
 
     def is_bypass_user(self, user_id: int) -> bool:
         try:
@@ -100,15 +150,16 @@ class TrialLimiter:
         chat_tokens = max(1, int(estimated_tokens)) if kind == "chat" else 0
         estimated_cost_usd = max(0.0, float(estimated_cost_usd))
 
-        now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        now_utc = self._now_utc()
         day_key = self._utc_day_key(now_utc)
         await self._upsert_trial_user_identity(user_id, username, now_utc)
         trial_user = await self.trial_users.find_one({"_id": user_id})
         assert trial_user is not None
 
-        expires_at = trial_user.get("expires_at")
-        if isinstance(expires_at, datetime.datetime) and now_utc > expires_at:
-            return TrialDecision(allowed=False, message_key="trial_expired")
+        if self._trial_has_expiry():
+            expires_at = trial_user.get("expires_at")
+            if isinstance(expires_at, datetime.datetime) and now_utc > expires_at:
+                return TrialDecision(allowed=False, message_key="trial_expired")
 
         if self._limit_exceeded(
             int(trial_user.get("audio_requests_used_total", 0)),
@@ -134,6 +185,36 @@ class TrialLimiter:
             float(self.settings.trial_user_chat_tokens_total),
         ):
             return TrialDecision(allowed=False, message_key="trial_chat_tokens_cap")
+
+        user_day = None
+        if self._per_user_daily_caps_enabled():
+            user_day = await self.trial_daily_usage.find_one(
+                {"_id": self._user_day_id(user_id, day_key)}
+            )
+            if user_day is None:
+                user_day = {
+                    "audio_requests_reserved": 0,
+                    "audio_minutes_reserved": 0.0,
+                    "chat_requests_reserved": 0,
+                }
+            if self._limit_exceeded(
+                int(user_day.get("audio_requests_reserved", 0)),
+                audio_requests,
+                float(self.settings.trial_user_audio_requests_per_day),
+            ):
+                return self._daily_cap_denied(user_day, now_utc)
+            if self._limit_exceeded(
+                float(user_day.get("audio_minutes_reserved", 0.0)),
+                audio_minutes,
+                float(self.settings.trial_user_audio_minutes_per_day),
+            ):
+                return self._daily_cap_denied(user_day, now_utc)
+            if self._limit_exceeded(
+                int(user_day.get("chat_requests_reserved", 0)),
+                chat_requests,
+                float(self.settings.trial_user_chat_requests_per_day),
+            ):
+                return self._daily_cap_denied(user_day, now_utc)
 
         daily = await self.trial_daily_usage.find_one({"_id": day_key})
         if daily is None:
@@ -209,6 +290,24 @@ class TrialLimiter:
             },
             upsert=True,
         )
+        if self._per_user_daily_caps_enabled():
+            await self.trial_daily_usage.update_one(
+                {"_id": self._user_day_id(user_id, day_key)},
+                {
+                    "$setOnInsert": {
+                        "user_id": int(user_id),
+                        "day": day_key,
+                        "created_at": now_utc,
+                    },
+                    "$inc": {
+                        "audio_requests_reserved": audio_requests,
+                        "audio_minutes_reserved": audio_minutes,
+                        "chat_requests_reserved": chat_requests,
+                    },
+                    "$set": {"updated_at": now_utc},
+                },
+                upsert=True,
+            )
         updated_daily = await self.trial_daily_usage.find_one({"_id": day_key})
         alert_message = await self._maybe_build_alert_message(updated_daily, now_utc)
         return TrialDecision(allowed=True, alert_message=alert_message, bypassed=False)
@@ -216,7 +315,9 @@ class TrialLimiter:
     async def is_trial_active(self, user_id: int) -> bool:
         if not self.settings.trial_enabled:
             return False
-        now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        if not self._trial_has_expiry():
+            return True
+        now_utc = self._now_utc()
         trial_user = await self.trial_users.find_one({"_id": int(user_id)})
         if trial_user is None:
             return True
@@ -229,7 +330,7 @@ class TrialLimiter:
         self, user_id: int, username: Optional[str], now_utc: datetime.datetime
     ) -> None:
         trial_days = int(self.settings.trial_duration_days)
-        expires_at = now_utc + datetime.timedelta(days=trial_days)
+        expires_at = now_utc + datetime.timedelta(days=trial_days) if trial_days > 0 else None
         await self.trial_users.update_one(
             {"_id": user_id},
             {
