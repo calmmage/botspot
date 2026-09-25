@@ -1,7 +1,8 @@
 """botspot subscription_manager component.
 
 Credits ledger, Telegram Stars one-off invoices and native subscriptions,
-Stripe/YooKassa/TON adapters, trial caps, and friend/admin bypass.
+Stripe/YooKassa/TON adapters (Stripe customers + Customer Portal), trial caps,
+and friend/admin bypass.
 """
 
 from __future__ import annotations

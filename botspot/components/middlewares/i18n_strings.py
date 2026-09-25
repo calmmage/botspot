@@ -491,4 +491,12 @@ BOTSPOT_STRINGS: dict[str, dict[str, str]] = {
         "en": "Granted {credits} credits to user {user_id}.\nLedger: {ledger_id}",
         "ru": "Начислено {credits} кредитов пользователю {user_id}.\nЛеджер: {ledger_id}",
     },
+    "stripe_manage_portal": {
+        "en": "Manage billing: {url}",
+        "ru": "Управление оплатой: {url}",
+    },
+    "stripe_payment_failed": {
+        "en": "Payment failed. Update your card: {url}",
+        "ru": "Платёж не прошёл. Обновите карту: {url}",
+    },
 }
