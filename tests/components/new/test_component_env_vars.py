@@ -78,10 +78,14 @@ def test_subscription_manager_env_vars():
         mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_ENABLED", "True")
         mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_GRACE_DAYS", "3")
         mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_STARS_PER_USD", "80")
+        mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_TRIAL_USER_AUDIO_MINUTES_PER_DAY", "20")
+        mp.setenv("BOTSPOT_SUBSCRIPTION_MANAGER_TRIAL_DURATION_DAYS", "0")
         settings = SubscriptionManagerSettings()
         assert settings.enabled is True
         assert settings.grace_days == 3
         assert settings.stars_per_usd == 80
+        assert settings.trial_user_audio_minutes_per_day == 20
+        assert settings.trial_duration_days == 0
 
 
 def test_error_handler_env_vars():
