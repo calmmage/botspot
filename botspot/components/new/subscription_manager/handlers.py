@@ -1,4 +1,4 @@
-"""Telegram handlers for /subscribe /account /plans and admin grant/revoke."""
+"""Telegram handlers for /subscribe /account /plans /manage and admin grant/revoke."""
 
 from __future__ import annotations
 
@@ -163,6 +163,13 @@ async def cmd_account(message: Message) -> None:
 async def cmd_buy(message: Message) -> None:
     manager = get_manager()
     await send_safe(message.chat.id, t("billing_buy_intro"), reply_markup=packs_keyboard(manager))
+
+
+async def cmd_manage(message: Message) -> None:
+    if message.from_user is None:
+        return
+    url = await get_manager().create_stripe_portal_url(message.from_user.id)
+    await send_safe(message.chat.id, t("stripe_manage_portal", url=url))
 
 
 async def cmd_grant(message: Message) -> None:
@@ -344,7 +351,7 @@ def _register_commands_enabled() -> bool:
 
 
 def register_command_handlers(dp: Dispatcher) -> Dispatcher:
-    """/subscribe /account /plans /buy, admin commands and the sub: callbacks."""
+    """/subscribe /account /plans /buy /manage, admin commands and the sub: callbacks."""
     from botspot.commands_menu import Visibility, add_command
 
     add_command("subscribe", "Subscribe to a plan", visibility=Visibility.PUBLIC)(cmd_subscribe)
@@ -353,6 +360,7 @@ def register_command_handlers(dp: Dispatcher) -> Dispatcher:
     )
     add_command("plans", "Subscription plans", visibility=Visibility.PUBLIC)(cmd_plans)
     add_command("buy", "Buy credit packs", visibility=Visibility.PUBLIC)(cmd_buy)
+    add_command("manage", "Manage Stripe billing", visibility=Visibility.PUBLIC)(cmd_manage)
     add_command("grant", "Grant a plan", visibility=Visibility.ADMIN_ONLY)(cmd_grant)
     add_command("revoke", "Revoke a plan", visibility=Visibility.ADMIN_ONLY)(cmd_revoke)
     add_command("subscribers", "List subscribers", visibility=Visibility.ADMIN_ONLY)(
@@ -366,6 +374,7 @@ def register_command_handlers(dp: Dispatcher) -> Dispatcher:
     dp.message.register(cmd_account, Command("account"))
     dp.message.register(cmd_plans, Command("plans"))
     dp.message.register(cmd_buy, Command("buy"))
+    dp.message.register(cmd_manage, Command("manage"))
     dp.message.register(cmd_grant, Command("grant"), AdminFilter())
     dp.message.register(cmd_revoke, Command("revoke"), AdminFilter())
     dp.message.register(cmd_subscribers, Command("subscribers"), AdminFilter())

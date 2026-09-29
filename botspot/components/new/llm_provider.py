@@ -62,6 +62,31 @@ def _is_temperature_rejection(error: BaseException) -> bool:
 # ---------------------------------------------
 
 
+def _max_tokens_param(model: str) -> str:
+    """OpenAI reasoning models (gpt-5+, o-series) reject max_tokens, and litellm only
+    remaps ids it already knows (a brand-new gpt-6-luna slips through). Other
+    providers keep max_tokens: xai rejects max_completion_tokens for unknown ids."""
+    try:
+        from litellm import get_llm_provider
+
+        if get_llm_provider(model)[1] == "openai":
+            return "max_completion_tokens"
+    except Exception:
+        pass
+    return "max_tokens"
+
+
+def _token_limit_for(model: str, api_params: Dict[str, Any]) -> Dict[str, Any]:
+    """Rename the token-limit kwarg to what `model`'s provider accepts."""
+    key = _max_tokens_param(model)
+    other = "max_tokens" if key == "max_completion_tokens" else "max_completion_tokens"
+    if other not in api_params or key in api_params:
+        return api_params
+    params = dict(api_params)
+    params[key] = params.pop(other)
+    return params
+
+
 class LLMProviderSettings(BaseSettings):
     """Settings for the LLM Provider component."""
 
@@ -789,6 +814,7 @@ class LLMProvider:
         """
         from litellm import acompletion
 
+        api_params = _token_limit_for(model, api_params)
         try:
             return await acompletion(model=model, messages=messages, **api_params)
         except Exception as e:

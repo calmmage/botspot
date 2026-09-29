@@ -272,3 +272,7 @@ The entire bot should be focused on just these features:
 
 EVERYTHING ELSE IS UNNECESSARY AND SHOULD BE REMOVED.
 
+
+## Release path
+- Commit to `dev` → push `dev` → merge `dev` into `main` → push `main`. Never commit straight to `main`.
+- Consumers (new-whisper-bot etc.) pin `botspot.git@main`, never a feature branch; they pick up a release with `uv lock --upgrade-package botspot`.

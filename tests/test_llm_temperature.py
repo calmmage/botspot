@@ -128,7 +128,7 @@ class TestServerSideRejectionFallback:
         assert len(calls) == 2
         assert calls[0]["temperature"] == 0.7
         assert "temperature" not in calls[1]
-        assert calls[1]["max_tokens"] == calls[0]["max_tokens"]
+        assert calls[1]["max_completion_tokens"] == calls[0]["max_completion_tokens"]
         assert "openai/gpt-5.6-luna" in llm_provider._TEMPERATURE_REJECTED_MODELS
 
         # Later calls to the same model skip temperature immediately, even explicit ones

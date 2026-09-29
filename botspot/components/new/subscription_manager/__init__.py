@@ -1,7 +1,8 @@
 """botspot subscription_manager component.
 
 Credits ledger, Telegram Stars one-off invoices and native subscriptions,
-Stripe/YooKassa/TON adapters, trial caps, and friend/admin bypass.
+Stripe/YooKassa/TON adapters (Stripe customers + Customer Portal), trial caps,
+and friend/admin bypass.
 
 Per-user daily trial caps (env prefix ``BOTSPOT_SUBSCRIPTION_MANAGER_``, 0 = off):
 ``TRIAL_USER_AUDIO_MINUTES_PER_DAY``, ``TRIAL_USER_AUDIO_REQUESTS_PER_DAY``,
