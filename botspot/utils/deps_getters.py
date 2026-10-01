@@ -108,6 +108,13 @@ def get_subscription_manager():
     return _get_subscription_manager()
 
 
+def get_chatgpt_plan():
+    """Get the chatgpt_plan component. Raises PlanDisabled when the flag is off."""
+    from botspot.components.new.chatgpt_plan import get_chatgpt_plan as _get_chatgpt_plan
+
+    return _get_chatgpt_plan()
+
+
 def get_s3_storage() -> Optional[S3StorageProvider]:
     """Get the S3 Storage provider from dependency manager."""
     from botspot.core.dependency_manager import get_dependency_manager
@@ -144,4 +151,5 @@ __all__ = [
     "get_dependency_manager",
     "get_botspot_settings",
     "get_subscription_manager",
+    "get_chatgpt_plan",
 ]
