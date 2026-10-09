@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from botspot.components.new.auto_archive import AutoArchive
     from botspot.components.new.chat_binder import ChatBinder
     from botspot.components.new.chat_fetcher import ChatFetcher
+    from botspot.components.new.chatgpt_plan import ChatgptPlan
     from botspot.components.new.llm_provider import LLMProvider
     from botspot.components.new.message_aggregator import MessageAggregator
     from botspot.components.new.queue_manager import QueueManager
@@ -59,6 +60,7 @@ class DependencyManager(metaclass=Singleton):
         self._simple_user_cache = None
         self._access_control = None
         self._subscription_manager = None
+        self._chatgpt_plan = None
         self.__dict__.update(kwargs)
 
     @property
@@ -252,6 +254,14 @@ class DependencyManager(metaclass=Singleton):
     @subscription_manager.setter
     def subscription_manager(self, value: "SubscriptionManager"):
         self._subscription_manager = value
+
+    @property
+    def chatgpt_plan(self) -> Optional["ChatgptPlan"]:
+        return self._chatgpt_plan
+
+    @chatgpt_plan.setter
+    def chatgpt_plan(self, value: Optional["ChatgptPlan"]):
+        self._chatgpt_plan = value
 
     @classmethod
     def is_initialized(cls) -> bool:
