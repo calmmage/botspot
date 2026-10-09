@@ -19,8 +19,37 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - name: Enable auto-merge (squash) once required checks pass
+      - name: Squash-merge once GitHub reports the PR mergeable
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge "$PR_URL" --auto --squash
+        run: |
+          set -euo pipefail
+          # main has no protection rules, so `gh pr merge --auto` cannot queue
+          # (enablePullRequestAutoMerge: "Protected branch rules not configured").
+          # Security updates also land together and all edit uv.lock, so a
+          # squash can lose the race. Retry. A red job emails even when a
+          # sibling job already merged the PR.
+          for attempt in 1 2 3 4 5 6; do
+            set +e
+            out=$(gh pr merge "$PR_URL" --squash 2>&1)
+            code=$?
+            set -e
+            printf '%s\n' "$out"
+            if [ "$code" -eq 0 ]; then
+              exit 0
+            fi
+            case "$out" in
+              *"already merged"*|*"Already merged"*)
+                exit 0
+                ;;
+            esac
+            state=$(gh pr view "$PR_URL" --json state --jq .state)
+            echo "attempt ${attempt}: ${state}"
+            if [ "$state" = "MERGED" ]; then
+              exit 0
+            fi
+            sleep $((attempt * 8))
+          done
+          exit 1
+
