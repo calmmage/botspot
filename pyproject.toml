@@ -31,6 +31,7 @@ extras = [
     "sqlalchemy[asyncio]>=2.0.40",
     "asyncpg>=0.31.0",
     "alembic>=1.18.5",
+    "cryptography>=42",  # chatgpt_plan: Fernet token encryption
 ]
 test = [
     "pytest>=8.3.5",

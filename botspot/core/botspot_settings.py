@@ -15,6 +15,7 @@ from botspot.components.middlewares.i18n import I18nSettings
 from botspot.components.new.auto_archive import AutoArchiveSettings
 from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.new.chat_fetcher import ChatFetcherSettings
+from botspot.components.new.chatgpt_plan.settings import ChatgptPlanSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
 from botspot.components.new.message_aggregator import MessageAggregatorSettings
 from botspot.components.new.queue_manager import QueueManagerSettings
@@ -82,6 +83,7 @@ class BotspotSettings(BaseSettings):
     s3_storage: S3StorageSettings = S3StorageSettings()
     access_control: AccessControlSettings = AccessControlSettings()
     subscription_manager: SubscriptionManagerSettings = SubscriptionManagerSettings()
+    chatgpt_plan: ChatgptPlanSettings = ChatgptPlanSettings()
 
     class Config:
         env_prefix = "BOTSPOT_"
