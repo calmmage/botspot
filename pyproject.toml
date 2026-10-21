@@ -15,6 +15,7 @@ dependencies = [
     "aiogram>=3.31",
     "pydantic-settings<3.0.0,>=2.11",
     "pydantic<3.0,>=2.11",
+    "deprecated>=1.2.15,<2.0.0",
 ]
 
 [dependency-groups]

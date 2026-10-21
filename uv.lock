@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12, <4.0"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -524,8 +524,10 @@ wheels = [
 name = "botspot"
 version = "0.10.41"
 source = { editable = "." }
+default-groups = ["dev", "docs", "extras", "test"]
 dependencies = [
     { name = "aiogram" },
+    { name = "deprecated" },
     { name = "loguru" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -574,6 +576,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "aiogram", specifier = ">=3.31" },
+    { name = "deprecated", specifier = ">=1.2.15,<2.0.0" },
     { name = "loguru", specifier = ">=0.7" },
     { name = "pydantic", specifier = ">=2.11,<3.0" },
     { name = "pydantic-settings", specifier = ">=2.11,<3.0.0" },
