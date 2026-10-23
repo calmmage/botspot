@@ -124,3 +124,7 @@ version = "0.3.0"  # optimize pyproject dependencies
 url = "https://github.com/calmmage/python-project-template.git"
 author = "Petr Lavrov <petrlavrov@calmmage.com>"
 description = "A template for creating a bot using calmapp and bot-lib"
+
+[tool.uv.exclude-newer-package]
+# Emergency CA snapshot; preserve the global release-age policy for other packages.
+certifi = "2026-10-22"
