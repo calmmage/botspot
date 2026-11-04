@@ -23,7 +23,9 @@ class ErrorHandlerSettings(BaseSettings):
         extra = "ignore"
 
 
-async def error_handler(event: types.ErrorEvent, bot: Bot):
+async def error_handler(
+    event: types.ErrorEvent, bot: Bot, observability_context: dict | None = None
+):
     """
     log error to the logger
     also send a message to the user
@@ -42,7 +44,16 @@ async def error_handler(event: types.ErrorEvent, bot: Bot):
            ^^^^^^^^^^^^^^^"""
     )[-1]
 
-    logger.error(tb)
+    context = observability_context or {}
+    observability = getattr(deps, "observability", None)
+    if observability is not None:
+        await observability.record_error(
+            **context,
+            error_type=type(event.exception).__name__,
+            error_message=str(event.exception),
+            traceback=tb,
+        )
+    logger.bind(**context).error(tb)
 
     user = None
     if event.update.message and event.update.message.from_user:

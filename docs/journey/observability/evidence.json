@@ -1,0 +1,146 @@
+{
+  "desktop": {
+    "viewport": [
+      1440,
+      1000
+    ],
+    "usage_layout": {
+      "width": 1440,
+      "scroll": 1440,
+      "tables": [
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        },
+        {
+          "width": 1048,
+          "wrap": 1048
+        }
+      ]
+    },
+    "logs_layout": {
+      "width": 1440,
+      "scroll": 1440,
+      "tables": [
+        {
+          "width": 1048,
+          "wrap": 1048
+        }
+      ]
+    },
+    "today_requests": 11,
+    "timing_fake_mongo_only": {
+      "response_ms": 1,
+      "dom_ms": 7
+    },
+    "javascript_errors": [],
+    "checks": [
+      "wrong token denied",
+      "signed session",
+      "usage",
+      "error anchor",
+      "traceback Esc and close",
+      "request to logs",
+      "literal filters",
+      "sorting and expand",
+      "owner-only registry",
+      "return to Today"
+    ]
+  },
+  "phone": {
+    "viewport": [
+      390,
+      844
+    ],
+    "usage_layout": {
+      "width": 390,
+      "scroll": 390,
+      "tables": [
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        },
+        {
+          "width": 366,
+          "wrap": 366
+        }
+      ]
+    },
+    "logs_layout": {
+      "width": 390,
+      "scroll": 390,
+      "tables": [
+        {
+          "width": 366,
+          "wrap": 366
+        }
+      ]
+    },
+    "today_requests": 11,
+    "timing_fake_mongo_only": {
+      "response_ms": 1.0999999940395355,
+      "dom_ms": 6.800000011920929
+    },
+    "javascript_errors": [],
+    "checks": [
+      "wrong token denied",
+      "signed session",
+      "usage",
+      "error anchor",
+      "traceback Esc and close",
+      "request to logs",
+      "literal filters",
+      "sorting and expand",
+      "owner-only registry",
+      "return to Today"
+    ]
+  }
+}
