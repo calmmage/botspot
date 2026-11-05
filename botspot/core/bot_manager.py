@@ -27,6 +27,7 @@ from botspot.components.new import (
     chat_fetcher,
     llm_provider,
     message_aggregator,
+    observability,
     queue_manager,
     s3_storage,
     subscription_manager,
@@ -112,6 +113,8 @@ class BotManager(metaclass=Singleton):
                 self.settings.subscription_manager
             )
 
+        self.deps.observability = observability.initialize(self.settings.observability, self.deps)
+
         self.deps.simple_user_cache = simple_user_cache.initialize()
 
     def setup_dispatcher(self, dp: Dispatcher):
@@ -128,6 +131,8 @@ class BotManager(metaclass=Singleton):
                 setup()
 
         simple_user_cache.setup_dispatcher(dp)
+        if self.deps.observability is not None:
+            self.deps.observability.setup_dispatcher(dp)
 
     def _dispatcher_setups(self, dp: Dispatcher):
         settings = self.settings

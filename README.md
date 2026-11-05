@@ -83,3 +83,11 @@ uv run ruff check botspot
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE). Vulnerabilities: [SECURITY.md](SECURITY.md).
+
+### Persistent observability and owner dashboard
+
+Observability is enabled by default when a Bot and Mongo database are configured.
+It archives redacted logs, request events, errors, and product usage, with a
+Telegram-authenticated owner dashboard. Set `BOTSPOT_OBSERVABILITY_ENABLED=false`
+to opt out. See [configuration and standalone writers](docs/specs/observability-usage.md)
+and the [local desktop/phone journey](docs/journey/observability/index.html).

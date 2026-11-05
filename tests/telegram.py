@@ -357,6 +357,7 @@ def make_update(message: Message, update_id: int = 1) -> Update:
 def quiet_botspot(**overrides: Any) -> dict[str, Any]:
     """Disable network-backed components; keep the QoL surface on."""
     cfg: dict[str, Any] = {
+        "observability": {"enabled": False},
         "mongo_database": {"enabled": False},
         "postgres_database": {"enabled": False},
         "event_scheduler": {"enabled": False},
