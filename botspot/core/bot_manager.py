@@ -25,6 +25,7 @@ from botspot.components.new import (
     auto_archive,
     chat_binder,
     chat_fetcher,
+    chatgpt_plan,
     llm_provider,
     message_aggregator,
     queue_manager,
@@ -111,6 +112,9 @@ class BotManager(metaclass=Singleton):
             self.deps.subscription_manager = subscription_manager.initialize(
                 self.settings.subscription_manager
             )
+
+        if self.settings.chatgpt_plan.enabled:
+            self.deps.chatgpt_plan = chatgpt_plan.initialize(self.settings.chatgpt_plan)
 
         self.deps.simple_user_cache = simple_user_cache.initialize()
 
