@@ -17,6 +17,7 @@ from botspot.components.new.chat_binder import ChatBinderSettings
 from botspot.components.new.chat_fetcher import ChatFetcherSettings
 from botspot.components.new.llm_provider import LLMProviderSettings
 from botspot.components.new.message_aggregator import MessageAggregatorSettings
+from botspot.components.new.observability import ObservabilitySettings
 from botspot.components.new.queue_manager import QueueManagerSettings
 from botspot.components.new.s3_storage import S3StorageSettings
 from botspot.components.new.subscription_manager.settings import SubscriptionManagerSettings
@@ -25,7 +26,7 @@ from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
 from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -36,12 +37,13 @@ class BotspotSettings(BaseSettings):
     )
     admins_str: str = Field(
         default="",
-        description="Comma-separated list of admin usernames (e.g., '@abc,@def')",
+        validation_alias=AliasChoices("BOTSPOT_ADMINS", "BOTSPOT_ADMINS_STR", "admins_str"),
+        description="Comma-separated list of admin IDs/usernames (e.g., '@abc,@def')",
     )
 
     @cached_property
     def admins(self) -> List[str]:
-        """Parse the comma-separated string of admin usernames into a list of strings."""
+        """Parse the comma-separated string of admin IDs/usernames into a list of strings."""
         if not self.admins_str:
             return []
         return [x.strip() for x in self.admins_str.split(",") if x.strip()]
@@ -57,6 +59,8 @@ class BotspotSettings(BaseSettings):
         if not self.friends_str:
             return []
         return [x.strip() for x in self.friends_str.split(",") if x.strip()]
+
+    observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
 
     ask_user: AskUserSettings = AskUserSettings()
     bot_commands_menu: BotCommandsMenuSettings = BotCommandsMenuSettings()

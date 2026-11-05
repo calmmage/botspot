@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Replace: what a person sees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* One column. Each step: screenshot strip, then Sees / Taps / gets stuck. Red pen = stuck. Green = fixed. */
+:root {
+  --bg: #fbfaf7; --fg: #1f1e1b; --muted: #77736b; --line: #e6e2da; --card: #ffffff;
+  --pen: #c23a2b; --pen-bg: #fbeeea; --fix: #2f7a4a; --fix-bg: #ecf5ef; --part: #2f62a3; --chip: #f1eee8;
+  --display: "Golos Text", system-ui, -apple-system, sans-serif;
+  --hand: "Caveat", "Comic Sans MS", cursive;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #171715; --fg: #ecebe6; --muted: #9a958c; --line: #2c2b28; --card: #1f1f1c;
+  --pen: #f08473; --pen-bg: #2c1c19; --fix: #7cc79a; --fix-bg: #18261d; --part: #7fb0ea; --chip: #24231f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #171715; --fg: #ecebe6; --muted: #9a958c; --line: #2c2b28; --card: #1f1f1c;
+  --pen: #f08473; --pen-bg: #2c1c19; --fix: #7cc79a; --fix-bg: #18261d; --part: #7fb0ea; --chip: #24231f; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--display); margin: 0; }
+.wrap { max-width: 1060px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 10px; text-wrap: balance; }
+h2 { font-size: 21px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.link { font-family: var(--mono); font-size: 14px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 12px; display: inline-block; overflow-wrap: anywhere; margin: 6px 0 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.chip { background: var(--chip); border-radius: 999px; padding: 3px 11px; font-size: 13px; color: var(--muted); }
+.chip.fix { background: var(--fix-bg); color: var(--fix); }
+.toc { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; margin-top: 10px; }
+.toc a { color: var(--muted); text-decoration: none; } .toc a:hover { color: var(--fg); }
+section.step { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 26px; display: grid; gap: 12px; }
+.head { display: flex; gap: 12px; align-items: baseline; }
+.num { font-family: var(--mono); color: var(--muted); font-size: 14px; min-width: 1.6em; }
+.strip { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+figure { margin: 0; flex: none; width: 230px; display: grid; gap: 6px; }
+figure img { width: 230px; border-radius: 12px; border: 1px solid var(--line); display: block; background: var(--card); }
+figure.wide { width: min(640px, 86vw); } figure.wide img { width: 100%; }
+.scrollframe { height: 498px; overflow-y: auto; border-radius: 12px; border: 1px solid var(--line); }
+.scrollframe img { border: 0; border-radius: 0; }
+figcaption { font-size: 13px; color: var(--muted); }
+.lines { display: grid; gap: 8px; max-width: 760px; }
+.l { display: grid; grid-template-columns: 6.2em 1fr; gap: 10px; min-width: 0; }
+.l b { font-weight: 600; font-size: 14px; color: var(--muted); padding-top: 1px; }
+.l ul { margin: 0; padding-left: 1.1em; }
+.l.stuck { background: var(--pen-bg); border-left: 3px solid var(--pen); padding: 8px 12px; border-radius: 0 8px 8px 0; }
+.l.stuck b { font-family: var(--hand); font-size: 22px; line-height: 1; color: var(--pen); font-weight: 700; }
+.l.fixed { background: var(--fix-bg); border-left: 3px solid var(--fix); padding: 8px 12px; border-radius: 0 8px 8px 0; }
+.l.fixed b { color: var(--fix); }
+.pair { display: flex; gap: 14px; align-items: flex-start; }
+.arrow { align-self: center; color: var(--fix); font-size: 22px; }
+.top5 { counter-reset: n; list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+.top5 > li { display: grid; grid-template-columns: 2.2em 1fr; gap: 6px 10px; }
+.top5 > li::before { counter-increment: n; content: counter(n); font-family: var(--hand); font-size: 34px;
+  line-height: .9; color: var(--pen); font-weight: 700; }
+.top5 .what { font-weight: 600; }
+.top5 .fixline { grid-column: 2; color: var(--fix); }
+.top5 .fixline em { font-style: normal; font-weight: 600; }
+.top5 .evid { grid-column: 2; }
+.you { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+.you code { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .l { grid-template-columns: 1fr; gap: 2px; } figure { width: 200px; } figure img { width: 200px; } }
+</style>
+</head>
+<body><div class="wrap"><h1>Botspot owner dashboard: what a person sees</h1><p>Local fake-Mongo screenshots; desktop 1440×1000 and phone 390×844. No live Telegram authentication or deployment.</p><div class="link">http://127.0.0.1:18796/botspot/dashboard</div><p>“product-oriented usage metrics and analytics” · “allows view for authenticated via telegram bot owner”</p><nav class="toc"><a href="#s1">1 Open the link</a><a href="#s2">2 Sign in</a><a href="#s3">3 Read usage</a><a href="#s4">4 Inspect an error</a><a href="#s5">5 Open request logs</a><a href="#s6">6 Filter and expand</a><a href="#s7">7 Return through the registry</a><a href="#top5">Top 5</a></nav><section class="step" id="s1"><div class="head"><span class="num">1</span><h2>Open the link</h2></div><div class="strip"><figure><a href="img/phone-01-sign-in.png"><img src="img/phone-01-sign-in.png" alt="Phone: Open the link"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-01-sign-in.png"><img src="img/desktop-01-sign-in.png" alt="Desktop: Open the link"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>Owner sign-in with Telegram entry points and a folded token fallback.</p></div><div class="l"><b>Taps</b><p>Open the dashboard link.</p></div></div></section><section class="step" id="s2"><div class="head"><span class="num">2</span><h2>Sign in</h2></div><div class="strip"><figure><a href="img/phone-02-wrong-token.png"><img src="img/phone-02-wrong-token.png" alt="Phone: Sign in"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-02-wrong-token.png"><img src="img/desktop-02-wrong-token.png" alt="Desktop: Sign in"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>Wrong token gives an explicit error; the local token opens the signed session.</p></div><div class="l"><b>Taps</b><p>Open the token fold, enter local, tap Open.</p></div></div></section><section class="step" id="s3"><div class="head"><span class="num">3</span><h2>Read usage</h2></div><div class="strip"><figure><a href="img/phone-03-usage.png"><img src="img/phone-03-usage.png" alt="Phone: Read usage"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-03-usage.png"><img src="img/desktop-03-usage.png" alt="Desktop: Read usage"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>77 product events, newest UTC days first, optional product columns and folded rows.</p></div><div class="l"><b>Taps</b><p>Tap a range or a column to sort.</p></div></div></section><section class="step" id="s4"><div class="head"><span class="num">4</span><h2>Inspect an error</h2></div><div class="strip"><figure><a href="img/phone-04-traceback.png"><img src="img/phone-04-traceback.png" alt="Phone: Inspect an error"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-04-traceback.png"><img src="img/desktop-04-traceback.png" alt="Desktop: Inspect an error"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>Error count links to Errors; traceback includes the download failure.</p></div><div class="l"><b>Taps</b><p>Tap RecordingError, close with × or Esc.</p></div></div></section><section class="step" id="s5"><div class="head"><span class="num">5</span><h2>Open request logs</h2></div><div class="strip"><figure><a href="img/phone-05-request-logs.png"><img src="img/phone-05-request-logs.png" alt="Phone: Open request logs"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-05-request-logs.png"><img src="img/desktop-05-request-logs.png" alt="Desktop: Open request logs"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>Only records with this request ID; same bot navigation stays visible.</p></div><div class="l"><b>Taps</b><p>Tap Logs in the error/request row.</p></div></div></section><section class="step" id="s6"><div class="head"><span class="num">6</span><h2>Filter and expand</h2></div><div class="strip"><figure><a href="img/phone-06-filtered-logs.png"><img src="img/phone-06-filtered-logs.png" alt="Phone: Filter and expand"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-06-filtered-logs.png"><img src="img/desktop-06-filtered-logs.png" alt="Desktop: Filter and expand"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>ERROR logs containing YouTube, sortable timestamps and expandable rows.</p></div><div class="l"><b>Taps</b><p>Clear, choose ERROR, type YouTube, tap Filter.</p></div></div></section><section class="step" id="s7"><div class="head"><span class="num">7</span><h2>Return through the registry</h2></div><div class="strip"><figure><a href="img/phone-07-bots.png"><img src="img/phone-07-bots.png" alt="Phone: Return through the registry"></a><figcaption>390 px</figcaption></figure><figure><a href="img/desktop-07-bots.png"><img src="img/desktop-07-bots.png" alt="Desktop: Return through the registry"></a><figcaption>Desktop · click for full size</figcaption></figure></div><div class="lines"><div class="l"><b>Sees</b><p>Two bots sharing the verified/configured owner; an outsider stays hidden.</p></div><div class="l"><b>Taps</b><p>Tap Bots, then Usage, then Today.</p></div></div></section><section class="step" id="top5"><div class="head"><span class="num">!</span><h2>Top 5 fixed and re-shot</h2></div><ol class="top5"><li><span class="what">Raw unauthenticated denial → sign-in and clear owner-access feedback.</span></li><li><span class="what">Phone product row 376 px in 366 px wrapper → compact timestamp; all tables fit.</span></li><li><span class="what">Failed products and error archive counts differ → separate linked error count.</span></li><li><span class="what">Folded oldest days / ambiguous shortened time sort → newest-first days and full UTC sort keys.</span></li><li><span class="what">Older request logs disappear under a seven-day default → exact request filter with bounded wider range.</span></li></ol><div class="you"><b>Still unverified</b><p>Live Telegram login/Mini App/menu behavior, real Mongo TTL/query plans and 500 ms target, physical devices, consumer adoption and deployment.</p></div></section><p>Reproduce with serve.py and capture.py; assertions in <a href="evidence.json">evidence.json</a>, full details in <a href="README.md">README.md</a>.</p></div></body></html>

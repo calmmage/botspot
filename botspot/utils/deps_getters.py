@@ -144,4 +144,10 @@ __all__ = [
     "get_dependency_manager",
     "get_botspot_settings",
     "get_subscription_manager",
+    "get_observability",
 ]
+
+
+def get_observability():
+    """Get the observability component, or None when persistence is unconfigured."""
+    return get_dependency_manager().observability
