@@ -45,6 +45,10 @@ plugins:
 nav:
   - Home: index.md
 
+# The journey page is index.html; its README is for GitHub readers.
+exclude_docs: |
+  journey/observability/README.md
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

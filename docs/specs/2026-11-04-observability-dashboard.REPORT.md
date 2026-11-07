@@ -127,7 +127,7 @@ routes and bot registry owner filtering. Lifecycle tests cover startup, mounting
 shutdown, missing configuration, registry/menu outages, username registration and
 owner-only command handling before catch-all routers.
 
-Browser evidence: [14 screenshots](../journey/observability/img/),
+Browser evidence: [14 screenshots](../journey/observability/index.html),
 [walkthrough](../journey/observability/index.html),
 [assertions/timing](../journey/observability/evidence.json), and replayable fixture
 and capture scripts. Root inspected desktop usage, phone usage, traceback and
