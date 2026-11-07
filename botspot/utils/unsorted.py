@@ -4,6 +4,7 @@ from typing import BinaryIO, Dict, List, Optional, Union
 from aiogram.enums import ChatAction
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Audio, Document, Message, PhotoSize, Video, VideoNote, Voice
+from aiogram.utils.text_decorations import html_decoration
 from botspot.utils.user_ops import UserLike
 from loguru import logger
 
@@ -57,15 +58,21 @@ async def send_typing_status(message: Message, action: str = "typing"):
     await deps.bot.send_chat_action(chat_id=message.chat.id, action=chat_action)
 
 
-async def get_message_text(message: Message, as_markdown=False, include_reply=False) -> str:
+async def get_message_text(
+    message: Message, as_markdown=False, include_reply=False, as_html=False
+) -> str:
     """
     Extract text from the message - including text, caption, voice messages, and text files
     :param message: aiogram Message object
     :param as_markdown: extract text with markdown formatting
     :param include_reply: include text from the message this message is replying to
+    :param as_html: extract text and caption as Telegram HTML: bold, links, quotes,
+        custom emoji (<tg-emoji emoji-id="...">) and the rest of the entities
     :return: extracted text concatenated from all sources
     """
-    result = await _extract_message_text(message, as_markdown, include_reply, as_dict=True)
+    result = await _extract_message_text(
+        message, as_markdown, include_reply, as_dict=True, as_html=as_html
+    )
     # todo: if context_builder component enabled - augment with context from middleware
     return "\n\n".join(result.values())
 
@@ -75,19 +82,27 @@ async def _extract_message_text(
     as_markdown=False,
     include_reply=False,
     as_dict=False,  # todo: change default to True
+    as_html=False,
 ) -> Union[Dict, str]:
     result = {}
     # option 1: message text
     if message.text:
-        if as_markdown:
+        if as_html:
+            result["text"] = html_decoration.unparse(message.text, message.entities or [])
+        elif as_markdown:
             result["text"] = message.md_text
         else:
             result["text"] = message.text
     # option 2: caption
     if message.caption:
-        if as_markdown:
-            logger.warning("Markdown captions are not supported yet")
-        result["caption"] = message.caption
+        if as_html:
+            result["caption"] = html_decoration.unparse(
+                message.caption, message.caption_entities or []
+            )
+        else:
+            if as_markdown:
+                logger.warning("Markdown captions are not supported yet")
+            result["caption"] = message.caption
 
     # option 3: voice/video message
     # if message.voice or message.audio:
@@ -113,6 +128,7 @@ async def _extract_message_text(
             as_markdown=as_markdown,
             include_reply=False,
             as_dict=False,
+            as_html=as_html,
         )
         result["reply_to"] = f"\n\n{reply_text}"
 

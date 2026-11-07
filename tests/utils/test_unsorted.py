@@ -243,7 +243,7 @@ class TestGetMessageText:
 
             # Verify
             assert result == "Test message\n\nTest caption"
-            mock_extract.assert_called_once_with(message, False, False, as_dict=True)
+            mock_extract.assert_called_once_with(message, False, False, as_dict=True, as_html=False)
 
 
 class TestSendTypingStatus:
@@ -315,3 +315,64 @@ class TestSendTypingStatus:
             mock_bot.send_chat_action.assert_called_once_with(
                 chat_id=123456789, action=ChatAction.TYPING
             )
+
+
+class TestExtractMessageHtml:
+    """as_html keeps Telegram formatting: bold, links, custom emoji, captions, replies."""
+
+    @staticmethod
+    def _message(**kwargs):
+        import datetime
+
+        from aiogram.types import Chat, Message
+
+        return Message(
+            message_id=1,
+            date=datetime.datetime(2026, 11, 7),
+            chat=Chat(id=1, type="private"),
+            **kwargs,
+        )
+
+    @pytest.mark.asyncio
+    async def test_text_entities_become_html(self):
+        from aiogram.types import MessageEntity
+
+        from botspot.utils.unsorted import get_message_text
+
+        text = "🔥 Москва\n\nУзнать подробнее"
+        message = self._message(
+            text=text,
+            entities=[
+                MessageEntity(
+                    type="custom_emoji", offset=0, length=2, custom_emoji_id="5264980939632582563"
+                ),
+                MessageEntity(type="bold", offset=3, length=6),
+                MessageEntity(
+                    type="text_link", offset=11, length=16, url="https://example.com/146"
+                ),
+            ],
+        )
+
+        result = await get_message_text(message, as_html=True)
+
+        assert result == (
+            '<tg-emoji emoji-id="5264980939632582563">🔥</tg-emoji> <b>Москва</b>\n\n'
+            '<a href="https://example.com/146">Узнать подробнее</a>'
+        )
+        assert await get_message_text(message) == text
+
+    @pytest.mark.asyncio
+    async def test_caption_and_reply_keep_html(self):
+        from aiogram.types import MessageEntity
+
+        from botspot.utils.unsorted import get_message_text
+
+        reply = self._message(
+            caption="Photo <note>",
+            caption_entities=[MessageEntity(type="italic", offset=0, length=5)],
+        )
+        message = self._message(text="see", reply_to_message=reply)
+
+        result = await get_message_text(message, as_html=True, include_reply=True)
+
+        assert result == "see\n\n\n\n<i>Photo</i> &lt;note&gt;"
