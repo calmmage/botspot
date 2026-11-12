@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from botspot.components.new.queue_manager import QueueManager
     from botspot.components.new.s3_storage import S3StorageProvider
     from botspot.components.new.subscription_manager.manager import SubscriptionManager
+    from botspot.components.qol.telegram_custom_emojis import TelegramCustomEmojis
     from pymongo import AsyncMongoClient  # noqa: F401
     from pymongo.asynchronous.database import AsyncDatabase  # noqa: F401
     from sqlalchemy.ext.asyncio import AsyncEngine  # noqa: F401
@@ -60,6 +61,7 @@ class DependencyManager(metaclass=Singleton):
         self._access_control = None
         self._subscription_manager = None
         self._observability = None
+        self._telegram_custom_emojis = None
         self.__dict__.update(kwargs)
 
     @property
@@ -261,6 +263,16 @@ class DependencyManager(metaclass=Singleton):
     @observability.setter
     def observability(self, value):
         self._observability = value
+
+    @property
+    def telegram_custom_emojis(self) -> "TelegramCustomEmojis":
+        if self._telegram_custom_emojis is None:
+            raise BotspotError("Telegram custom emojis are not initialized")
+        return self._telegram_custom_emojis
+
+    @telegram_custom_emojis.setter
+    def telegram_custom_emojis(self, value: "TelegramCustomEmojis"):
+        self._telegram_custom_emojis = value
 
     @classmethod
     def is_initialized(cls) -> bool:

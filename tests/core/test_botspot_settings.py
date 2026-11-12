@@ -17,6 +17,8 @@ class TestBotspotSettings:
         assert settings.error_handling.enabled is True
         assert settings.bot_commands_menu.enabled is True
         assert settings.bot_info.enabled is True
+        assert settings.telegram_custom_emojis.enabled is False
+        assert settings.telegram_custom_emojis.pack == "random"
 
     def test_admin_parsing(self):
         """Test parsing admin string into a list."""

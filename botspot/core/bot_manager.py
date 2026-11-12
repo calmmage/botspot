@@ -32,7 +32,12 @@ from botspot.components.new import (
     s3_storage,
     subscription_manager,
 )
-from botspot.components.qol import bot_commands_menu, bot_info, print_bot_url
+from botspot.components.qol import (
+    bot_commands_menu,
+    bot_info,
+    print_bot_url,
+    telegram_custom_emojis,
+)
 from botspot.core.botspot_settings import BotspotSettings
 from botspot.core.dependency_manager import DependencyManager
 from botspot.utils.internal import Singleton
@@ -114,6 +119,12 @@ class BotManager(metaclass=Singleton):
             )
 
         self.deps.observability = observability.initialize(self.settings.observability, self.deps)
+        if self.settings.telegram_custom_emojis.enabled:
+            self.deps.telegram_custom_emojis = telegram_custom_emojis.initialize(
+                self.settings.telegram_custom_emojis
+            )
+            if bot is not None:
+                telegram_custom_emojis.install(bot)
 
         self.deps.simple_user_cache = simple_user_cache.initialize()
 
@@ -168,6 +179,10 @@ class BotManager(metaclass=Singleton):
             (
                 settings.subscription_manager.enabled,
                 lambda: subscription_manager.setup_dispatcher(dp),
+            ),
+            (
+                settings.telegram_custom_emojis.enabled,
+                lambda: telegram_custom_emojis.setup_dispatcher(dp),
             ),
         )
 
