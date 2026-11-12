@@ -16,6 +16,7 @@ def test_components_imports():
     from botspot.components.middlewares.error_handler import ErrorHandlerSettings
     from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
     from botspot.components.qol.print_bot_url import PrintBotUrlSettings
+    from botspot.components.qol.telegram_custom_emojis import TelegramCustomEmojisSettings
 
     assert AskUserSettings
     assert BotCommandsMenuSettings
@@ -24,6 +25,7 @@ def test_components_imports():
     assert MongoDatabaseSettings
     assert PostgresDatabaseSettings
     assert PrintBotUrlSettings
+    assert TelegramCustomEmojisSettings
     assert TrialModeSettings
     assert SubscriptionManagerSettings
 

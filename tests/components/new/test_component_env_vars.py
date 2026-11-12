@@ -70,6 +70,24 @@ def test_llm_provider_env_vars():
         assert settings.default_timeout == 60
 
 
+def test_telegram_custom_emojis_env_vars():
+    """Pack selection and the enable switch come from the component env prefix."""
+    from botspot.components.qol.telegram_custom_emojis import TelegramCustomEmojisSettings
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("BOTSPOT_TELEGRAM_CUSTOM_EMOJIS_ENABLED", "True")
+        mp.setenv("BOTSPOT_TELEGRAM_CUSTOM_EMOJIS_PACK", "StaticEmoji")
+        mp.setenv("BOTSPOT_TELEGRAM_CUSTOM_EMOJIS_RANDOM_SCOPE", "process")
+        mp.setenv("BOTSPOT_TELEGRAM_CUSTOM_EMOJIS_ALLOW_OTHER_PACKS", "False")
+
+        settings = TelegramCustomEmojisSettings()
+
+        assert settings.enabled is True
+        assert settings.pack == "StaticEmoji"
+        assert settings.random_scope == "process"
+        assert settings.allow_other_packs is False
+
+
 def test_subscription_manager_env_vars():
     """Test that subscription_manager settings read BOTSPOT_SUBSCRIPTION_MANAGER_ env."""
     from botspot.components.new.subscription_manager import SubscriptionManagerSettings

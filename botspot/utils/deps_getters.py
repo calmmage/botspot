@@ -121,6 +121,13 @@ def get_botspot_settings() -> "BotspotSettings":
     return get_dependency_manager().botspot_settings
 
 
+def get_telegram_custom_emojis():
+    """Custom-emoji rewriter. Raises when the component was not enabled."""
+    from botspot.core.dependency_manager import get_dependency_manager
+
+    return get_dependency_manager().telegram_custom_emojis
+
+
 # Re-export all for convenience
 __all__ = [
     "get_bot",
@@ -145,6 +152,7 @@ __all__ = [
     "get_botspot_settings",
     "get_subscription_manager",
     "get_observability",
+    "get_telegram_custom_emojis",
 ]
 
 

@@ -24,6 +24,7 @@ from botspot.components.new.subscription_manager.settings import SubscriptionMan
 from botspot.components.qol.bot_commands_menu import BotCommandsMenuSettings
 from botspot.components.qol.bot_info import BotInfoSettings
 from botspot.components.qol.print_bot_url import PrintBotUrlSettings
+from botspot.components.qol.telegram_custom_emojis import TelegramCustomEmojisSettings
 from botspot.utils.admin_filter import AdminFilterSettings
 from botspot.utils.send_safe import SendSafeSettings
 from pydantic import AliasChoices, Field
@@ -70,6 +71,7 @@ class BotspotSettings(BaseSettings):
     mongo_database: MongoDatabaseSettings = MongoDatabaseSettings()
     postgres_database: PostgresDatabaseSettings = PostgresDatabaseSettings()
     print_bot_url: PrintBotUrlSettings = PrintBotUrlSettings()
+    telegram_custom_emojis: TelegramCustomEmojisSettings = TelegramCustomEmojisSettings()
     telethon_manager: TelethonManagerSettings = TelethonManagerSettings()
     trial_mode: TrialModeSettings = TrialModeSettings()
     user_data: UserDataSettings = UserDataSettings()
