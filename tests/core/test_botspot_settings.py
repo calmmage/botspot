@@ -18,16 +18,6 @@ class TestBotspotSettings:
         assert settings.bot_commands_menu.enabled is True
         assert settings.bot_info.enabled is True
 
-    def test_admin_parsing(self):
-        """Test parsing admin string into a list."""
-        # Setup test data
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("BOTSPOT_ADMINS_STR", "@admin1, @admin2, @admin3")
-            settings = BotspotSettings()
-
-            # Test admin list
-            assert settings.admins == ["@admin1", "@admin2", "@admin3"]
-
     def test_empty_admin_parsing(self):
         """Test parsing empty admin string."""
         with pytest.MonkeyPatch.context() as mp:

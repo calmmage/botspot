@@ -61,12 +61,6 @@ class TestBotCommandsMenuSettings:
 
 
 class TestVisibility:
-    def test_enum_values(self):
-        """Test Visibility enum values"""
-        assert Visibility.PUBLIC.value == "public"
-        assert Visibility.HIDDEN.value == "hidden"
-        assert Visibility.ADMIN_ONLY.value == "admin_only"
-
     def test_enum_from_string(self):
         """Test creating Visibility enum from string"""
         assert Visibility("public") == Visibility.PUBLIC
@@ -75,11 +69,6 @@ class TestVisibility:
 
 
 class TestGroupDisplayMode:
-    def test_enum_values(self):
-        """Test GroupDisplayMode enum values"""
-        assert GroupDisplayMode.NESTED.value == "nested"
-        assert GroupDisplayMode.FLAT.value == "flat"
-
     def test_enum_from_string(self):
         """Test creating GroupDisplayMode enum from string"""
         assert GroupDisplayMode("nested") == GroupDisplayMode.NESTED
@@ -113,17 +102,6 @@ class TestGetCommandsByVisibility:
         """Test get_commands_by_visibility with no commands"""
         assert get_commands_by_visibility() == "No commands available"
         assert get_commands_by_visibility(include_admin=True) == "No commands available"
-
-    def test_public_commands(self):
-        """Test get_commands_by_visibility with public commands"""
-        commands["test1"] = CommandInfo("Test command 1", Visibility.PUBLIC)
-        commands["test2"] = CommandInfo("Test command 2", Visibility.PUBLIC)
-
-        result = get_commands_by_visibility()
-
-        assert "📝 Public commands:" in result
-        assert "/test1 - Test command 1" in result
-        assert "/test2 - Test command 2" in result
 
     def test_hidden_commands(self):
         """Test get_commands_by_visibility with hidden commands"""

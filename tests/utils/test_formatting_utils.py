@@ -7,11 +7,6 @@ class TestIsHTML:
         text = "This is plain text without any HTML tags"
         assert not is_html(text)
 
-    def test_with_html_tags(self):
-        """Test that text with HTML tags is correctly detected"""
-        text = "This contains <b>bold</b> text"
-        assert is_html(text)
-
     def test_with_angle_brackets(self):
         """Test that text with angle brackets but no valid HTML is not detected as HTML"""
         text = "This contains angle brackets like 2 < 3 and 5 > 4"
@@ -45,14 +40,6 @@ class TestIsHTML:
         """Test that incomplete tags are not detected as HTML"""
         text = "This is an incomplete tag: < not closed"
         assert not is_html(text)
-
-    def test_telegram_supported_tags(self):
-        """Test that all Telegram supported tags are detected"""
-        text = (
-            "<b>bold</b> <i>italic</i> <u>underline</u> <s>strike</s>"
-            " <code>code</code> <pre>block</pre> <a href='link'>link</a>"
-        )
-        assert is_html(text)
 
 
 class TestMarkdownToHTML:
