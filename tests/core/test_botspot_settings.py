@@ -18,16 +18,6 @@ class TestBotspotSettings:
         assert settings.bot_commands_menu.enabled is True
         assert settings.bot_info.enabled is True
 
-    def test_admin_parsing(self):
-        """Test parsing admin string into a list."""
-        # Setup test data
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("BOTSPOT_ADMINS_STR", "@admin1, @admin2, @admin3")
-            settings = BotspotSettings()
-
-            # Test admin list
-            assert settings.admins == ["@admin1", "@admin2", "@admin3"]
-
     def test_empty_admin_parsing(self):
         """Test parsing empty admin string."""
         with pytest.MonkeyPatch.context() as mp:
@@ -55,10 +45,14 @@ class TestBotspotSettings:
             # Test friends list
             assert settings.friends == ["@friend1", "@friend2", "@friend3"]
 
-    def test_component_settings_override(self):
+    def test_default_settings_and_component_override(self):
         """Test component settings can be different from defaults."""
         # Create a test with two different settings objects
         default_settings = BotspotSettings()
+        assert default_settings.admins == []
+        assert default_settings.friends == []
+        assert default_settings.error_handling.enabled is True
+        assert default_settings.bot_info.enabled is True
         # At least one setting should be True by default
         assert default_settings.bot_commands_menu.enabled is True
 

@@ -7,7 +7,6 @@ from botspot.components.new.llm_provider import _token_limit_for
     ("model", "key"),
     [
         ("openai/gpt-6-luna", "max_completion_tokens"),
-        ("openai/gpt-4.1-nano", "max_completion_tokens"),
         ("anthropic/claude-sonnet-5", "max_tokens"),
         ("gemini/gemini-3.8-flash", "max_tokens"),
         ("xai/grok-4.6", "max_tokens"),

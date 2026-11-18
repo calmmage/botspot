@@ -19,12 +19,6 @@ def clean_singleton():
 
 
 class TestDependencyManager:
-    def test_singleton_pattern(self):
-        """Test that DependencyManager follows singleton pattern"""
-        dm1 = DependencyManager()
-        dm2 = DependencyManager()
-        assert dm1 is dm2
-
     def test_initialization(self):
         """Test that DependencyManager can be initialized with dependencies"""
         mock_bot = MagicMock(spec=Bot)
@@ -79,18 +73,11 @@ class TestDependencyManager:
         dm = DependencyManager(custom_service=MagicMock())
         assert hasattr(dm, "custom_service")
 
-    def test_is_initialized(self):
-        """Test is_initialized class method"""
-        # Before initialization
+    def test_default_attributes_and_singleton_lifecycle(self):
+        """An initially absent singleton retains defaults across construction."""
         assert not DependencyManager.is_initialized()
-
-        # After initialization
-        DependencyManager()
-        assert DependencyManager.is_initialized()
-
-    def test_default_attributes(self):
-        """Test that default attributes are set when not provided"""
         dm = DependencyManager()
+        assert DependencyManager.is_initialized()
 
         assert isinstance(dm.botspot_settings, BotspotSettings)
         # Check internal attributes directly instead of properties that raise exceptions
@@ -100,6 +87,9 @@ class TestDependencyManager:
         assert dm._scheduler is None
         assert dm._telethon_manager is None
         assert dm._user_manager is None
+
+        second = DependencyManager()
+        assert dm is second
 
     def test_botspot_settings_default_initialization(self):
         """Test that botspot_settings is initialized with BotspotSettings if not provided"""

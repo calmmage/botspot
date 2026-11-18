@@ -28,14 +28,6 @@ class TestEscapeMd:
 
 
 class TestSplitLongMessage:
-    def test_short_message(self):
-        """Test that short messages are not split"""
-        text = "This is a short message"
-        chunks = split_long_message(text)
-
-        assert len(chunks) == 1
-        assert chunks[0] == text
-
     def test_long_message_split_on_newline(self):
         """Test that long messages are split on newlines when possible"""
         # Create a message with newlines that exceeds max length

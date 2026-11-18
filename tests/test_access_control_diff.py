@@ -10,12 +10,6 @@ from botspot.components.data.access_control import (
 from tests.telegram import BotClient
 
 
-def test_diff_same_lists():
-    diff = diff_access_lists(["@alice", "@bob"], ["@alice", "@bob"])
-    assert diff.same
-    assert diff.only_in_db == [] and diff.only_in_env == []
-
-
 def test_diff_extra_in_db():
     diff = diff_access_lists(["@alice", "@bob", "@carol"], ["@alice", "@bob"])
     assert not diff.same

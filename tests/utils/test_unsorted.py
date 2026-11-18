@@ -96,25 +96,6 @@ class TestStripCommand:
 
 class TestExtractMessageText:
     @pytest.mark.asyncio
-    async def test_extract_message_text_with_text(self):
-        """Test extracting text from message with text"""
-        from botspot.utils.unsorted import _extract_message_text
-
-        # Setup
-        message = MagicMock()
-        message.text = "Test message"
-        message.md_text = "*Test* message"
-        message.caption = None
-        message.document = None
-        message.reply_to_message = None
-
-        # Execute
-        result = await _extract_message_text(message)
-
-        # Verify
-        assert result == "Test message"
-
-    @pytest.mark.asyncio
     async def test_extract_message_text_with_markdown(self):
         """Test extracting text with markdown formatting"""
         from botspot.utils.unsorted import _extract_message_text

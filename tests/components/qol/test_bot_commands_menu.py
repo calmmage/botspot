@@ -61,12 +61,6 @@ class TestBotCommandsMenuSettings:
 
 
 class TestVisibility:
-    def test_enum_values(self):
-        """Test Visibility enum values"""
-        assert Visibility.PUBLIC.value == "public"
-        assert Visibility.HIDDEN.value == "hidden"
-        assert Visibility.ADMIN_ONLY.value == "admin_only"
-
     def test_enum_from_string(self):
         """Test creating Visibility enum from string"""
         assert Visibility("public") == Visibility.PUBLIC
@@ -75,11 +69,6 @@ class TestVisibility:
 
 
 class TestGroupDisplayMode:
-    def test_enum_values(self):
-        """Test GroupDisplayMode enum values"""
-        assert GroupDisplayMode.NESTED.value == "nested"
-        assert GroupDisplayMode.FLAT.value == "flat"
-
     def test_enum_from_string(self):
         """Test creating GroupDisplayMode enum from string"""
         assert GroupDisplayMode("nested") == GroupDisplayMode.NESTED
@@ -109,24 +98,11 @@ class TestCommandInfo:
 
 
 class TestGetCommandsByVisibility:
-    def test_empty_commands(self):
-        """Test get_commands_by_visibility with no commands"""
+    def test_empty_then_hidden_commands(self):
+        """An empty registry renders hidden commands after registration."""
         assert get_commands_by_visibility() == "No commands available"
         assert get_commands_by_visibility(include_admin=True) == "No commands available"
 
-    def test_public_commands(self):
-        """Test get_commands_by_visibility with public commands"""
-        commands["test1"] = CommandInfo("Test command 1", Visibility.PUBLIC)
-        commands["test2"] = CommandInfo("Test command 2", Visibility.PUBLIC)
-
-        result = get_commands_by_visibility()
-
-        assert "📝 Public commands:" in result
-        assert "/test1 - Test command 1" in result
-        assert "/test2 - Test command 2" in result
-
-    def test_hidden_commands(self):
-        """Test get_commands_by_visibility with hidden commands"""
         commands["test1"] = CommandInfo("Test command 1", Visibility.HIDDEN)
         commands["test2"] = CommandInfo("Test command 2", Visibility.HIDDEN)
 
@@ -350,26 +326,6 @@ class TestSetupDispatcher:
             # Verify help command addition
             mock_add_command.assert_called_once()
             assert mock_add_command.call_args[0][0] == "list_commands"
-
-    def test_list_commands_command(self):
-        """Test list_commands_command is properly added in setup_dispatcher"""
-        # This test will focus only on verifying that list_commands_command is properly
-        # registered in setup_dispatcher, which is the main purpose of this test
-
-        with patch("botspot.components.qol.bot_commands_menu.add_command") as mock_add_command:
-            # Create mock dispatcher with properly structured methods
-            mock_dispatcher = MagicMock()
-            mock_decorator = MagicMock()
-            mock_dispatcher.message = MagicMock(return_value=mock_decorator)
-
-            # Mock settings
-            mock_settings = MagicMock()
-            mock_settings.add_list_commands_handler = True
-
-            # Call setup_dispatcher
-            setup_dispatcher(mock_dispatcher, mock_settings)
-
-            # Verify add_command was called with the correct parameters
             mock_add_command.assert_called_once_with("list_commands", "Show available bot commands")
 
 

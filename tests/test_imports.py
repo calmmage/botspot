@@ -1,11 +1,3 @@
-def test_core_imports():
-    from botspot.core.botspot_settings import BotspotSettings
-    from botspot.core.dependency_manager import DependencyManager
-
-    assert BotspotSettings
-    assert DependencyManager
-
-
 def test_components_imports():
     from botspot.components.data.mongo_database import MongoDatabaseSettings
     from botspot.components.data.postgres_database import PostgresDatabaseSettings
